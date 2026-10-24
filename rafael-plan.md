@@ -119,7 +119,7 @@ de cada município nos quadrantes estratégicos (Q1–Q4).
 
 ## Sub-Tarefa 3 — Módulo de Distâncias ao Backhaul
 
-**Status:** `[ ] pending`
+**Status:** `[x] done`
 
 **Intent:**
 Calcular a distância de cada município ao município mais próximo com backhaul de fibra, que

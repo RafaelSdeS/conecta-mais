@@ -130,5 +130,9 @@ def test_get_backtest_retorna_estrutura(client):
     r = client.get("/backtest")
     assert r.status_code == 200
     data = r.json()
-    assert "status" in data
+    assert data["status"] == "ok"
     assert "precision" in data
+    assert "recall" in data
+    assert "f1" in data
+    assert 0.0 <= data["precision"] <= 1.0
+    assert 0.0 <= data["recall"] <= 1.0
