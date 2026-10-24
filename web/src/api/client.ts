@@ -29,13 +29,38 @@ export interface Municipio {
   uf: string
   lat: number
   lon: number
+  // score M
+  domicilios_urbanos: number
+  renda_media: number
+  acessos_fibra: number
+  acessos_total_bl: number
+  market_share_vivo_movel: number
+  hhi: number
+  ppp_share: number          // Anatel — porte == "Pequeno"
+  // score C
+  area_km2: number           // IBGE SIDRA tabela 1301
+  elevacao_media_m: number   // SRTM 90m
+  dist_backhaul_km: number | null
+  // score I
+  matriculas_publicas: number
+  matriculas_rurais_pct: number
+  velocidade_medida_mbps: number
+  alunos_maior_turno_est: number
+  escolas_sem_internet_aprendizagem: number
+  ivs: number
+  // score A
+  tem_backhaul_fibra: boolean
+  acordo_migracao: boolean
+  ano_backhaul: number | null
+  fust_elegivel: boolean
+  eace_escolas: number
+  // calculados pelo engine
   score_M: number
   score_I: number
   score_C: number
   score_A: number
   score_total: number
   quadrante: string
-  dist_backhaul_km: number | null
 }
 
 export interface ScoreWeights {

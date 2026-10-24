@@ -31,6 +31,14 @@ class Municipio(BaseModel):
     acessos_total_bl: int = Field(..., ge=0, description="Total de acessos de banda larga fixa")
     market_share_vivo_movel: float = Field(..., ge=0.0, le=1.0, description="Share móvel da Vivo no município")
     hhi: float = Field(..., ge=0.0, le=10000.0, description="Índice Herfindahl-Hirschman de banda larga fixa")
+    # Anatel — tabela br_anatel_banda_larga_fixa, coluna `porte`: share de prestadoras de pequeno porte
+    ppp_share: float = Field(..., ge=0.0, le=1.0, description="Share de acessos de PPPs (porte=Pequeno) no total de BL fixa")
+
+    # --- Custo de Implantação (score C) ---
+    # IBGE — área total do município em km² (SIDRA tabela 1301 / arquivo AR_BR_2022)
+    area_km2: float = Field(..., gt=0.0, description="Área total do município em km² (IBGE 2022)")
+    # SRTM 90m — elevação média das células dentro do polígono municipal
+    elevacao_media_m: float = Field(..., ge=0.0, description="Elevação média do município em metros (SRTM 90m)")
 
     # --- Impacto Educacional (score I) ---
     matriculas_publicas: int = Field(..., ge=0)
@@ -40,7 +48,6 @@ class Municipio(BaseModel):
     escolas_sem_internet_aprendizagem: int = Field(..., ge=0)
     ivs: float = Field(..., ge=0.0, le=1.0, description="Índice de Vulnerabilidade Social (IPEA)")
 
-    # --- Custo de Implantação (score C) ---
     # dist_backhaul_km é calculado pelo módulo geo — não vem do CSV diretamente
     dist_backhaul_km: Optional[float] = Field(None, ge=0.0)
 
