@@ -51,7 +51,7 @@ Sub-tarefa 8 (backtest) é independente e pode ser feita por último.
 
 ## Sub-Tarefa 1 — Estrutura do Projeto e Dados Mock
 
-**Status:** `[ ] pending`
+**Status:** `[x] done`
 
 **Intent:**
 Criar o esqueleto do monorepo e um dataset sintético baseado em municípios reais para que
