@@ -29,9 +29,9 @@ Backend de dados + camada inteligente. Os dados que ingere são os mesmos que os
 
 ---
 
-## Chris — Produto, Dashboard & Pitch
+## Chris — Produto & Dashboard
 
-Interface, experiência do usuário e apresentação final.
+Interface e experiência do usuário.
 
 | Entregável | Seção da proposta |
 |---|---|
@@ -39,8 +39,6 @@ Interface, experiência do usuário e apresentação final.
 | Simulador de alavancas | §8.1 — Módulo 2 |
 | Chat com justificativa (UI) | §8.1 — Módulo 3 |
 | Ficha executiva por município | §8.1 — Módulo 4 |
-| Roteiro e execução do pitch de 4 minutos | §8.2 |
-| Proposta de valor por stakeholder (narrativa) | §3 |
 
 ---
 
