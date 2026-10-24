@@ -14,6 +14,19 @@ Foco nos algoritmos e no motor de decisão do sistema.
 
 ---
 
+## Chris — Produto & Dashboard
+
+Interface e experiência do usuário.
+
+| Entregável | Seção da proposta |
+|---|---|
+| Painel cartográfico (5.570 municípios, filtros, quadrantes) | §8.1 — Módulo 1 |
+| Simulador de alavancas | §8.1 — Módulo 2 |
+| Chat com justificativa (UI) | §8.1 — Módulo 3 |
+| Ficha executiva por município | §8.1 — Módulo 4 |
+
+---
+
 ## Joel — ETL + Agentes de IA & Orquestração
 
 Backend de dados + camada inteligente. Os dados que ingere são os mesmos que os agentes consomem.
@@ -29,30 +42,17 @@ Backend de dados + camada inteligente. Os dados que ingere são os mesmos que os
 
 ---
 
-## Chris — Produto & Dashboard
-
-Interface e experiência do usuário.
-
-| Entregável | Seção da proposta |
-|---|---|
-| Painel cartográfico (5.570 municípios, filtros, quadrantes) | §8.1 — Módulo 1 |
-| Simulador de alavancas | §8.1 — Módulo 2 |
-| Chat com justificativa (UI) | §8.1 — Módulo 3 |
-| Ficha executiva por município | §8.1 — Módulo 4 |
-
----
-
 ## Fluxo de dependências
 
 ```
 Rafael (scores, financeiro, otimização)
-    └──► Chris (dashboard, simulador, ficha)
+    └──► Joel (dashboard, simulador, ficha)
 
-Joel (ETL + dados)
+Chris (ETL + dados)
     ├──► Rafael (base municipal e de escolas)
-    ├──► Chris (dashboard, chat)
-    └──► Joel (agentes consomem a própria base)
+    ├──► Joel (dashboard, chat)
+    └──► Chris (agentes consomem a própria base)
 ```
 
 > Os três podem trabalhar em paralelo desde o início usando dados simulados
-> nas interfaces de Chris e nos agentes de Joel. O fluxo real é Joel → Rafael → Chris.
+> nas interfaces de Joel e nos agentes de Chris. O fluxo real é Chris → Rafael → Joel.
