@@ -1,122 +1,63 @@
 import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import ScoreMap from './pages/ScoreMap'
+import Simulator from './pages/Simulator'
 
-function App() {
-  const [count, setCount] = useState(0)
+type View = 'painel' | 'simulador'
+
+const NAV: { id: View; label: string }[] = [
+  { id: 'painel',    label: 'Painel' },
+  { id: 'simulador', label: 'Simulador' },
+]
+
+export default function App() {
+  const [view, setView] = useState<View>('painel')
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <div style={{ display: 'grid', gridTemplateColumns: '208px 1fr', minHeight: '100svh' }}>
+
+      {/* Sidebar */}
+      <aside style={{
+        position: 'sticky', top: 0, height: '100vh',
+        background: 'var(--pn)', borderRight: '1px solid var(--ln)',
+        padding: '20px 12px', display: 'flex', flexDirection: 'column', gap: 20,
+      }}>
         <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
+          <div style={{ fontSize: 18, fontWeight: 600 }}>
+            Conecta<span style={{ color: 'var(--ac)' }}>+</span>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--mu)' }}>Expansão de conectividade</div>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
 
-      <div className="ticks"></div>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {NAV.map(n => (
+            <button
+              key={n.id}
+              onClick={() => setView(n.id)}
+              style={{
+                font: 'inherit', textAlign: 'left',
+                background: view === n.id ? 'var(--so)' : 'none',
+                border: 0, borderRadius: 4, padding: '8px 10px', cursor: 'pointer',
+                color: view === n.id ? 'var(--tx)' : 'var(--mu)',
+                fontWeight: view === n.id ? 500 : 400,
+                boxShadow: view === n.id ? 'inset 3px 0 0 var(--ac)' : 'none',
+              } as React.CSSProperties}
+            >
+              {n.label}
+            </button>
+          ))}
+        </nav>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        <p style={{ marginTop: 'auto', fontSize: 11, color: 'var(--mu)' }}>
+          Protótipo com dados simulados.<br />
+          IBM SkillsBuild & Fundação Telefônica Vivo.
+        </p>
+      </aside>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      {/* Conteúdo principal */}
+      <main style={{ padding: 24, maxWidth: 1320 }}>
+        {view === 'painel'    && <ScoreMap />}
+        {view === 'simulador' && <Simulator />}
+      </main>
+    </div>
   )
 }
-
-export default App

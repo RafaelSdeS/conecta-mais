@@ -1,19 +1,29 @@
 @import "tailwindcss";
 
 :root {
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  font-family: var(--sans);
-  font-size: 15px;
-  line-height: 1.6;
-  color: #1f2328;
-  background: #ffffff;
+  --bg:   #eef0f3;
+  --pn:   #ffffff;
+  --ln:   #d9dde3;
+  --tx:   #1c2430;
+  --mu:   #5d6a7a;
+  --so:   #f5f6f8;
+  --ac:   #5b2a86;
+  --on:   #ffffff;
+
+  /* Quadrantes */
+  --q1:  #138a5b;
+  --q2a: #2b6cb0;
+  --q2b: #d9822b;
+  --q3:  #bf9000;
+  --q4:  #8a94a3;
+
+  font-family: "IBM Plex Sans", system-ui, "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--tx);
+  background: var(--bg);
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
-body {
-  margin: 0;
-}
-
-#root {
-  min-height: 100svh;
-}
+body { margin: 0; }

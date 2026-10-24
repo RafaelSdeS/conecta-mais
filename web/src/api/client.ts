@@ -84,30 +84,36 @@ export interface FinancialParams {
   arpu_mensal: number
   margem_ebitda: number
   wacc: number
+  wacc_fust: number
   anos_projeto: number
-  arpu_escolar_mensal: number
+  aliquota_imposto: number
+  arpu_escolar_mensal?: number
+}
+
+export interface CapexResult {
+  acesso: number
+  backhaul: number
+  ativacao: number
+  total: number
 }
 
 export interface FinancialResult {
   id_municipio: string
-  capex_acesso: number
-  capex_backhaul: number
-  capex_ativacao: number
-  capex_total: number
+  capex: CapexResult
   receita_anual: number
   ebitda_anual: number
   payback_anos: number
-  vpl: number
+  npv: number
   sensitivity: { adesao_pct: number; payback_anos: number }[]
 }
 
 export interface PortfolioRequest {
   budget: number
-  lambda_: number
-  max_payback: number
+  lambda_?: number
+  max_payback?: number
   uf?: string
-  alavancas: Alavancas
-  params: FinancialParams
+  alavancas?: Alavancas
+  params?: FinancialParams
   weights?: ScoreWeights
 }
 
@@ -117,6 +123,8 @@ export interface PortfolioResult {
   payback_medio: number
   score_total: number
   status: string
+  n_candidatos: number
+  n_selecionados: number
 }
 
 export interface BacktestResult {
