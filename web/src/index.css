@@ -1,0 +1,193 @@
+@import "tailwindcss";
+
+/* ── Design tokens — Light theme ─────────────────────────────────────────── */
+:root {
+  --bg:   #eef0f3;
+  --pn:   #ffffff;
+  --ln:   #d9dde3;
+  --tx:   #1c2430;
+  --mu:   #5d6a7a;
+  --so:   #f5f6f8;
+  --ac:   #5b2a86;
+  --on:   #ffffff;
+  --land: #f3f4f7;
+
+  /* Quadrantes */
+  --q1:  #138a5b;
+  --q2a: #2b6cb0;
+  --q2b: #d9822b;
+  --q3:  #bf9000;
+  --q4:  #8a94a3;
+
+  /* Status */
+  --bad: #b3261e;
+  --ok:  #138a5b;
+
+  /* Logo */
+  --logo-filter: invert(1) hue-rotate(180deg);
+
+  font-family: "IBM Plex Sans", system-ui, "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--tx);
+  background: var(--bg);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  box-sizing: border-box;
+}
+
+/* ── Dark theme ───────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:   #12151b;
+    --pn:   #1a1e26;
+    --ln:   #2d333e;
+    --tx:   #e6e9ee;
+    --mu:   #98a3b3;
+    --so:   #222733;
+    --ac:   #b98be0;
+    --on:   #14101a;
+    --land: #20252f;
+    --bad:  #ff8a80;
+    --ok:   #4cc38a;
+    --logo-filter: none;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg:   #12151b;
+  --pn:   #1a1e26;
+  --ln:   #2d333e;
+  --tx:   #e6e9ee;
+  --mu:   #98a3b3;
+  --so:   #222733;
+  --ac:   #b98be0;
+  --on:   #14101a;
+  --land: #20252f;
+  --bad:  #ff8a80;
+  --ok:   #4cc38a;
+  --logo-filter: none;
+}
+
+/* ── Reset & base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: inherit; }
+body  { margin: 0; }
+h1    { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+h2    { font-size: 15px; font-weight: 600; margin: 0 0 10px; }
+h3    { font-size: 13px; font-weight: 600; margin: 16px 0 6px; }
+p     { margin: 0; }
+
+:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
+
+/* ── Animations ───────────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  to { transform: translateX(100%); }
+}
+
+@keyframes bounce-dot {
+  50% { opacity: 0.2; }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; transform: translate(-50%, 0); }
+  to   { opacity: 0; transform: translate(-50%, 20px); }
+}
+
+/* ── Shimmer button ───────────────────────────────────────────────────────── */
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.3) 50%, transparent 65%);
+  transform: translateX(-100%);
+  animation: shimmer 3.4s infinite;
+}
+
+/* ── Typing indicator dots ────────────────────────────────────────────────── */
+.typing-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--mu);
+  margin-right: 3px;
+  animation: bounce-dot 1s infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: .15s; }
+.typing-dot:nth-child(3) { animation-delay: .3s; }
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ── Layout responsivo ────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  /* Sidebar vira barra horizontal no topo */
+  .app-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .app-sidebar {
+    position: static !important;
+    height: auto !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    padding: 10px 12px !important;
+    gap: 12px !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--ln) !important;
+  }
+  .app-sidebar nav {
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .app-sidebar nav button { white-space: nowrap !important; }
+  .sidebar-note { display: none !important; }
+
+  /* Header: toggle mobile */
+  .header-mobile-toggle { display: inline-flex !important; }
+  .header-controls {
+    display: none !important;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 4px 0 6px;
+  }
+  .header-controls.open { display: flex !important; }
+
+  /* Main content */
+  #main-content { padding: 16px !important; }
+}
+
+@media (max-width: 600px) {
+  #main-content { padding: 12px !important; }
+}
+
+/* ── Print ────────────────────────────────────────────────────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  /* Oculta tudo exceto o conteúdo do drawer */
+  body > * { display: none !important; }
+  aside[role="dialog"] {
+    display: block !important;
+    position: static !important;
+    transform: none !important;
+    width: auto !important;
+    border: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  aside[role="dialog"] .no-print { display: none !important; }
+}
