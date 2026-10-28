@@ -1,9 +1,8 @@
-# Conecta+ — Motor de Decisão
+# Conecta+ — Painel de Expansão de Conectividade
 
 Sistema de apoio à decisão para expansão de conectividade da Vivo, desenvolvido para o **Desafio IBM SkillsBuild & Fundação Telefônica Vivo**.
 
-> Responsabilidade: **Rafael** — scores, financeiro e otimização.
-> Veja [`TEAM.md`](TEAM.md) para a divisão completa de trabalho.
+> Veja [`TEAM.md`](TEAM.md) para a divisão de trabalho entre Rafael, Joel e Chris.
 
 ---
 
@@ -11,12 +10,12 @@ Sistema de apoio à decisão para expansão de conectividade da Vivo, desenvolvi
 
 ```
 conecta+/
-  engine/          ← backend Python (FastAPI)
-  web/             ← frontend React (Vite + Tailwind)
-  docs/            ← documentação técnica
-  PROPOSTA_DETALHADA.md
+  engine/          ← backend Python (FastAPI + PuLP)
+  web/             ← frontend React (Vite + Tailwind + Leaflet)
+  docs/            ← documentação técnica e planos de implementação
+  SVG/             ← logos oficiais do projeto
   TEAM.md
-  rafael-plan.md
+  PROPOSTA_CONECTA.pdf
 ```
 
 ---
@@ -61,7 +60,9 @@ cd web
 npm run dev
 ```
 
-Acesse `http://localhost:5173`. A documentação interativa da API fica em `http://localhost:8000/docs`.
+Acesse `http://localhost:5173`.  
+O frontend funciona **sem o backend** — dados mock são carregados automaticamente como fallback.  
+A documentação interativa da API fica em `http://localhost:8000/docs`.
 
 ---
 
@@ -72,16 +73,37 @@ cd engine
 python -m pytest
 ```
 
-77 testes, todos passando.
+---
+
+## Frontend — Views
+
+| View | Descrição |
+|---|---|
+| **Painel** | KPIs animados, mapa Leaflet com 417 municípios, quadrantes e histograma de payback |
+| **Municípios** | Tabela ordenável com busca, filtros, favoritos e portfólio |
+| **Agente** | Chat com agente de IA simulado (substituível por watsonx.ai Granite) |
+| **Solução** | Arquitetura IBM watsonx, ROI estimado e fases de entrega |
+
+**Atalhos:** `Ctrl+K` abre a paleta de comandos. Clique em qualquer município para abrir a ficha executiva.
 
 ---
 
 ## Arquitetura
 
 ```
-web/src/pages/
-  ScoreMap.tsx      ← painel de scores com filtros e badges de quadrante
-  Simulator.tsx     ← business case, sensibilidade e portfólio otimizado
+web/src/
+  pages/
+    PanelView.tsx       ← painel principal: KPIs, mapa, quadrantes, histograma
+    MunView.tsx         ← tabela de municípios com filtros completos
+    ChatView.tsx        ← interface de chat com agente IA
+    SolutionView.tsx    ← arquitetura, ROI e fases de entrega
+  components/
+    MapContainer.tsx    ← Leaflet + OSM (sem chave de API)
+    Drawer.tsx          ← ficha executiva por município
+    Header.tsx          ← slider de orçamento + alavancas
+    CommandPalette.tsx  ← paleta Ctrl+K
+  store/
+    appStore.ts         ← estado global (Zustand)
 
 engine/
   api/              ← FastAPI (routers por domínio)
@@ -92,11 +114,11 @@ engine/
     financial/      ← CapEx, payback, VPL, sensibilidade
     optimizer/      ← portfólio MILP (PuLP + CBC)
     backtest/       ← backtest 2021→2025
-  data/             ← dados mock (substituídos pelo ETL do Joel)
-  tests/            ← 77 testes pytest
+  data/             ← dados mock (CSV com ~50 municípios reais)
+  tests/            ← pytest
 ```
 
-Veja [`docs/arquitetura.md`](docs/arquitetura.md) para detalhes.
+Veja [`docs/arquitetura.md`](docs/arquitetura.md) para detalhes completos.
 
 ---
 
@@ -117,7 +139,7 @@ Veja [`docs/api.md`](docs/api.md) para exemplos de request/response.
 
 ## Dados mock
 
-Os CSVs em `engine/data/` simulam a base real que o Joel entregará via ETL. Os campos seguem exatamente as fontes da proposta:
+Os CSVs em `engine/data/` simulam a base real. Os campos seguem as fontes da proposta:
 
 | Campo | Fonte real |
 |---|---|
@@ -130,4 +152,4 @@ Os CSVs em `engine/data/` simulam a base real que o Joel entregará via ETL. Os 
 | `elevacao_media_m` | SRTM 90m |
 | `acordo_migracao`, `fust_elegivel`, `eace_escolas` | Acordo TCU, editais FUST, EACE |
 
-Para substituir pelos dados reais: trocar os CSVs por GeoParquet no [`engine/conecta/data/loader.py`](engine/conecta/data/loader.py). O schema Pydantic valida na inicialização.
+Para substituir pelos dados reais: trocar os CSVs por GeoParquet no [`engine/conecta/data/loader.py`](engine/conecta/data/loader.py).
