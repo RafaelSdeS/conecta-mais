@@ -377,7 +377,7 @@ ajustes de UX: dark mode automático, responsividade mobile e acessibilidade.
 
 ### ST-9 — Integração final com a API e dados reais
 
-**Status:** `[ ] pending`
+**Status:** `[x] done`
 
 **Intent:**
 Substituir qualquer dado simulado remanescente pela API real do Rafael, ajustar o

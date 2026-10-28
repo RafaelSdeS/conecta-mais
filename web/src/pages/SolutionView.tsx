@@ -2,7 +2,7 @@
  * SolutionView — arquitetura IBM watsonx, ROI estimado e fases de entrega.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AGENT_DESCRIPTIONS,
   ROI_ROWS,
@@ -10,12 +10,26 @@ import {
   SOLUTION_KPIS,
 } from '../utils/constants'
 import { useAppStore } from '../store/appStore'
+import { api, type BacktestResult } from '../api/client'
 import logoIcone       from '../assets/logo.svg'
 import logoIconeBranca from '../assets/logo-branca.svg'
 
 export default function SolutionView() {
   const [selectedAgent, setSelectedAgent] = useState<number | null>(null)
   const theme = useAppStore((s) => s.theme)
+
+  // ── Backtest 2021 → 2025 ───────────────────────────────────────────────────
+  const [backtest, setBacktest]         = useState<BacktestResult | null>(null)
+  const [backtestLoading, setBtLoading] = useState(false)
+  const [backtestError, setBtError]     = useState<string | null>(null)
+
+  useEffect(() => {
+    setBtLoading(true)
+    api.getBacktest()
+      .then(setBacktest)
+      .catch((e: unknown) => setBtError(String(e)))
+      .finally(() => setBtLoading(false))
+  }, [])
 
   const pn: React.CSSProperties = {
     background: 'var(--pn)',
@@ -167,6 +181,7 @@ export default function SolutionView() {
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
         gap: 12,
+        marginBottom: 16,
       }}>
         {DELIVERY_PHASES.map((phase) => (
           <div key={phase.title} style={pn}>
@@ -178,6 +193,42 @@ export default function SolutionView() {
             </ul>
           </div>
         ))}
+      </div>
+
+      {/* Validação do modelo — Backtest 2021 → 2025 */}
+      <div style={pn}>
+        <h2 style={{ marginBottom: 8 }}>Validação do modelo — Backtest 2021 → 2025</h2>
+        <p style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 12 }}>
+          Dos municípios classificados como Q1/Q2a em 2021, quantos realmente expandiram
+          sua base de fibra até 2025 (crescimento ≥ threshold)?
+        </p>
+
+        {backtestLoading && (
+          <p style={{ fontSize: 13, color: 'var(--mu)' }}>Carregando…</p>
+        )}
+        {backtestError && !backtestLoading && (
+          <p style={{ fontSize: 13, color: 'var(--mu)' }}>
+            API offline — resultado de backtest indisponível.
+          </p>
+        )}
+        {backtest && !backtestLoading && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+            {[
+              { label: 'Precision',              value: `${(backtest.precision * 100).toFixed(0)}%`,   detail: 'dos Q1/Q2a que realmente cresceram' },
+              { label: 'Recall',                 value: `${(backtest.recall * 100).toFixed(0)}%`,      detail: 'dos que cresceram que eram Q1/Q2a' },
+              { label: 'F1-Score',               value: backtest.f1.toFixed(2),                        detail: 'média harmônica precision/recall' },
+              { label: 'Municípios Q1/Q2a 2021', value: String(backtest.total_q1_q2a_2021),            detail: 'classificados pelo modelo' },
+              { label: 'Cresceram em fibra',     value: String(backtest.total_cresceram),              detail: `threshold: +${((backtest.threshold_crescimento - 1) * 100).toFixed(0)}%` },
+              { label: 'Acertos',                value: String(backtest.acertados),                    detail: 'Q1/Q2a que de fato cresceram' },
+            ].map(({ label, value, detail }) => (
+              <div key={label} style={{ ...pn, padding: 12 }}>
+                <div style={{ fontSize: 11, color: 'var(--mu)', marginBottom: 2 }}>{label}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>{value}</div>
+                <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>{detail}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

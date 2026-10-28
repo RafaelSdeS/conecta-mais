@@ -8,10 +8,12 @@ import KPIPanel          from '../components/KPIPanel'
 import MapContainer      from '../components/MapContainer'
 import QuadrantButtons   from '../components/QuadrantButtons'
 import PaybackHistogram  from '../components/PaybackHistogram'
+import { calcFinancial } from '../utils/calculation'
 
 export default function PanelView() {
   const municipios  = useAppStore((s) => s.municipios)
   const portfolio   = useAppStore((s) => s.portfolio)
+  const levers      = useAppStore((s) => s.levers)
   const kpis        = useAppStore((s) => s.kpis)
   const openDrawer  = useAppStore((s) => s.openDrawer)
 
@@ -20,15 +22,20 @@ export default function PanelView() {
     [portfolio]
   )
 
-  // Paybacks simulados para o histograma quando não há dados reais
-  // (serão substituídos pelos dados reais no ST-9)
+  // Paybacks calculados por município usando o modelo financeiro local.
+  // Mostra todos os municípios no histograma para dar visão da distribuição.
   const paybacks = useMemo(() => {
-    if (portfolio.length > 0) {
-      // Se temos dados reais, usa payback_medio como estimativa por enquanto
-      return municipios.map(() => Math.random() * 12)
-    }
-    return []
-  }, [municipios, portfolio])
+    if (municipios.length === 0) return []
+    return municipios.map((m) =>
+      calcFinancial(
+        m.domicilios_urbanos ?? 5000,
+        m.dist_backhaul_km ?? 50,
+        m.escolas_sem_internet_aprendizagem ?? 0,
+        m.acordo_migracao ?? false,
+        levers,
+      ).pay
+    )
+  }, [municipios, levers])
 
   const totalMunicipios = municipios.length || 417
 

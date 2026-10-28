@@ -128,11 +128,14 @@ export interface PortfolioResult {
 }
 
 export interface BacktestResult {
+  status: string
   precision: number
   recall: number
-  total_q1_q2_2021: number
+  f1: number
+  total_q1_q2a_2021: number
   total_cresceram: number
   acertados: number
+  threshold_crescimento: number
 }
 
 // ── Endpoints ─────────────────────────────────────────────────────────────────

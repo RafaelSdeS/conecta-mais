@@ -1,8 +1,14 @@
 /**
  * DrawerContent — conteúdo da ficha executiva de um município.
  * Renderiza diagnóstico, plano de ação e business case comparativo.
+ *
+ * Business case: chama POST /financial com e sem alavancas. Se a API estiver
+ * offline, cai no modelo local (calcFinancial) para não quebrar em dev.
  */
 
+import { useEffect, useState } from 'react'
+import { api } from '../api/client'
+import type { FinancialResult } from '../api/client'
 import { useAppStore } from '../store/appStore'
 import { useFavorites } from '../hooks/useFavorites'
 import { useToast } from '../hooks/useToast'
@@ -16,6 +22,19 @@ interface Props {
   municipio: Municipio
 }
 
+const DEFAULT_PARAMS = {
+  custo_hp: 477,
+  custo_backhaul_km: 61800,
+  custo_ativacao: 500,
+  adesao_pct: 0.25,
+  arpu_mensal: 87.7,
+  margem_ebitda: 0.40,
+  wacc: 0.15,
+  wacc_fust: 0.0325,
+  anos_projeto: 10,
+  aliquota_imposto: 0.34,
+}
+
 const btnGhost: React.CSSProperties = {
   font: 'inherit',
   fontSize: 13,
@@ -27,36 +46,90 @@ const btnGhost: React.CSSProperties = {
   border: '1px solid var(--ln)',
 }
 
+// Converte FinancialResult da API para o formato da tabela local
+interface BCRow { capex: number; back: number; b2c: number; b2g: number; ebitda: number; pay: number }
+
+function apiResultToRow(r: FinancialResult): BCRow {
+  return {
+    capex:  r.capex.total,
+    back:   r.capex.backhaul,
+    b2c:    r.receita_anual,
+    b2g:    0, // receita_anual já inclui B2G; separação requer endpoint futuro
+    ebitda: r.ebitda_anual,
+    pay:    r.payback_anos,
+  }
+}
+
 export default function DrawerContent({ municipio: m }: Props) {
   const levers     = useAppStore((s) => s.levers)
   const portfolio  = useAppStore((s) => s.portfolio)
   const [favs, toggleFav] = useFavorites()
   const { toast } = useToast()
 
-  const isFav     = favs.has(m.id_municipio)
-  const isSel     = portfolio.some((p) => p.id_municipio === m.id_municipio)
-  const dist      = m.dist_backhaul_km ?? 50
-  const homes     = m.domicilios_urbanos ?? 5000
-  const schools   = m.escolas_sem_internet_aprendizagem ?? 0
-  const tcuMun    = m.acordo_migracao ?? false
+  // ── Business case via API ────────────────────────────────────────────────────
+  const [bcBase, setBcBase]       = useState<BCRow | null>(null)
+  const [bcWith, setBcWith]       = useState<BCRow | null>(null)
+  const [bcLoading, setBcLoading] = useState(false)
+  const [sensitivity, setSensitivity] = useState<{ adesao_pct: number; payback_anos: number }[]>([])
 
-  const noLevers  = { fust: false, tcu: false, enec: false }
-  const base      = calcFinancial(homes, dist, schools, tcuMun, noLevers)
-  const withLev   = calcFinancial(homes, dist, schools, tcuMun, levers)
+  // Fallback local (usado quando API offline)
+  const dist    = m.dist_backhaul_km ?? 50
+  const homes   = m.domicilios_urbanos ?? 5000
+  const schools = m.escolas_sem_internet_aprendizagem ?? 0
+  const tcuMun  = m.acordo_migracao ?? false
+  const noLevers = { fust: false, tcu: false, enec: false }
+  const fallbackBase = calcFinancial(homes, dist, schools, tcuMun, noLevers)
+  const fallbackWith = calcFinancial(homes, dist, schools, tcuMun, levers)
 
-  const tech      = getTechRecommendation(dist, homes)
+  useEffect(() => {
+    setBcLoading(true)
+    setBcBase(null)
+    setBcWith(null)
+    setSensitivity([])
+
+    const alavancasSem = { backhaul_comprometido: false, fust_reembolsavel: false, receita_escolar: false }
+    const alavancasCom = {
+      backhaul_comprometido: levers.tcu && tcuMun,
+      fust_reembolsavel:     levers.fust,
+      receita_escolar:       levers.enec,
+    }
+
+    Promise.all([
+      api.postFinancial(m.id_municipio, DEFAULT_PARAMS, alavancasSem),
+      api.postFinancial(m.id_municipio, DEFAULT_PARAMS, alavancasCom),
+    ])
+      .then(([resBase, resWith]) => {
+        setBcBase(apiResultToRow(resBase))
+        setBcWith(apiResultToRow(resWith))
+        setSensitivity(resWith.sensitivity)
+      })
+      .catch(() => {
+        // API offline — usa modelo local como fallback silencioso
+        setBcBase(fallbackBase)
+        setBcWith(fallbackWith)
+      })
+      .finally(() => setBcLoading(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m.id_municipio, levers.fust, levers.tcu, levers.enec])
+
+  // Valores a exibir: API real ou fallback
+  const base    = bcBase  ?? fallbackBase
+  const withLev = bcWith  ?? fallbackWith
+
+  const tech       = getTechRecommendation(dist, homes)
   const professors = Math.round((m.escolas_sem_internet_aprendizagem ?? 2) * 3.7)
+  const isFav      = favs.has(m.id_municipio)
+  const isSel      = portfolio.some((p) => p.id_municipio === m.id_municipio)
 
   function handleFav() {
     toggleFav(m.id_municipio)
     toast(isFav ? 'Município removido dos favoritos' : 'Município adicionado aos favoritos')
   }
 
-  const BC_ROWS: { label: string; key: keyof typeof base }[] = [
+  const BC_ROWS: { label: string; key: keyof BCRow }[] = [
     { label: 'CapEx total',      key: 'capex'  },
     { label: 'Backhaul',         key: 'back'   },
-    { label: 'Receita B2C/ano',  key: 'b2c'    },
-    { label: 'Receita B2G/ano',  key: 'b2g'    },
+    { label: 'Receita/ano',      key: 'b2c'    },
     { label: 'EBITDA/ano',       key: 'ebitda' },
   ]
 
@@ -134,7 +207,14 @@ export default function DrawerContent({ municipio: m }: Props) {
       </ul>
 
       {/* Business case */}
-      <h3>Business case</h3>
+      <h3>
+        Business case
+        {bcLoading && (
+          <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: 'var(--mu)' }}>
+            calculando…
+          </span>
+        )}
+      </h3>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
@@ -162,6 +242,32 @@ export default function DrawerContent({ municipio: m }: Props) {
           </tbody>
         </table>
       </div>
+
+      {/* Sensibilidade à adesão (apenas quando API retorna) */}
+      {sensitivity.length > 0 && (
+        <>
+          <h3 style={{ marginTop: 14, marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--mu)' }}>
+            Sensibilidade à adesão
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${sensitivity.length}, 1fr)`, gap: 8 }}>
+            {sensitivity.map((row) => (
+              <div
+                key={row.adesao_pct}
+                style={{
+                  textAlign: 'center',
+                  border: '1px solid var(--ln)',
+                  borderRadius: 4,
+                  padding: '8px 4px',
+                  background: 'var(--so)',
+                }}
+              >
+                <div style={{ fontSize: 15, fontWeight: 600 }}>{fmtAnos(row.payback_anos)}</div>
+                <div style={{ fontSize: 11, color: 'var(--mu)' }}>{(row.adesao_pct * 100).toFixed(0)}% adesão</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
