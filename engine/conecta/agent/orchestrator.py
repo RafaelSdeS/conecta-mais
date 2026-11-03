@@ -46,6 +46,13 @@ consultar_documentacao_conecta e cite documento e seção. Para números atuais
 de municípios, use as ferramentas SQLite ou engine; para perguntas que pedem
 valor e explicação, use ambas as fontes necessárias.
 
+Para perguntas de ranking ou comparação ("maior ROI", "melhor município",
+"mais viável", "menor payback"): use listar_top_municipios com o critério
+adequado (score_total para impacto geral, payback para retorno mais rápido,
+npv para maior valor). Apresente os resultados como tabela com as colunas
+nome, UF, quadrante e o critério de ordenação. Deixe claro que são dados
+demonstrativos do engine_mock e não constituem recomendação real.
+
 Não invente números, indicadores, scores, resultados, fontes ou consultas. Use
 somente dados retornados pelas ferramentas para afirmações específicas do
 Conecta+. Se uma consulta falhar ou não encontrar o município, explique qual
@@ -572,14 +579,46 @@ class ChatOrchestrator:
         if name == "consultar_analise_financeira":
             npv = data.get("npv")
             payback = data.get("payback_anos")
+            capex = data.get("capex")
+            capex_total = capex.get("total") if isinstance(capex, dict) else None
             municipality = data.get("id_municipio")
             if isinstance(npv, (int, float)) and isinstance(payback, (int, float)):
+                npv_fmt = f"R$ {npv:.1f} mi" if abs(npv) < 10_000 else f"R$ {npv/1000:.1f} bi"
+                pay_fmt = f"{payback:.1f} anos" if payback < 99 else "inviável (>99 anos)"
+                capex_fmt = f"CapEx R$ {capex_total:.1f} mi, " if isinstance(capex_total, (int, float)) else ""
                 return (
-                    f"O motor demonstrativo calculou VPL de {npv:.2f} e payback de "
-                    f"{payback:.2f} anos para o município {municipality}. "
-                    "São resultados demonstrativos, não recomendações reais.",
+                    f"Motor demonstrativo para {municipality}: {capex_fmt}"
+                    f"payback {pay_fmt}, VPL {npv_fmt}. "
+                    "Dados demonstrativos — não constituem recomendação real.",
                     True,
                 )
+
+        if name == "listar_top_municipios":
+            ranking = data.get("ranking")
+            criterio = data.get("criterio", "score_total")
+            if not isinstance(ranking, list) or not ranking:
+                return "O engine não retornou municípios para o ranking solicitado.", True
+            criterio_label = {
+                "score_total": "Score total",
+                "payback": "Payback (anos)",
+                "npv": "VPL (R$ mi)",
+            }.get(criterio, criterio)
+            linhas = [f"| # | Município | UF | Quadrante | {criterio_label} |"]
+            linhas.append("|---|---|---|---|---|")
+            for i, item in enumerate(ranking, 1):
+                nome = item.get("nome", "")
+                uf = item.get("uf", "")
+                quad = item.get("quadrante", "")
+                valor = item.get(criterio, "")
+                if isinstance(valor, float):
+                    valor = f"{valor:.2f}"
+                linhas.append(f"| {i} | {nome} | {uf} | {quad} | {valor} |")
+            return (
+                f"**Ranking por {criterio_label}** (dados demonstrativos do engine_mock):\n\n"
+                + "\n".join(linhas)
+                + "\n\n*Estes resultados são demonstrativos e não representam recomendação real de investimento.*",
+                True,
+            )
 
         if name == "buscar_municipio_real":
             municipality = data.get("municipio")

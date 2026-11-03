@@ -113,6 +113,18 @@ class EngineMunicipalityArguments(MunicipalityReferenceArguments):
     pass
 
 
+class TopMunicipalitiesArguments(ToolArguments):
+    criterio: Literal["score_total", "payback", "npv"] = Field(
+        default="score_total",
+        description=(
+            "Critério de ordenação: 'score_total' (maior impacto geral), "
+            "'payback' (retorno mais rápido, menor é melhor), "
+            "'npv' (maior valor presente líquido)."
+        ),
+    )
+    limite: int = Field(default=5, ge=1, le=20)
+
+
 class DocumentationSearchArguments(ToolArguments):
     pergunta: str = Field(min_length=2, max_length=500)
 
@@ -190,6 +202,20 @@ TOOL_DEFINITIONS = [
     {
         "type": "function",
         "function": {
+            "name": "listar_top_municipios",
+            "description": (
+                "Retorna o ranking dos municípios demonstrativos do engine por um "
+                "critério: 'score_total' (maior impacto geral, padrão), 'payback' "
+                "(menor payback = retorno mais rápido = maior ROI), 'npv' (maior VPL). "
+                "Use para perguntas como 'maior ROI', 'mais viável', 'melhores municípios', "
+                "'menor payback'. Dados demonstrativos — não representam recomendação real."
+            ),
+            "parameters": TopMunicipalitiesArguments.model_json_schema(),
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "consultar_documentacao_conecta",
             "description": (
                 "Recupera trechos da documentação interna e do código implementado "
@@ -231,6 +257,7 @@ _ARGUMENT_MODELS: dict[str, type[ToolArguments]] = {
     "listar_escolas_sem_internet": SchoolWithoutInternetArguments,
     "consultar_scores_municipio": EngineMunicipalityArguments,
     "consultar_analise_financeira": EngineMunicipalityArguments,
+    "listar_top_municipios": TopMunicipalitiesArguments,
     "consultar_documentacao_conecta": DocumentationSearchArguments,
 }
 
@@ -485,6 +512,10 @@ class ToolDispatcher:
                 total_retornado=len(rows),
             ), "success"
 
+        if name == "listar_top_municipios":
+            assert isinstance(args, TopMunicipalitiesArguments)
+            return _top_municipios(municipios, args), "success"
+
         assert isinstance(args, EngineMunicipalityArguments)
         municipality = _engine_municipality(municipios, args)
         if municipality is None:
@@ -526,6 +557,75 @@ class ToolDispatcher:
             result.model_dump(),
             aviso="Resultado demonstrativo; não representa recomendação real de investimento.",
         ), "success"
+
+
+def _top_municipios(municipios: pd.DataFrame, args: TopMunicipalitiesArguments) -> dict:
+    """Retorna o ranking dos municípios do engine pelo critério solicitado."""
+    df = municipios.copy()
+
+    if args.criterio in ("payback", "npv"):
+        # Precisa calcular o business case para cada município
+        paybacks, npvs = [], []
+        for _, row in df.iterrows():
+            alavancas = Alavancas().model_copy(
+                update={"backhaul_comprometido": bool(row.get("acordo_migracao", False))}
+            )
+            bc = business_case(
+                id_municipio=str(row["id_municipio"]),
+                domicilios_urbanos=int(row["domicilios_urbanos"]),
+                dist_backhaul_km=float(row.get("dist_backhaul_km") or 0.0),
+                num_escolas=int(row.get("eace_escolas", 0)),
+                params=FinancialParams(),
+                alavancas=alavancas,
+            )
+            paybacks.append(bc.payback_anos)
+            npvs.append(bc.npv)
+        df["_payback"] = paybacks
+        df["_npv"] = npvs
+
+        if args.criterio == "payback":
+            df = df[df["_payback"] < 99].nsmallest(args.limite, "_payback")
+            ranking = [
+                {
+                    "nome": row["nome"],
+                    "uf": row["uf"],
+                    "quadrante": row.get("quadrante", ""),
+                    "payback_anos": round(float(row["_payback"]), 2),
+                }
+                for _, row in df.iterrows()
+            ]
+        else:
+            df = df.nlargest(args.limite, "_npv")
+            ranking = [
+                {
+                    "nome": row["nome"],
+                    "uf": row["uf"],
+                    "quadrante": row.get("quadrante", ""),
+                    "npv": round(float(row["_npv"]), 2),
+                }
+                for _, row in df.iterrows()
+            ]
+    else:
+        df = df.nlargest(args.limite, "score_total")
+        ranking = [
+            {
+                "nome": row["nome"],
+                "uf": row["uf"],
+                "quadrante": row.get("quadrante", ""),
+                "score_total": round(float(row["score_total"]), 2),
+            }
+            for _, row in df.iterrows()
+        ]
+
+    return _source_result(
+        _ENGINE_SOURCE,
+        {
+            "criterio": args.criterio,
+            "limite": args.limite,
+            "ranking": ranking,
+        },
+        aviso="Dados demonstrativos — não representam recomendação real de investimento.",
+    )
 
 
 TOOL_STATUS = Literal["success", "not_found", "failed", "cached"]

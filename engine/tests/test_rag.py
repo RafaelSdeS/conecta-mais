@@ -446,5 +446,6 @@ def test_registro_adiciona_rag_sem_remover_ferramentas_existentes():
         "listar_escolas_sem_internet",
         "consultar_scores_municipio",
         "consultar_analise_financeira",
+        "listar_top_municipios",
         "consultar_documentacao_conecta",
     }
