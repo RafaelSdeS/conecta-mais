@@ -145,7 +145,9 @@ TOOL_DEFINITIONS = [
         "function": {
             "name": "listar_escolas_municipio",
             "description": (
-                "Lista até 20 escolas reais de um município. "
+                "Lista escolas reais de um município (padrão: 5, máximo: 20). "
+                "Não informe o campo 'limite' a menos que o usuário peça um número específico — "
+                "use o padrão. "
                 f"{_REFERENCE_DESCRIPTION}"
             ),
             "parameters": SchoolListArguments.model_json_schema(),
@@ -156,7 +158,8 @@ TOOL_DEFINITIONS = [
         "function": {
             "name": "listar_escolas_sem_internet",
             "description": (
-                "Lista até 20 escolas reais sem internet de um município. "
+                "Lista escolas reais sem internet de um município (padrão: 20, máximo: 20). "
+                "Não informe o campo 'limite' a menos que o usuário peça um número específico. "
                 f"{_REFERENCE_DESCRIPTION}"
             ),
             "parameters": SchoolWithoutInternetArguments.model_json_schema(),

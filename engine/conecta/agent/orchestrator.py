@@ -28,8 +28,8 @@ from conecta.agent.watsonx import (
     WatsonxTimeoutError,
 )
 
-MAX_TOOL_ROUNDS = 3
-MAX_TOOL_CALLS = 8
+MAX_TOOL_ROUNDS = 5
+MAX_TOOL_CALLS = 10
 MAX_TOOL_RESULT_CHARS = 8_000
 HISTORY_MESSAGES = 12
 
@@ -561,9 +561,11 @@ class ChatOrchestrator:
                 and isinstance(total, int)
                 and isinstance(returned, int)
             ):
+                noun_total = "escola" if total == 1 else "escolas"
+                noun_ret = "escola retornada" if returned == 1 else "escolas retornadas"
                 return (
-                    f"O SQLite integrado localizou {total} escolas em "
-                    f"{municipality} ({uf}); {returned} foram incluídas nesta página.",
+                    f"O SQLite integrado localizou {total} {noun_total} em "
+                    f"{municipality} ({uf}); {returned} {noun_ret} nesta página.",
                     True,
                 )
 

@@ -191,8 +191,8 @@ def test_chat_preserva_referencias_rag_estruturadas_no_contrato_http(
 
 
 def test_limites_de_ferramentas_permanecem_restritos():
-    assert MAX_TOOL_ROUNDS == 3
-    assert MAX_TOOL_CALLS == 8
+    assert MAX_TOOL_ROUNDS == 5
+    assert MAX_TOOL_CALLS == 10
 
 
 def test_resposta_parcial_do_modelo_e_identificada_como_incompleta(
@@ -730,6 +730,8 @@ def test_limite_sem_resultado_nao_inventa_contagens(client: TestClient):
             _tool("ferramenta_inexistente_1", {}, "unknown-1"),
             _tool("ferramenta_inexistente_2", {}, "unknown-2"),
             _tool("ferramenta_inexistente_3", {}, "unknown-3"),
+            _tool("ferramenta_inexistente_4", {}, "unknown-4"),
+            _tool("ferramenta_inexistente_5", {}, "unknown-5"),
         ]
     )
     _install_fake(fake)
@@ -739,12 +741,13 @@ def test_limite_sem_resultado_nao_inventa_contagens(client: TestClient):
         json={"message": "Quantas escolas sem internet existem?"},
     ).json()
 
-    assert len(fake.calls) == 3
+    assert len(fake.calls) == 5
     assert data["error"]["code"] == "tool_round_limit"
     assert data["response"] == (
         "Não foi possível obter dados utilizáveis. Ferramentas sem resultado: "
         "ferramenta_inexistente_1, ferramenta_inexistente_2, "
-        "ferramenta_inexistente_3."
+        "ferramenta_inexistente_3, ferramenta_inexistente_4, "
+        "ferramenta_inexistente_5."
     )
     assert "escolas sem internet são" not in data["response"]
     assert data["data_sources"] == []
