@@ -13,6 +13,15 @@ build/
 .coverage
 htmlcov/
 
+# Local configuration and data
+/conecta-mais-chris/
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+
 # Node
 node_modules/
 .env.local
