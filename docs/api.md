@@ -172,3 +172,183 @@ Retorna o resultado do backtest 2021→2025.
 ```json
 { "status": "ok" }
 ```
+
+---
+
+## Dados integrados no SQLite
+
+As rotas abaixo consultam o banco integrado em modo somente leitura e não
+alteram o banco. Configure `CONECTA_SQLITE_PATH` com o caminho do arquivo
+SQLite antes de iniciar o backend principal. Se a variável não estiver
+configurada, o arquivo não existir ou o esquema esperado estiver ausente, as
+rotas `/dados/...` retornam HTTP 503; as rotas do engine continuam disponíveis.
+
+As respostas identificam a origem com `fonte_dados: "sqlite_integrado"` nos
+objetos de listagem e indicadores, e no cabeçalho HTTP
+`X-Conecta-Fonte-Dados: sqlite_integrado` em todas as rotas.
+
+### GET `/dados/municipios`
+
+Parâmetros opcionais: `nome`, `uf`, `limite` (1–100, padrão 20) e `offset`
+(padrão 0). `nome` aceita busca parcial.
+
+Retorna `total`, `total_retornado`, `limite`, `offset` e a lista `municipios`.
+
+### GET `/dados/municipios/{codigo_ibge}`
+
+Consulta um município pelo código IBGE de sete dígitos. Retorna o registro do
+banco; município inexistente retorna HTTP 404.
+
+### GET `/dados/escolas`
+
+Parâmetros opcionais: `codigo_municipio` (sete dígitos), `codigo_escola`
+(oito dígitos), `limite` (1–100, padrão 20) e `offset` (padrão 0).
+Retorna `total`, `total_retornado`, `limite`, `offset` e a lista `escolas`,
+incluindo o status de validação geográfica quando disponível.
+
+### GET `/dados/indicadores/{codigo_ibge}`
+
+Consulta os indicadores agregados disponíveis para o código IBGE de sete
+dígitos e as contagens de validação geográfica das escolas. Município
+inexistente retorna HTTP 404. Os indicadores refletem apenas colunas presentes
+no SQLite; a rota não calcula nem infere campos do motor de scores.
+
+### GET `/dados/escolas/sem-internet`
+
+Parâmetros: `codigo_municipio` (obrigatório, sete dígitos), `limite` (1–100,
+padrão 50) e `offset` (padrão 0). O critério segue `INEP: IN_INTERNET = 0`.
+Retorna o total e a página de escolas correspondentes.
+
+Exemplo de configuração e inicialização (Linux/macOS):
+
+```bash
+cd engine
+export CONECTA_SQLITE_PATH="/caminho/para/conecta_mais.db"
+uvicorn api.main:app --reload
+```
+
+---
+
+## POST `/chat`
+
+Envia uma pergunta ao IBM Granite. As credenciais permanecem exclusivamente no
+backend. Configure `WATSONX_APIKEY`, `WATSONX_PROJECT_ID`, `WATSONX_URL` e
+`WATSONX_MODEL_ID` no ambiente do processo. `WATSONX_MAX_TOKENS` controla o
+orçamento de saída, com padrão `1024` e faixa permitida de `1` a `8192`.
+O modelo esperado é
+`ibm/granite-4-h-small`; o ID efetivo é o valor configurado em
+`WATSONX_MODEL_ID`. A URL deve usar HTTPS.
+
+Para desenvolvimento neste workspace, carregue o `.env` privado do mini-projeto
+diretamente, sem copiá-lo ou modificá-lo. O caminho da base é relativo ao
+diretório `engine`:
+
+```bash
+cd engine
+export CONECTA_SQLITE_PATH=../conecta-mais-chris/data/database/conecta_mais.db
+.venv/bin/uvicorn api.main:app --reload \
+  --env-file ../conecta-mais-chris/.env
+```
+
+`uvicorn[standard]` fornece o suporte a `--env-file` via `python-dotenv`.
+Alternativamente, copie `engine/.env.example` para `engine/.env`, substitua os
+valores fictícios localmente e inicie com `--env-file .env`. Arquivos `.env` e
+bancos SQLite são ignorados pelo Git. Nunca coloque credenciais no frontend.
+
+**Request:**
+
+```json
+{
+  "message": "Quantas escolas estão sem internet em Porto Alegre?",
+  "history": [
+    { "role": "user", "content": "Pergunta anterior" },
+    { "role": "assistant", "content": "Resposta anterior" }
+  ]
+}
+```
+
+`message` é obrigatório (1–4.000 caracteres). `history` é opcional e aceita até
+12 mensagens `user`/`assistant`; instruções de sistema e mensagens de ferramenta
+não podem ser enviadas pelo cliente.
+
+O cliente usa `POST /ml/v1/text/chat?version=2024-10-08`. `max_tokens`,
+`time_limit`, `tools` e `tool_choice_option` são enviados no nível superior do
+payload. Chamadas de ferramenta preservam a mensagem do assistente com
+`tool_calls` e respondem usando `tool_call_id`; respostas incompletas ou com
+`finish_reason` incompatível com as chamadas são rejeitadas. O timeout de
+inferência é 30 segundos, com timeout HTTP de 90 segundos para chat e 30
+segundos para IAM. Respostas encerradas por limite de tokens permanecem
+incompletas; o backend registra apenas o motivo de encerramento e o orçamento,
+sem registrar prompts ou conteúdo gerado.
+
+Erros IBM são classificados sem incluir o corpo da resposta upstream: falhas de
+autenticação IAM, permissão negada, requisição inválida, modelo indisponível,
+timeout e indisponibilidade temporária têm códigos distintos. Um HTTP 400 da
+API de chat é tratado como requisição inválida; um HTTP 400 do endpoint IAM é
+tratado como credencial rejeitada.
+
+**Response:**
+
+```json
+{
+  "response": "A base integrada registra ...",
+  "history": [
+    { "role": "user", "content": "Quantas escolas estão sem internet em Porto Alegre?" },
+    { "role": "assistant", "content": "A base integrada registra ..." }
+  ],
+  "data_sources": [
+    {
+      "id": "sqlite_integrado",
+      "tipo": "real",
+      "descricao": "Dados integrados do SQLite (IBGE, INEP, Anatel e NIC.br)."
+    }
+  ],
+  "tools_executed": [
+    { "name": "consultar_indicadores_escolares", "status": "success" }
+  ],
+  "has_demo_data": false,
+  "references": [],
+  "error": null
+}
+```
+
+`data_sources` distingue `sqlite_integrado` (real) de `engine_mock`
+(demonstrativo). `tools_executed` não contém argumentos. Falhas do provedor
+retornam o mesmo formato com `error` preenchido e status HTTP apropriado;
+credenciais, tokens e respostas brutas do provedor não são incluídos.
+`references` contém as referências documentais utilizadas, quando disponíveis.
+Cada referência inclui `title`, `source_path`, `section`, `line_start`,
+`line_end`, `document_type` e `is_official`. As fontes internas atuais são
+identificadas como não oficiais.
+
+### Recuperação de documentação local
+
+O chat disponibiliza a ferramenta `consultar_documentacao_conecta` para
+conceitos, pesos, fórmulas, quadrantes, CapEx, payback, VPL, otimização e
+limitações do projeto. Ela pesquisa um índice SQLite FTS5/BM25 persistente e
+retorna trechos com título, caminho relativo, seção e linhas de origem. O
+resultado identifica `rag_tecnico` como documentação (`documental`), separada
+dos dados reais do SQLite e dos resultados demonstrativos do engine.
+
+O índice não é reconstruído durante uma requisição de chat. Atualize-o
+explicitamente após mudanças em documentos ou código:
+
+```bash
+cd engine
+.venv/bin/python -m conecta.rag.indexer
+```
+
+O índice padrão é `engine/data/rag_index.sqlite`, ignorado pelo Git. Para usar
+outro caminho, defina `CONECTA_RAG_INDEX_PATH` no processo do backend e passe o
+mesmo caminho com `--index` ao comando de indexação. Se o índice não existir,
+a ferramenta retorna um erro explícito; se não houver correspondência, informa
+que a documentação indexada não contém trechos relevantes.
+
+As fontes atualmente indexadas são documentação interna do projeto, a
+referência técnica derivada do código e os módulos de cálculo. Nenhuma delas
+é marcada como norma oficial. A proposta detalhada pode conter hipóteses ou
+informações regulatórias que não foram verificadas; não use seus trechos para
+afirmar elegibilidade ao FUST ou interpretar normas. Documentos oficiais só
+devem ser adicionados ao catálogo depois de sua origem e versão serem
+verificadas. Conteúdo recuperado é tratado pelo agente como dado não confiável,
+nunca como instruções.

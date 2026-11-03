@@ -1,19 +1,26 @@
 /**
- * ChatView — view do agente de justificativa.
- * Interface pronta; lógica isolada em chatService.ts para troca futura pela API do Chris.
+ * ChatView — conversa com o agente Granite pelo backend FastAPI.
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { useAppStore } from '../store/appStore'
 import ChatMessage from '../components/ChatMessage'
-import { getAnswer } from '../utils/chatService'
+import {
+  ChatServiceError,
+  getAnswer,
+  type ChatDataSource,
+  type ChatHistoryMessage,
+  type RagReference,
+} from '../utils/chatService'
 import { CHAT_CHIPS } from '../utils/constants'
 
 interface Message {
   id:        number
   role:      'user' | 'agent'
-  text?:     string
-  source?:   string
+  text:      string
+  sources?:  ChatDataSource[]
+  references?: RagReference[]
+  hasDemoData?: boolean
+  error?:    string
   isTyping?: boolean
 }
 
@@ -26,12 +33,8 @@ const INITIAL_MESSAGE: Message = {
 }
 
 export default function ChatView() {
-  const municipios = useAppStore((s) => s.municipios)
-  const portfolio  = useAppStore((s) => s.portfolio)
-  const levers     = useAppStore((s) => s.levers)
-  const budget     = useAppStore((s) => s.budget)
-
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
+  const [history, setHistory] = useState<ChatHistoryMessage[]>([])
   const [input, setInput]       = useState('')
   const [loading, setLoading]   = useState(false)
   const bottomRef               = useRef<HTMLDivElement>(null)
@@ -46,27 +49,53 @@ export default function ChatView() {
     if (!q || loading) return
 
     const userMsg: Message = { id: nextId++, role: 'user', text: q }
-    const typingMsg: Message = { id: nextId++, role: 'agent', isTyping: true }
+    const typingMsg: Message = {
+      id: nextId++,
+      role: 'agent',
+      text: '',
+      isTyping: true,
+    }
 
     setMessages((prev) => [...prev, userMsg, typingMsg])
     setInput('')
     setLoading(true)
 
     try {
-      const answer = await getAnswer(q, { municipios, portfolio, levers, budget })
+      const answer = await getAnswer(q, history)
+      setHistory(answer.history)
 
       setMessages((prev) =>
         prev.map((m) =>
           m.id === typingMsg.id
-            ? { ...m, isTyping: false, text: answer.text, source: answer.source }
+            ? {
+                ...m,
+                isTyping: false,
+                text: answer.text,
+                sources: answer.sources,
+                references: answer.references,
+                hasDemoData: answer.hasDemoData,
+              }
             : m
         )
       )
-    } catch {
+    } catch (error) {
+      const serviceError =
+        error instanceof ChatServiceError
+          ? error
+          : new ChatServiceError(
+              'Não foi possível obter resposta do backend Conecta+.',
+            )
       setMessages((prev) =>
         prev.map((m) =>
           m.id === typingMsg.id
-            ? { ...m, isTyping: false, text: 'Erro ao obter resposta. Tente novamente.', source: '' }
+            ? {
+                ...m,
+                isTyping: false,
+                text: serviceError.partialResponse ?? '',
+                sources: serviceError.dataSources,
+                hasDemoData: serviceError.hasDemoData,
+                error: serviceError.message,
+              }
             : m
         )
       )
@@ -81,7 +110,7 @@ export default function ChatView() {
       <div style={{ marginBottom: 16 }}>
         <h1>Agente de justificativa</h1>
         <p style={{ color: 'var(--mu)' }}>
-          Respostas com fonte e grau de confiança. Simulado: em produção usa watsonx.ai Granite e watsonx.governance.
+          Consulte dados reais, resultados demonstrativos e documentação técnica com referências.
         </p>
       </div>
 
@@ -109,7 +138,10 @@ export default function ChatView() {
               key={msg.id}
               role={msg.role}
               text={msg.text}
-              source={msg.source}
+              sources={msg.sources}
+              references={msg.references}
+              hasDemoData={msg.hasDemoData}
+              error={msg.error}
               isTyping={msg.isTyping}
             />
           ))}
@@ -148,7 +180,12 @@ export default function ChatView() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') send(input) }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                send(input)
+              }
+            }}
             placeholder="Ex.: Por que priorizar o município X sobre o Y?"
             aria-label="Pergunta ao agente"
             disabled={loading}

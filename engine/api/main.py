@@ -24,7 +24,7 @@ import pandas as pd
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import backtest, financial, municipios, portfolio, scores
+from api.routers import backtest, chat, dados, financial, municipios, portfolio, scores
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
@@ -68,6 +68,8 @@ app.include_router(scores.router)
 app.include_router(financial.router)
 app.include_router(portfolio.router)
 app.include_router(backtest.router)
+app.include_router(dados.router)
+app.include_router(chat.router)
 
 
 @app.get("/health", tags=["infra"])
