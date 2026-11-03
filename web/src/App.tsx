@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useAppStore } from './store/appStore'
 import { VIEWS, type ViewId } from './utils/constants'
 import { ToastProvider } from './hooks/useToast'
-import { useToast } from './hooks/useToast'
+import { useToast } from './hooks/toastContext'
 import { usePortfolioTrigger } from './hooks/usePortfolioTrigger'
 import { useInitialData }      from './hooks/useInitialData'
 

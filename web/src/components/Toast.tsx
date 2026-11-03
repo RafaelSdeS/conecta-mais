@@ -1,6 +1,6 @@
 /** Renderiza o toast mais recente (bottom center, animado). */
 
-import { useToast } from '../hooks/useToast'
+import { useToast } from '../hooks/toastContext'
 
 export default function Toast() {
   const { toasts } = useToast()

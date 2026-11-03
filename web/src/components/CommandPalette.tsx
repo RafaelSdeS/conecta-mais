@@ -8,7 +8,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useAppStore } from '../store/appStore'
+import { useAppStore, type Levers } from '../store/appStore'
+import type { Municipio } from '../api/client'
 import { VIEWS } from '../utils/constants'
 import { calcFinancial } from '../utils/calculation'
 
@@ -25,31 +26,13 @@ interface Props {
 }
 
 export default function CommandPalette({ onNavigate, onApplyAll }: Props) {
-  const open         = useAppStore((s) => s.cmdPaletteOpen)
-  const setOpen      = useAppStore((s) => s.setCmdPaletteOpen)
-  const municipios   = useAppStore((s) => s.municipios)
-  const levers       = useAppStore((s) => s.levers)
-  const openDrawer   = useAppStore((s) => s.openDrawer)
+  const open       = useAppStore((s) => s.cmdPaletteOpen)
+  const setOpen    = useAppStore((s) => s.setCmdPaletteOpen)
+  const municipios = useAppStore((s) => s.municipios)
+  const levers     = useAppStore((s) => s.levers)
+  const openDrawer = useAppStore((s) => s.openDrawer)
 
-  const [query, setQuery]   = useState('')
-  const [active, setActive] = useState(0)
-  const inputRef            = useRef<HTMLInputElement>(null)
-  const listRef             = useRef<HTMLDivElement>(null)
-
-  const close = useCallback(() => {
-    setOpen(false)
-    setQuery('')
-    setActive(0)
-  }, [setOpen])
-
-  // Foca o input ao abrir
-  useEffect(() => {
-    if (open) {
-      setQuery('')
-      setActive(0)
-      setTimeout(() => inputRef.current?.focus(), 30)
-    }
-  }, [open])
+  const close = useCallback(() => setOpen(false), [setOpen])
 
   // Fecha com Esc
   useEffect(() => {
@@ -60,6 +43,84 @@ export default function CommandPalette({ onNavigate, onApplyAll }: Props) {
     return () => window.removeEventListener('keydown', handler)
   }, [open, close])
 
+  if (!open) return null
+
+  return (
+    <>
+      {/* Overlay */}
+      <div
+        onClick={close}
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,.4)',
+          zIndex: 60,
+        }}
+      />
+
+      {/* Modal — PaletteBody remontado a cada abertura (open: false→true),
+          garantindo que query/active iniciam zerados sem setState em useEffect */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Paleta de comandos"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 61,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          paddingTop: '12vh',
+          pointerEvents: 'none',
+        }}
+      >
+        <PaletteBody
+          municipios={municipios}
+          levers={levers}
+          onNavigate={onNavigate}
+          onApplyAll={onApplyAll}
+          onClose={close}
+          openDrawer={openDrawer}
+        />
+      </div>
+    </>
+  )
+}
+
+// ── Corpo do modal extraído para componente separado ─────────────────────────
+// Como CommandPalette retorna null quando fechado, este componente é
+// remontado a cada abertura — os estados query e active inicializam
+// corretamente sem precisar de useEffect com setState.
+
+interface PaletteBodyProps {
+  municipios:  Municipio[]
+  levers:      Levers
+  onNavigate:  (viewId: string) => void
+  onApplyAll:  () => void
+  onClose:     () => void
+  openDrawer:  (id: string) => void
+}
+
+function PaletteBody({
+  municipios,
+  levers,
+  onNavigate,
+  onApplyAll,
+  onClose,
+  openDrawer,
+}: PaletteBodyProps) {
+  const [query, setQuery]   = useState('')
+  const [active, setActive] = useState(0)
+  const inputRef            = useRef<HTMLInputElement>(null)
+  const listRef             = useRef<HTMLDivElement>(null)
+
+  // Foca o input ao montar — sem setState, apenas side-effect de DOM
+  useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 30)
+  }, [])
+
   // Constrói lista de itens
   const items: PaletteItem[] = []
   const q = query.toLowerCase().trim()
@@ -68,14 +129,14 @@ export default function CommandPalette({ onNavigate, onApplyAll }: Props) {
   VIEWS.forEach((v) => {
     const label = `Ir para ${v.label}`
     if (!q || label.toLowerCase().includes(q)) {
-      items.push({ label, description: 'Página', action: () => { onNavigate(v.id); close() } })
+      items.push({ label, description: 'Página', action: () => { onNavigate(v.id); onClose() } })
     }
   })
 
   // Ação rápida
   const actionLabel = 'Aplicar cenário completo'
   if (!q || actionLabel.toLowerCase().includes(q)) {
-    items.push({ label: actionLabel, description: 'Ação', action: () => { onApplyAll(); close() } })
+    items.push({ label: actionLabel, description: 'Ação', action: () => { onApplyAll(); onClose() } })
   }
 
   // Municípios (só quando há texto digitado)
@@ -94,7 +155,7 @@ export default function CommandPalette({ onNavigate, onApplyAll }: Props) {
         items.push({
           label:       m.nome,
           description: `${m.quadrante} · ${calc.pay.toFixed(1)} anos`,
-          action:      () => { openDrawer(m.id_municipio); close() },
+          action:      () => { openDrawer(m.id_municipio); onClose() },
         })
       })
   }
@@ -117,108 +178,73 @@ export default function CommandPalette({ onNavigate, onApplyAll }: Props) {
     }
   }
 
-  if (!open) return null
-
   return (
-    <>
-      {/* Overlay */}
-      <div
-        onClick={close}
-        aria-hidden="true"
+    <div
+      style={{
+        width: 'min(520px, 92%)',
+        background: 'var(--pn)',
+        border: '1px solid var(--ln)',
+        borderRadius: 8,
+        overflow: 'hidden',
+        pointerEvents: 'all',
+        boxShadow: '0 8px 32px rgba(0,0,0,.2)',
+      }}
+    >
+      <input
+        ref={inputRef}
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setActive(0) }}
+        onKeyDown={handleKeyDown}
+        placeholder="Buscar município ou ir para…"
+        aria-label="Buscar"
         style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,.4)',
-          zIndex: 60,
+          width: '100%',
+          border: 0,
+          borderBottom: '1px solid var(--ln)',
+          borderRadius: 0,
+          padding: '14px 16px',
+          font: 'inherit',
+          fontSize: 14,
+          background: 'var(--pn)',
+          color: 'var(--tx)',
+          outline: 'none',
+          boxSizing: 'border-box',
         }}
       />
 
-      {/* Modal */}
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Paleta de comandos"
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 61,
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'center',
-          paddingTop: '12vh',
-          pointerEvents: 'none',
-        }}
+        ref={listRef}
+        style={{ maxHeight: 320, overflowY: 'auto', padding: 6 }}
       >
-        <div
-          style={{
-            width: 'min(520px, 92%)',
-            background: 'var(--pn)',
-            border: '1px solid var(--ln)',
-            borderRadius: 8,
-            overflow: 'hidden',
-            pointerEvents: 'all',
-            boxShadow: '0 8px 32px rgba(0,0,0,.2)',
-          }}
-        >
-          {/* Input de busca */}
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(e) => { setQuery(e.target.value); setActive(0) }}
-            onKeyDown={handleKeyDown}
-            placeholder="Buscar município ou ir para…"
-            aria-label="Buscar"
-            style={{
-              width: '100%',
-              border: 0,
-              borderBottom: '1px solid var(--ln)',
-              borderRadius: 0,
-              padding: '14px 16px',
-              font: 'inherit',
-              fontSize: 14,
-              background: 'var(--pn)',
-              color: 'var(--tx)',
-              outline: 'none',
-              boxSizing: 'border-box',
-            }}
-          />
-
-          {/* Lista de resultados */}
-          <div
-            ref={listRef}
-            style={{ maxHeight: 320, overflowY: 'auto', padding: 6 }}
-          >
-            {items.length === 0 ? (
-              <div style={{ padding: '8px 10px', fontSize: 13, color: 'var(--mu)' }}>
-                Nada encontrado. Tente outro nome.
-              </div>
-            ) : (
-              items.map((item, i) => (
-                <div
-                  key={i}
-                  onClick={item.action}
-                  onMouseEnter={() => setActive(i)}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                    padding: '8px 10px',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                    fontSize: 13,
-                    background: i === active ? 'var(--so)' : 'transparent',
-                  }}
-                >
-                  <span>{item.label}</span>
-                  <span style={{ fontSize: 12, color: 'var(--mu)', whiteSpace: 'nowrap' }}>
-                    {item.description}
-                  </span>
-                </div>
-              ))
-            )}
+        {items.length === 0 ? (
+          <div style={{ padding: '8px 10px', fontSize: 13, color: 'var(--mu)' }}>
+            Nada encontrado. Tente outro nome.
           </div>
-        </div>
+        ) : (
+          items.map((item, i) => (
+            <div
+              key={i}
+              onClick={item.action}
+              onMouseEnter={() => setActive(i)}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '8px 10px',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontSize: 13,
+                background: i === active ? 'var(--so)' : 'transparent',
+              }}
+            >
+              <span>{item.label}</span>
+              <span style={{ fontSize: 12, color: 'var(--mu)', whiteSpace: 'nowrap' }}>
+                {item.description}
+              </span>
+            </div>
+          ))
+        )}
       </div>
-    </>
+    </div>
   )
 }
