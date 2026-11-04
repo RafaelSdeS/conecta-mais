@@ -241,9 +241,12 @@ export const MERCADO_KPIS: { label: string; value: string; detail: string }[] = 
   { label: 'Escolas sem conexão',       value: '~9 mil',    detail: 'Norte, Nordeste, rural, indígena' },
 ]
 
+/** Sugestões do chat: cada uma exercita uma ferramenta do agente e tem resposta com os dados da base. */
 export const CHAT_CHIPS = [
-  'Quais cidades do semiárido maximizam estudantes conectados por real investido com payback < 5 anos?',
-  'Por que priorizar o município X sobre o Y?',
-  'Como funciona o FUST?',
-  'O que é o Acordo TCU?',
+  'Quais municípios do semiárido têm mais alunos sem internet por real investido?',
+  'Onde investir R$ 100 milhões no Nordeste para conectar o maior número de alunos?',
+  'Compare Salvador (BA) e Feira de Santana (BA): qual compensa mais investir?',
+  'Existe algum município do semiárido com payback abaixo de 6 anos?',
+  'Qual a diferença entre os quadrantes Q1 e Q2a?',
+  'Quais campos do motor ainda não têm dado real?',
 ]

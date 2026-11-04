@@ -30,7 +30,7 @@ let nextId = 0
 const INITIAL_MESSAGE: Message = {
   id:   nextId++,
   role: 'agent',
-  text: 'Pergunte sobre um município, o portfólio, o FUST ou o Acordo TCU.',
+  text: 'Pergunte por rankings de municípios, portfólio para um orçamento, comparação entre cidades, escolas sem internet ou o significado dos scores e quadrantes.',
 }
 
 export default function ChatView() {

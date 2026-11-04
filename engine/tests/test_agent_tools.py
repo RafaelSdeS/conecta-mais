@@ -148,3 +148,11 @@ def test_contexto_com_cenario_chega_as_ferramentas(mun):
     ChatOrchestrator(fake).respond("onde?", [], mun, ctx)
     resultado = json.loads(fake.calls[1][0][-1]["content"])
     assert "ENEC" in resultado["data"]["premissas"] and "120" in resultado["data"]["premissas"]
+
+
+def test_resposta_longa_nao_quebra_o_historico(mun):
+    """Trechos longos do RAG passam de 4.000 caracteres; só o histórico é cortado."""
+    longa = "x" * 5_000
+    fake = _Fake([{"role": "assistant", "content": longa, "finish_reason": "stop"}])
+    out = ChatOrchestrator(fake).respond("explique", [], mun)
+    assert len(out.response) == 5_000 and len(out.history[-1].content) == 4_000

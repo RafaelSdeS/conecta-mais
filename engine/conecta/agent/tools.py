@@ -738,7 +738,7 @@ class ToolDispatcher:
                     "alunos_atendidos": int(sel["alunos_sem_internet"].sum())
                     if "alunos_sem_internet" in sel and not sel.empty else 0,
                     "vpl_total_mi": round(float(sel["_npv"].sum()), 2) if not sel.empty else 0.0,
-                    "municipios_top15": _resumo_municipios(sel.head(15)) if not sel.empty else [],
+                    "municipios_top": _resumo_municipios(sel.head(8)) if not sel.empty else [],
                     "premissas": (
                         f"objetivo={args.objetivo}; peso_impacto={args.peso_impacto}; "
                         f"max_payback={args.max_payback} anos; {cenario.descricao()}"
@@ -808,8 +808,9 @@ class ToolDispatcher:
             aviso=(
                 "Resultado demonstrativo; não representa recomendação real de investimento."
                 if engine_src is _ENGINE_SOURCE
-                else "Estimativa com premissas padrão (FinancialParams); não substitui estudo de viabilidade."
+                else "Estimativa com as premissas do cenário; não substitui estudo de viabilidade."
             ),
+            unidades="CapEx, receita, EBITDA e VPL em R$ milhões; payback em anos.",
         ), "success"
 
 

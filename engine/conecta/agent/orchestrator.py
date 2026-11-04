@@ -725,10 +725,18 @@ class ChatOrchestrator:
 
         if name == "otimizar_portfolio":
             if isinstance(data.get("selecionados"), int):
+                top = [
+                    f"- {r.get('nome')} ({r.get('uf')}): CapEx R$ {r.get('capex_mi')} mi, "
+                    f"payback {r.get('payback_anos')} anos"
+                    for r in (data.get("municipios_top") or [])[:5]
+                    if isinstance(r, dict)
+                ]
                 return (
                     f"Portfólio ({data.get('status')}): {data['selecionados']} municípios, "
                     f"CapEx total R$ {data.get('capex_total_mi')} mi, payback médio "
-                    f"{data.get('payback_medio_anos')} anos.",
+                    f"{data.get('payback_medio_anos')} anos, "
+                    f"{data.get('alunos_atendidos', 0)} alunos em escolas sem internet."
+                    + ("\nMaiores scores:\n" + "\n".join(top) if top else ""),
                     True,
                 )
 
@@ -829,7 +837,8 @@ class ChatOrchestrator:
         updated_history = [
             *history,
             ChatHistoryMessage(role="user", content=question),
-            ChatHistoryMessage(role="assistant", content=answer),
+            # O histórico limita cada mensagem a 4.000 caracteres; respostas longas (ex.: trechos do RAG) são cortadas só ali.
+            ChatHistoryMessage(role="assistant", content=answer[:4_000]),
         ][-HISTORY_MESSAGES:]
         return ChatResponse(
             response=answer,
