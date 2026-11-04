@@ -8,7 +8,7 @@
 
 import { useState } from 'react'
 import { useAppStore } from '../store/appStore'
-import { useToast } from '../hooks/useToast'
+import { useToast } from '../hooks/toastContext'
 import AssumptionsPanel from './AssumptionsPanel'
 import { OBJETIVOS } from '../utils/constants'
 

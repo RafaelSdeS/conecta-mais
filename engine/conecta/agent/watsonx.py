@@ -195,16 +195,20 @@ class WatsonxClient:
     def chat(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
         config = WatsonxConfig.from_environment()
         token = self._access_token(config)
+        payload: dict = {
+            "model_id": config.model_id,
+            "project_id": config.project_id,
+            "messages": messages,
+            "max_tokens": config.max_tokens,
+            "time_limit": 30_000,
+        }
+        # Granite rejeita tools=[] com json_validation_error; omitir quando vazio
+        if tools:
+            payload["tools"] = tools
+            payload["tool_choice_option"] = "auto"
         response = self._post_json(
             f"{config.url}/ml/v1/text/chat?version=2024-10-08",
-            {
-                "model_id": config.model_id,
-                "project_id": config.project_id,
-                "messages": messages,
-                **({"tools": tools, "tool_choice_option": "auto"} if tools is not None else {}),
-                "max_tokens": config.max_tokens,
-                "time_limit": 30_000,
-            },
+            payload,
             {"Authorization": f"Bearer {token}"},
         )
 

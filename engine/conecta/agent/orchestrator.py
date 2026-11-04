@@ -686,18 +686,23 @@ class ChatOrchestrator:
         if name == "consultar_analise_financeira":
             npv = data.get("npv")
             payback = data.get("payback_anos")
+            capex = data.get("capex")
+            capex_total = capex.get("total") if isinstance(capex, dict) else None
             municipality = data.get("id_municipio")
             if isinstance(npv, (int, float)) and isinstance(payback, (int, float)):
+                npv_fmt = f"R$ {npv:.1f} mi" if abs(npv) < 10_000 else f"R$ {npv/1000:.1f} bi"
+                pay_fmt = f"{payback:.1f} anos" if payback < 99 else "inviável (>99 anos)"
+                capex_fmt = f"CapEx R$ {capex_total:.1f} mi, " if isinstance(capex_total, (int, float)) else ""
                 if result.get("source", {}).get("id") == "engine":
                     return (
-                        f"O motor calculou VPL de {npv:.2f} e payback de {payback:.2f} "
-                        f"anos para o município {municipality}, com premissas padrão.",
+                        f"Motor sobre a base real para {municipality}: {capex_fmt}"
+                        f"payback {pay_fmt}, VPL {npv_fmt}, com as premissas do cenário.",
                         True,
                     )
                 return (
-                    f"O motor demonstrativo calculou VPL de {npv:.2f} e payback de "
-                    f"{payback:.2f} anos para o município {municipality}. "
-                    "São resultados demonstrativos, não recomendações reais.",
+                    f"Motor demonstrativo para {municipality}: {capex_fmt}"
+                    f"payback {pay_fmt}, VPL {npv_fmt}. "
+                    "Dados demonstrativos — não constituem recomendação real.",
                     True,
                 )
 

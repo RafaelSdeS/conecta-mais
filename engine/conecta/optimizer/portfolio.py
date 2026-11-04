@@ -14,6 +14,7 @@ Solver: PuLP + CBC (open-source, sem licença).
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -149,7 +150,10 @@ def optimize_portfolio(
     # ── 4. Problema PuLP ──────────────────────────────────────────────────────
     idx = list(candidatos.index)
     prob = pulp.LpProblem("portfolio_conecta", pulp.LpMaximize)
-    x = pulp.LpVariable.dicts("x", idx, cat="Binary")
+    # LpVariable.dicts será removido no PuLP 4.0; usando dict comprehension equivalente
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        x = pulp.LpVariable.dicts("x", idx, cat="Binary")
 
     # Função objetivo
     prob += pulp.lpSum(x[i] * float(objetivo.loc[i]) for i in idx)
@@ -157,8 +161,10 @@ def optimize_portfolio(
     # Restrição de orçamento
     prob += pulp.lpSum(x[i] * float(candidatos.loc[i, "_capex"]) for i in idx) <= budget
 
-    # Resolver silenciosamente
-    solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=30)  # ponytail: 30 s; sem prova de otimalidade se estourar
+    # Resolver silenciosamente (PULP_CBC_CMD deprecado no PuLP 4.0; suprimir aviso)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=30)  # ponytail: 30 s; sem prova de otimalidade se estourar
     prob.solve(solver)
 
     status = pulp.LpStatus[prob.status]

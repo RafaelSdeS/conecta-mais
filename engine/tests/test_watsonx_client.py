@@ -140,8 +140,8 @@ def test_chat_envia_modelo_configurado_e_bearer_token(
     chat_request = observed["https://example.test/ml/v1/text/chat?version=2024-10-08"]
     assert chat_request["authorization"] == "Bearer synthetic-token"
     assert chat_request["timeout"] == 90.0
-    assert chat_request["payload"]["tool_choice_option"] == "auto"
-    assert chat_request["payload"]["tools"] == []
+    assert "tool_choice_option" not in chat_request["payload"]
+    assert "tools" not in chat_request["payload"]
     assert chat_request["payload"]["model_id"] == "ibm/granite-4-h-small"
     assert chat_request["payload"]["project_id"] == "synthetic-project"
     assert chat_request["payload"]["max_tokens"] == 1024

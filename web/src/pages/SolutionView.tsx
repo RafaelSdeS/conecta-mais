@@ -95,11 +95,10 @@ export default function SolutionView() {
 
   // ── Backtest ───────────────────────────────────────────────────────────────
   const [backtest, setBacktest]         = useState<BacktestResult | null>(null)
-  const [backtestLoading, setBtLoading] = useState(false)
+  const [backtestLoading, setBtLoading] = useState(true)   // inicia true — sem setState em effect
   const [backtestError, setBtError]     = useState<string | null>(null)
 
   useEffect(() => {
-    setBtLoading(true)
     api.getBacktest()
       .then(setBacktest)
       .catch((e: unknown) => setBtError(String(e)))

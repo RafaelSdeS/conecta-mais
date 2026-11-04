@@ -1,30 +1,13 @@
 /**
- * Hook simples de toast notifications.
- * Exporta um contexto global para que qualquer componente possa disparar toasts.
+ * ToastProvider — provedor do contexto de toast notifications.
+ * Exporta apenas o componente (sem hooks) para satisfazer a regra
+ * react/only-export-components do oxlint.
+ *
+ * Use `useToast` importando de './toastContext'.
  */
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useState,
-  type ReactNode,
-} from 'react'
-
-interface ToastItem {
-  id: number
-  message: string
-}
-
-interface ToastContextValue {
-  toasts: ToastItem[]
-  toast: (message: string, duration?: number) => void
-}
-
-const ToastContext = createContext<ToastContextValue>({
-  toasts: [],
-  toast: () => {},
-})
+import { useCallback, useState, type ReactNode } from 'react'
+import { ToastContext, type ToastItem } from './toastContext'
 
 let nextId = 0
 
@@ -42,8 +25,4 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
     </ToastContext.Provider>
   )
-}
-
-export function useToast() {
-  return useContext(ToastContext)
 }
