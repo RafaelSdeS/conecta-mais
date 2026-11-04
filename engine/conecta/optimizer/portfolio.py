@@ -45,6 +45,30 @@ def _minmax_series(s: pd.Series) -> pd.Series:
     return (s - lo) / (hi - lo)
 
 
+def add_financials(
+    df: pd.DataFrame, params: FinancialParams, alavancas: Alavancas
+) -> pd.DataFrame:
+    """Acrescenta _capex, _payback e _npv (business case) a cada município."""
+    out = df.copy()
+    capex, payback, npv = [], [], []
+    for _, row in out.iterrows():
+        bc = business_case(
+            id_municipio=str(row["id_municipio"]),
+            domicilios_urbanos=int(row["domicilios_urbanos"]),
+            dist_backhaul_km=float(row.get("dist_backhaul_km") or 0.0),
+            num_escolas=int(row.get("eace_escolas", 0)),
+            params=params,
+            alavancas=alavancas.model_copy(
+                update={"backhaul_comprometido": bool(row.get("acordo_migracao", False))}
+            ),
+        )
+        capex.append(bc.capex.total)
+        payback.append(bc.payback_anos)
+        npv.append(bc.npv)
+    out["_capex"], out["_payback"], out["_npv"] = capex, payback, npv
+    return out
+
+
 def optimize_portfolio(
     municipios_df: pd.DataFrame,
     params: FinancialParams,
@@ -78,26 +102,7 @@ def optimize_portfolio(
     df = municipios_df.copy()
 
     # ── 1. Calcular business case para cada município ─────────────────────────
-    capex_list, payback_list, npv_list = [], [], []
-
-    for _, row in df.iterrows():
-        bc = business_case(
-            id_municipio=str(row["id_municipio"]),
-            domicilios_urbanos=int(row["domicilios_urbanos"]),
-            dist_backhaul_km=float(row.get("dist_backhaul_km") or 0.0),
-            num_escolas=int(row.get("eace_escolas", 0)),
-            params=params,
-            alavancas=alavancas.model_copy(
-                update={"backhaul_comprometido": bool(row.get("acordo_migracao", False))}
-            ),
-        )
-        capex_list.append(bc.capex.total)
-        payback_list.append(bc.payback_anos)
-        npv_list.append(bc.npv)
-
-    df["_capex"]   = capex_list
-    df["_payback"] = payback_list
-    df["_npv"]     = npv_list
+    df = add_financials(df, params, alavancas)
 
     # ── 2. Pré-filtro: payback e orçamento individual ─────────────────────────
     elegivel = df["_payback"] <= max_payback
@@ -137,7 +142,7 @@ def optimize_portfolio(
     prob += pulp.lpSum(x[i] * float(candidatos.loc[i, "_capex"]) for i in idx) <= budget
 
     # Resolver silenciosamente
-    solver = pulp.PULP_CBC_CMD(msg=0)
+    solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=30)  # ponytail: 30 s; sem prova de otimalidade se estourar
     prob.solve(solver)
 
     status = pulp.LpStatus[prob.status]
