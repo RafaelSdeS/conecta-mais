@@ -45,6 +45,7 @@ def _run_all_steps() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     from etl.step_06_nicbr import run as step6
     from etl.step_07_elevation import run as step7
     from etl.step_08_alavancas import run as step8
+    from etl.step_09_semiarido import run as step9
 
     logger.info("=== Step 1: municípios base ===")
     df_base = step1()
@@ -70,6 +71,9 @@ def _run_all_steps() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     logger.info("=== Step 8: alavancas ===")
     df_alav = step8(df_base)
 
+    logger.info("=== Step 9: semiárido ===")
+    df_semi = step9(df_base)
+
     # --- Junta tudo na base de municípios ---
     logger.info("=== Juntando todos os dados ===")
     df = df_base.copy()
@@ -81,10 +85,12 @@ def _run_all_steps() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                   "market_share_vivo_movel", "hhi", "ppp_share"]),
         (df_inep_mun, ["total_escolas", "matriculas_publicas", "matriculas_rurais_pct",
                        "alunos_maior_turno_est", "escolas_sem_internet",
-                       "escolas_sem_internet_aprendizagem", "escolas_sem_banda_larga"]),
+                       "escolas_sem_internet_aprendizagem", "escolas_sem_banda_larga",
+                       "alunos_sem_internet"]),
         (df_vel, ["velocidade_medida_mbps"]),
         (df_elev, ["elevacao_media_m"]),
         (df_alav, ["acordo_migracao", "ano_backhaul", "fust_elegivel", "eace_escolas"]),
+        (df_semi, ["semiarido"]),
     ]:
         df = df.merge(other[["id_municipio"] + cols], on="id_municipio", how="left")
 
@@ -106,6 +112,8 @@ def _run_all_steps() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         "escolas_sem_internet": 0,
         "escolas_sem_internet_aprendizagem": 0,
         "escolas_sem_banda_larga": 0,
+        "alunos_sem_internet": 0,
+        "semiarido": False,
         "velocidade_medida_mbps": 0.0,
         "elevacao_media_m": 400.0,
         "acordo_migracao": False,
@@ -128,6 +136,8 @@ def _run_all_steps() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     df["escolas_sem_internet_aprendizagem"] = df["escolas_sem_internet_aprendizagem"].astype(int)
     df["escolas_sem_banda_larga"] = df["escolas_sem_banda_larga"].astype(int)
     df["eace_escolas"] = df["eace_escolas"].astype(int)
+    df["alunos_sem_internet"] = df["alunos_sem_internet"].astype(int)
+    df["semiarido"] = df["semiarido"].astype(bool)
     df["total_escolas"] = df["total_escolas"].astype(int)
     df["tem_backhaul_fibra"] = df["tem_backhaul_fibra"].astype(bool)
     df["acordo_migracao"] = df["acordo_migracao"].astype(bool)
@@ -180,6 +190,7 @@ _CAMPOS_QUALIDADE = [
     "matriculas_publicas", "matriculas_rurais_pct", "velocidade_medida_mbps",
     "alunos_maior_turno_est", "escolas_sem_internet_aprendizagem", "ivs",
     "tem_backhaul_fibra", "acordo_migracao", "fust_elegivel", "eace_escolas",
+    "alunos_sem_internet", "semiarido",
 ]
 
 
@@ -206,13 +217,13 @@ def _write_sqlite(
     """Cria o SQLite final com as tabelas municipios, escolas e validacao_localizacao."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Remove banco anterior se existir
-    if output_path.exists():
-        output_path.unlink()
-        logger.info("Banco anterior removido: %s", output_path)
+    # Escreve num arquivo temporário e troca no final: a API nunca vê um banco ausente ou pela metade
+    # (um reload durante o ETL fazia a API cair no mock sem avisar).
+    final_path = output_path
+    output_path = final_path.with_name(final_path.name + ".tmp")
+    output_path.unlink(missing_ok=True)
 
     con = sqlite3.connect(output_path)
-    con.execute("PRAGMA journal_mode=WAL")
     con.execute("PRAGMA foreign_keys=ON")
 
     # --- Tabela municipios ---
@@ -321,8 +332,12 @@ def _write_sqlite(
     con.commit()
     con.close()
 
-    size_mb = output_path.stat().st_size / 1e6
-    logger.info("SQLite criado: %s (%.1f MB)", output_path, size_mb)
+    for sufixo in ("-wal", "-shm"):  # restos do banco anterior (modo WAL) não valem para o novo arquivo
+        final_path.with_name(final_path.name + sufixo).unlink(missing_ok=True)
+    os.replace(output_path, final_path)
+
+    size_mb = final_path.stat().st_size / 1e6
+    logger.info("SQLite criado: %s (%.1f MB)", final_path, size_mb)
 
 
 def run(output_path: Path | None = None) -> None:

@@ -120,12 +120,17 @@ def run() -> tuple[pd.DataFrame, pd.DataFrame]:
     df["QT_MAT_BAS_D"] = pd.to_numeric(df["QT_MAT_BAS_D"], errors="coerce").fillna(0)
     df["QT_MAT_BAS_N"] = pd.to_numeric(df["QT_MAT_BAS_N"], errors="coerce").fillna(0)
 
+    # Alunos matriculados em escolas sem internet para aprendizagem (mesmo critério de
+    # escolas_sem_internet_aprendizagem): base da métrica "estudantes a conectar".
+    df["_mat_sem_internet"] = df["QT_MAT_BAS"].where(df["IN_INTERNET_APRENDIZAGEM"] == 0, 0)
+
     agg = df.groupby("CO_MUNICIPIO").agg(
         total_escolas=("CO_ENTIDADE", "count"),
         matriculas_publicas=("QT_MAT_BAS", "sum"),
         matriculas_rurais=("QT_MAT_ZR_RUR", "sum"),
         mat_diurno=("QT_MAT_BAS_D", "sum"),
         mat_noturno=("QT_MAT_BAS_N", "sum"),
+        alunos_sem_internet=("_mat_sem_internet", "sum"),
         escolas_sem_internet=("IN_INTERNET", lambda x: (x == 0).sum()),
         escolas_sem_internet_aprendizagem=("IN_INTERNET_APRENDIZAGEM", lambda x: (x == 0).sum()),
         escolas_sem_banda_larga=("IN_BANDA_LARGA", lambda x: (x == 0).sum()),
@@ -144,6 +149,7 @@ def run() -> tuple[pd.DataFrame, pd.DataFrame]:
         "id_municipio", "total_escolas", "matriculas_publicas", "matriculas_rurais_pct",
         "alunos_maior_turno_est", "escolas_sem_internet",
         "escolas_sem_internet_aprendizagem", "escolas_sem_banda_larga",
+        "alunos_sem_internet",
     ]]
 
     # Salva caches

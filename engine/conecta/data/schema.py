@@ -46,7 +46,13 @@ class Municipio(BaseModel):
     velocidade_medida_mbps: float = Field(..., ge=0.0, description="Velocidade medida (Medidor NIC.br); 0 = sem medição")
     alunos_maior_turno_est: int = Field(..., ge=0, description="Estimativa de alunos no maior turno")
     escolas_sem_internet_aprendizagem: int = Field(..., ge=0)
+    total_escolas: int = Field(0, ge=0, description="Escolas públicas ativas no município (Censo Escolar)")
+    alunos_sem_internet: int = Field(
+        0, ge=0, description="Matrículas nas escolas sem internet para aprendizagem"
+    )
     ivs: float = Field(..., ge=0.0, le=1.0, description="Índice de Vulnerabilidade Social (IPEA)")
+
+    semiarido: bool = Field(False, description="Município na delimitação oficial do Semiárido")
 
     # dist_backhaul_km é calculado pelo módulo geo — não vem do CSV diretamente
     dist_backhaul_km: Optional[float] = Field(None, ge=0.0)

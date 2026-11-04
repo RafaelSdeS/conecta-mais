@@ -80,7 +80,7 @@ def load_backhaul(path: str | Path) -> pd.DataFrame:
     return df[["id_municipio", "lat", "lon"]].copy()
 
 
-_BOOL_COLS = ["tem_backhaul_fibra", "acordo_migracao", "fust_elegivel"]
+_BOOL_COLS = ["tem_backhaul_fibra", "acordo_migracao", "fust_elegivel", "semiarido"]
 
 
 def _read_sql(path: str | Path, query: str) -> pd.DataFrame:
@@ -105,6 +105,9 @@ def has_engine_data(path: str | Path) -> bool:
 def load_municipios_db(path: str | Path) -> pd.DataFrame:
     """Municípios do motor a partir do SQLite do ETL (já validados pelo schema no ETL)."""
     df = _read_sql(path, "SELECT * FROM municipios_engine").infer_objects()
+    for col, default in (("semiarido", False), ("alunos_sem_internet", 0), ("total_escolas", 0)):
+        if col not in df.columns:  # bancos gerados antes dessas colunas
+            df[col] = default
     for col in _BOOL_COLS:
         df[col] = df[col].astype(bool)
     return df
