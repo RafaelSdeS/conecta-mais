@@ -14,6 +14,7 @@ from api.routers.chat import get_watsonx_client
 from conecta.agent.orchestrator import MAX_TOOL_CALLS, MAX_TOOL_ROUNDS
 from conecta.agent.watsonx import (
     WatsonxAuthenticationError,
+    WatsonxError,
     WatsonxTimeoutError,
 )
 from conecta.rag.catalog import REPOSITORY_ROOT
@@ -52,11 +53,13 @@ class FakeWatsonxClient:
         self.error = error
         self.calls: list[tuple[list[dict], list[dict]]] = []
 
-    def chat(self, messages: list[dict], tools: list[dict]) -> dict:
+    def chat(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
         self.calls.append((messages, tools))
         if self.error is not None:
             raise self.error
         if not self.replies:
+            if tools is None:  # chamada de síntese sem resposta roteirizada: cai no template
+                raise WatsonxError
             raise AssertionError("Unexpected watsonx.ai call")
         return self.replies.pop(0)
 

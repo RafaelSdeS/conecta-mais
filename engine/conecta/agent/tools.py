@@ -25,6 +25,7 @@ from conecta.data.sqlite_repository import (
 )
 from conecta.financial.calculator import business_case
 from conecta.financial.models import Alavancas, FinancialParams
+from conecta.optimizer.portfolio import add_financials, optimize_portfolio
 from conecta.rag.retriever import RAGIndexUnavailable, search_documents
 
 
@@ -117,6 +118,53 @@ class DocumentationSearchArguments(ToolArguments):
     pergunta: str = Field(min_length=2, max_length=500)
 
 
+class RankingArguments(ToolArguments):
+    uf: str | None = Field(default=None, min_length=2, max_length=2, description="UF (ex.: BA); omita para o Brasil todo.")
+    criterio: Literal[
+        "score_total", "score_M", "score_I", "score_C", "score_A",
+        "payback", "vpl", "escolas_sem_internet_aprendizagem",
+    ] = Field(
+        default="score_total",
+        description=(
+            "Critério de ordenação. Retorno financeiro: payback (menor é melhor) ou vpl "
+            "(maior é melhor). Impacto educacional: score_I."
+        ),
+    )
+    top_n: int = Field(default=5, ge=1, le=10)
+
+    @field_validator("uf")
+    @classmethod
+    def normalize_uf(cls, value: str | None) -> str | None:
+        return value.strip().upper() if value is not None else None
+
+
+class PortfolioArguments(ToolArguments):
+    orcamento_mi: float = Field(gt=0, le=1_000_000, description="Orçamento de CapEx em R$ milhões.")
+    uf: str | None = Field(default=None, min_length=2, max_length=2)
+    peso_impacto: float = Field(default=0.5, ge=0, le=1, description="1 = só impacto social; 0 = só retorno (VPL).")
+    max_payback: float = Field(default=10.0, gt=0, le=50, description="Payback máximo aceito, em anos.")
+
+    @field_validator("uf")
+    @classmethod
+    def normalize_uf(cls, value: str | None) -> str | None:
+        return value.strip().upper() if value is not None else None
+
+
+class CompareArguments(ToolArguments):
+    codigos_ibge: list[str] = Field(min_length=2, max_length=5, description="Códigos IBGE de 7 dígitos.")
+
+    @field_validator("codigos_ibge")
+    @classmethod
+    def validate_codes(cls, value: list[str]) -> list[str]:
+        if any(not re.fullmatch(r"\d{7}", code.strip()) for code in value):
+            raise ValueError("Cada código IBGE deve ter 7 dígitos.")
+        return [code.strip() for code in value]
+
+
+class NoArguments(ToolArguments):
+    pass
+
+
 _REFERENCE_DESCRIPTION = (
     "Identifique o município com codigo_ibge de 7 dígitos ou, se não o conhecer, "
     "informe municipio e uf."
@@ -170,7 +218,7 @@ TOOL_DEFINITIONS = [
         "function": {
             "name": "consultar_scores_municipio",
             "description": (
-                "Consulta scores já calculados pelo engine demonstrativo. "
+                "Consulta os scores M, I, C, A, total e quadrante de um município no motor. "
                 f"{_REFERENCE_DESCRIPTION}"
             ),
             "parameters": EngineMunicipalityArguments.model_json_schema(),
@@ -181,7 +229,7 @@ TOOL_DEFINITIONS = [
         "function": {
             "name": "consultar_analise_financeira",
             "description": (
-                "Calcula o business case demonstrativo existente para município do engine. "
+                "Calcula o business case (CapEx, payback, VPL) de um município no motor. "
                 f"{_REFERENCE_DESCRIPTION}"
             ),
             "parameters": EngineMunicipalityArguments.model_json_schema(),
@@ -201,6 +249,48 @@ TOOL_DEFINITIONS = [
             "parameters": DocumentationSearchArguments.model_json_schema(),
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "ranking_municipios",
+            "description": (
+                "Ranking dos melhores municípios por critério (scores, payback, VPL ou "
+                "escolas sem internet), opcionalmente dentro de uma UF. Use para perguntas "
+                "como 'qual município recomendar', 'onde investir' ou 'maior retorno'."
+            ),
+            "parameters": RankingArguments.model_json_schema(),
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "otimizar_portfolio",
+            "description": (
+                "Seleciona o conjunto ótimo de municípios para um orçamento de CapEx "
+                "(R$ milhões), opcionalmente numa UF. Use para 'como distribuir R$ X'."
+            ),
+            "parameters": PortfolioArguments.model_json_schema(),
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "comparar_municipios",
+            "description": "Compara scores e business case de 2 a 5 municípios pelos códigos IBGE.",
+            "parameters": CompareArguments.model_json_schema(),
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "consultar_qualidade_dados",
+            "description": (
+                "Informa quais campos do motor são reais, aproximados ou neutros "
+                "(sem informação). Use ao qualificar a confiança de uma recomendação."
+            ),
+            "parameters": NoArguments.model_json_schema(),
+        },
+    },
 ]
 
 _SQLITE_SOURCE = {
@@ -212,6 +302,14 @@ _ENGINE_SOURCE = {
     "id": "engine_mock",
     "tipo": "demonstrativo",
     "descricao": "Motor de scores e financeiro calculado sobre CSVs demonstrativos.",
+}
+_ENGINE_REAL_SOURCE = {
+    "id": "engine",
+    "tipo": "real",
+    "descricao": (
+        "Motor de scores e financeiro sobre a base real integrada; campos neutros "
+        "ou aproximados estão listados em consultar_qualidade_dados."
+    ),
 }
 _RAG_SOURCE = {
     "id": "rag_tecnico",
@@ -232,6 +330,10 @@ _ARGUMENT_MODELS: dict[str, type[ToolArguments]] = {
     "consultar_scores_municipio": EngineMunicipalityArguments,
     "consultar_analise_financeira": EngineMunicipalityArguments,
     "consultar_documentacao_conecta": DocumentationSearchArguments,
+    "ranking_municipios": RankingArguments,
+    "otimizar_portfolio": PortfolioArguments,
+    "comparar_municipios": CompareArguments,
+    "consultar_qualidade_dados": NoArguments,
 }
 
 
@@ -287,6 +389,28 @@ def _engine_municipality(
         & municipios["uf"].str.upper().eq(args.uf)
     ]
     return matches.iloc[0] if len(matches) == 1 else None
+
+
+def _engine_source(municipios: pd.DataFrame) -> dict:
+    return _ENGINE_REAL_SOURCE if municipios.attrs.get("fonte") == "real" else _ENGINE_SOURCE
+
+
+_COLUNAS_RESUMO = [
+    "id_municipio", "nome", "uf", "quadrante", "score_total", "score_M", "score_I",
+    "score_C", "score_A", "dist_backhaul_km", "escolas_sem_internet_aprendizagem",
+]
+
+
+def _resumo_municipios(df: pd.DataFrame) -> list[dict]:
+    """Linhas enxutas (scores + business case) para caber no limite de contexto."""
+    out = df[[c for c in _COLUNAS_RESUMO if c in df.columns]].copy()
+    out["capex_mi"] = df["_capex"].round(2)
+    out["payback_anos"] = df["_payback"].replace(float("inf"), float("nan")).round(2)
+    out["vpl_mi"] = df["_npv"].round(2)
+    for col in ("score_total", "score_M", "score_I", "score_C", "score_A", "dist_backhaul_km"):
+        if col in out:
+            out[col] = out[col].round(1)
+    return _json_safe(out.to_dict(orient="records"))
 
 
 def _source_result(source: dict, data: dict, **extra: Any) -> dict:
@@ -485,11 +609,92 @@ class ToolDispatcher:
                 total_retornado=len(rows),
             ), "success"
 
+        engine_src = _engine_source(municipios)
+
+        if name == "consultar_qualidade_dados":
+            return _source_result(
+                engine_src, {"campos": municipios.attrs.get("qualidade", [])}
+            ), "success"
+
+        if name == "ranking_municipios":
+            assert isinstance(args, RankingArguments)
+            df = municipios
+            if args.uf:
+                df = df[df["uf"].str.upper() == args.uf]
+            if df.empty:
+                return _not_found(engine_src, "Nenhum município encontrado para a UF."), "not_found"
+            df = add_financials(df, FinancialParams(), Alavancas())
+            col, asc = {
+                "payback": ("_payback", True),
+                "vpl": ("_npv", False),
+            }.get(args.criterio, (args.criterio, False))
+            # Desempate: payback empata muito (CapEx e receita escalam juntos); VPL desempata.
+            col2, asc2 = {"payback": ("_npv", False), "vpl": ("_payback", True)}.get(
+                args.criterio, ("score_total", False)
+            )
+            ordenado = df.assign(
+                _k=df[col].replace(float("inf"), float("nan")),
+                _k2=df[col2].replace(float("inf"), float("nan")),
+            ).sort_values(["_k", "_k2"], ascending=[asc, asc2], na_position="last")
+            return _source_result(
+                engine_src,
+                {
+                    "criterio": args.criterio,
+                    "uf": args.uf,
+                    "ordem": "crescente (menor é melhor)" if asc else "decrescente",
+                    "total_avaliado": len(df),
+                    "municipios": _resumo_municipios(ordenado.head(args.top_n)),
+                    "premissas": "FinancialParams padrão; CapEx e VPL em R$ milhões.",
+                },
+            ), "success"
+
+        if name == "otimizar_portfolio":
+            assert isinstance(args, PortfolioArguments)
+            df = municipios
+            if args.uf:
+                df = df[df["uf"].str.upper() == args.uf]
+            result = optimize_portfolio(
+                df, FinancialParams(), Alavancas(),
+                budget=args.orcamento_mi, lambda_=args.peso_impacto, max_payback=args.max_payback,
+            )
+            sel = result.municipios
+            if not sel.empty:
+                sel = sel.sort_values("score_total", ascending=False)
+            return _source_result(
+                engine_src,
+                {
+                    "uf": args.uf,
+                    "status": result.status,
+                    "candidatos": result.n_candidatos,
+                    "selecionados": result.n_selecionados,
+                    "capex_total_mi": result.capex_total,
+                    "payback_medio_anos": result.payback_medio,
+                    "municipios_top15": _resumo_municipios(sel.head(15)) if not sel.empty else [],
+                    "premissas": (
+                        f"peso_impacto={args.peso_impacto}; max_payback={args.max_payback} anos; "
+                        "FinancialParams padrão."
+                    ),
+                },
+            ), "success"
+
+        if name == "comparar_municipios":
+            assert isinstance(args, CompareArguments)
+            ids = municipios["id_municipio"].astype(str).str.strip()
+            df = municipios[ids.isin(args.codigos_ibge)]
+            ausentes = sorted(set(args.codigos_ibge) - set(ids[ids.isin(args.codigos_ibge)]))
+            if df.empty:
+                return _not_found(engine_src, "Nenhum dos municípios está disponível no motor."), "not_found"
+            df = add_financials(df, FinancialParams(), Alavancas())
+            return _source_result(
+                engine_src,
+                {"municipios": _resumo_municipios(df), "ausentes": ausentes},
+            ), "success"
+
         assert isinstance(args, EngineMunicipalityArguments)
         municipality = _engine_municipality(municipios, args)
         if municipality is None:
             return _not_found(
-                _ENGINE_SOURCE,
+                engine_src,
                 "Município não disponível no conjunto demonstrativo do motor.",
             ), "not_found"
 
@@ -508,7 +713,7 @@ class ToolDispatcher:
                     "quadrante",
                 )
             }
-            return _source_result(_ENGINE_SOURCE, scores), "success"
+            return _source_result(engine_src, scores), "success"
 
         alavancas = Alavancas().model_copy(
             update={"backhaul_comprometido": bool(municipality["acordo_migracao"])}
@@ -522,9 +727,13 @@ class ToolDispatcher:
             alavancas=alavancas,
         )
         return _source_result(
-            _ENGINE_SOURCE,
+            engine_src,
             result.model_dump(),
-            aviso="Resultado demonstrativo; não representa recomendação real de investimento.",
+            aviso=(
+                "Resultado demonstrativo; não representa recomendação real de investimento."
+                if engine_src is _ENGINE_SOURCE
+                else "Estimativa com premissas padrão (FinancialParams); não substitui estudo de viabilidade."
+            ),
         ), "success"
 
 

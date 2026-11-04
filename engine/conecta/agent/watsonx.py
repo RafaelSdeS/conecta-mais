@@ -192,7 +192,7 @@ class WatsonxClient:
             raise WatsonxInvalidResponseError
         return token
 
-    def chat(self, messages: list[dict], tools: list[dict]) -> dict:
+    def chat(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
         config = WatsonxConfig.from_environment()
         token = self._access_token(config)
         response = self._post_json(
@@ -201,8 +201,7 @@ class WatsonxClient:
                 "model_id": config.model_id,
                 "project_id": config.project_id,
                 "messages": messages,
-                "tools": tools,
-                "tool_choice_option": "auto",
+                **({"tools": tools, "tool_choice_option": "auto"} if tools is not None else {}),
                 "max_tokens": config.max_tokens,
                 "time_limit": 30_000,
             },

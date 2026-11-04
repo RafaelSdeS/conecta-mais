@@ -44,6 +44,11 @@ DOCUMENT_SOURCES = (
         "internal_project",
     ),
     DocumentSource(
+        "docs/guia-de-uso.md",
+        "Guia de uso do painel e do assistente",
+        "internal_project",
+    ),
+    DocumentSource(
         "docs/api.md",
         "Referência da API do Conecta+",
         "internal_project",

@@ -14,15 +14,29 @@ class ChatHistoryMessage(BaseModel):
     content: str = Field(min_length=1, max_length=4_000)
 
 
+class ChatContext(BaseModel):
+    """Estado da tela do usuário; entra no prompt como dado, nunca como instrução."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    pagina: str | None = Field(default=None, max_length=40)
+    municipio_id: str | None = Field(default=None, pattern=r"^\d{7}$")
+    municipio_nome: str | None = Field(default=None, max_length=100)
+    orcamento_mi: float | None = Field(default=None, ge=0, le=1_000_000)
+    quadrante: str | None = Field(default=None, max_length=4)
+    busca: str | None = Field(default=None, max_length=100)
+
+
 class ChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     message: str = Field(min_length=1, max_length=4_000)
     history: list[ChatHistoryMessage] = Field(default_factory=list, max_length=12)
+    context: ChatContext | None = None
 
 
 class DataSource(BaseModel):
-    id: Literal["sqlite_integrado", "engine_mock", "rag_tecnico"]
+    id: Literal["sqlite_integrado", "engine", "engine_mock", "rag_tecnico"]
     tipo: Literal["real", "demonstrativo", "documental"]
     descricao: str
 

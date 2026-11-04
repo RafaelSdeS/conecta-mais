@@ -85,7 +85,7 @@ def test_catalogo_indexa_documentos_do_projeto_e_codigo_sem_normas_oficiais(
         REPOSITORY_ROOT / "docs" / "engine-technical-reference.md"
     ).read_text(encoding="utf-8")
 
-    assert documents == len(DOCUMENT_SOURCES) == 10
+    assert documents == len(DOCUMENT_SOURCES) == 11
     assert chunks > documents
     assert (rebuilt_documents, rebuilt_chunks) == (documents, chunks)
     assert all(not source.is_official for source in DOCUMENT_SOURCES)
@@ -447,4 +447,8 @@ def test_registro_adiciona_rag_sem_remover_ferramentas_existentes():
         "consultar_scores_municipio",
         "consultar_analise_financeira",
         "consultar_documentacao_conecta",
+        "ranking_municipios",
+        "otimizar_portfolio",
+        "comparar_municipios",
+        "consultar_qualidade_dados",
     }
