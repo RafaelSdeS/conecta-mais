@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from conecta.financial.models import Alavancas, FinancialParams
+
 
 class ChatHistoryMessage(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -25,6 +27,11 @@ class ChatContext(BaseModel):
     orcamento_mi: float | None = Field(default=None, ge=0, le=1_000_000)
     quadrante: str | None = Field(default=None, max_length=4)
     busca: str | None = Field(default=None, max_length=100)
+    uf: str | None = Field(default=None, min_length=2, max_length=2)
+    objetivo: Literal["retorno", "equilibrado", "alunos"] | None = None
+    # Cenário ativo na tela: as ferramentas calculam com as mesmas alavancas e premissas.
+    alavancas: Alavancas | None = None
+    premissas: FinancialParams | None = None
 
 
 class ChatRequest(BaseModel):

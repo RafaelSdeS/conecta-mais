@@ -7,6 +7,7 @@ import math
 import re
 import unicodedata
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Any, Literal
 
 import pandas as pd
@@ -25,7 +26,8 @@ from conecta.data.sqlite_repository import (
 )
 from conecta.financial.calculator import business_case
 from conecta.financial.models import Alavancas, FinancialParams
-from conecta.optimizer.portfolio import add_financials, optimize_portfolio
+from conecta.data.escopo import Regiao, filtrar_escopo
+from conecta.optimizer.portfolio import add_financials, num_escolas_b2g, optimize_portfolio
 from conecta.rag.retriever import RAGIndexUnavailable, search_documents
 
 
@@ -118,16 +120,48 @@ class DocumentationSearchArguments(ToolArguments):
     pergunta: str = Field(min_length=2, max_length=500)
 
 
+@dataclass
+class Cenario:
+    """Premissas e alavancas ativas na tela, usadas pelas ferramentas de engine."""
+
+    params: FinancialParams = field(default_factory=FinancialParams)
+    alavancas: Alavancas = field(default_factory=Alavancas)
+
+    def descricao(self) -> str:
+        ativas = [
+            nome
+            for nome, ligada in (
+                ("TCU", self.alavancas.backhaul_comprometido),
+                ("FUST", self.alavancas.fust_reembolsavel),
+                ("ENEC", self.alavancas.receita_escolar),
+            )
+            if ligada
+        ]
+        p = self.params
+        return (
+            f"alavancas: {', '.join(ativas) or 'nenhuma'}; ARPU R$ {p.arpu_mensal}, "
+            f"adesão {p.adesao_pct:.0%}, margem EBITDA {p.margem_ebitda:.0%}, WACC {p.wacc:.2%}; "
+            "CapEx e VPL em R$ milhões."
+        )
+
+
 class RankingArguments(ToolArguments):
     uf: str | None = Field(default=None, min_length=2, max_length=2, description="UF (ex.: BA); omita para o Brasil todo.")
+    somente_semiarido: bool = Field(default=False, description="Restringe aos municípios do Semiárido.")
+    regiao: Regiao | None = Field(default=None, description="Região do Brasil.")
+    max_payback: float | None = Field(
+        default=None, gt=0, le=50,
+        description="Teto de payback em anos; só municípios com payback até esse valor atendem.",
+    )
     criterio: Literal[
         "score_total", "score_M", "score_I", "score_C", "score_A",
-        "payback", "vpl", "escolas_sem_internet_aprendizagem",
+        "payback", "vpl", "escolas_sem_internet_aprendizagem", "alunos_por_capex",
     ] = Field(
         default="score_total",
         description=(
             "Critério de ordenação. Retorno financeiro: payback (menor é melhor) ou vpl "
-            "(maior é melhor). Impacto educacional: score_I."
+            "(maior é melhor). Impacto educacional: score_I. Estudantes atendidos por real "
+            "investido: alunos_por_capex (alunos em escolas sem internet por R$ mi de CapEx)."
         ),
     )
     top_n: int = Field(default=5, ge=1, le=10)
@@ -141,6 +175,12 @@ class RankingArguments(ToolArguments):
 class PortfolioArguments(ToolArguments):
     orcamento_mi: float = Field(gt=0, le=1_000_000, description="Orçamento de CapEx em R$ milhões.")
     uf: str | None = Field(default=None, min_length=2, max_length=2)
+    somente_semiarido: bool = False
+    regiao: Regiao | None = None
+    objetivo: Literal["retorno", "equilibrado", "alunos"] = Field(
+        default="equilibrado",
+        description="alunos = maximiza estudantes em escolas sem internet; retorno = maximiza VPL.",
+    )
     peso_impacto: float = Field(default=0.5, ge=0, le=1, description="1 = só impacto social; 0 = só retorno (VPL).")
     max_payback: float = Field(default=10.0, gt=0, le=50, description="Payback máximo aceito, em anos.")
 
@@ -398,6 +438,7 @@ def _engine_source(municipios: pd.DataFrame) -> dict:
 _COLUNAS_RESUMO = [
     "id_municipio", "nome", "uf", "quadrante", "score_total", "score_M", "score_I",
     "score_C", "score_A", "dist_backhaul_km", "escolas_sem_internet_aprendizagem",
+    "alunos_sem_internet",
 ]
 
 
@@ -407,6 +448,8 @@ def _resumo_municipios(df: pd.DataFrame) -> list[dict]:
     out["capex_mi"] = df["_capex"].round(2)
     out["payback_anos"] = df["_payback"].replace(float("inf"), float("nan")).round(2)
     out["vpl_mi"] = df["_npv"].round(2)
+    if "alunos_sem_internet" in df.columns:
+        out["alunos_por_mi_capex"] = (df["alunos_sem_internet"] / df["_capex"]).round(0)
     for col in ("score_total", "score_M", "score_I", "score_C", "score_A", "dist_backhaul_km"):
         if col in out:
             out[col] = out[col].round(1)
@@ -439,6 +482,7 @@ class ToolDispatcher:
         name: str,
         raw_arguments: str | dict,
         municipios: pd.DataFrame,
+        cenario: Cenario | None = None,
     ) -> tuple[dict, Literal["success", "not_found", "failed"]]:
         if name not in _TOOLS_BY_NAME:
             return (
@@ -473,7 +517,7 @@ class ToolDispatcher:
             )
 
         try:
-            result, status = self._execute(name, args, municipios)
+            result, status = self._execute(name, args, municipios, cenario or Cenario())
         except SQLiteDataUnavailable:
             return (
                 {
@@ -508,6 +552,7 @@ class ToolDispatcher:
         name: str,
         args: ToolArguments,
         municipios: pd.DataFrame,
+        cenario: Cenario,
     ) -> tuple[dict, Literal["success", "not_found"]]:
         if name == "consultar_documentacao_conecta":
             assert isinstance(args, DocumentationSearchArguments)
@@ -618,44 +663,63 @@ class ToolDispatcher:
 
         if name == "ranking_municipios":
             assert isinstance(args, RankingArguments)
-            df = municipios
-            if args.uf:
-                df = df[df["uf"].str.upper() == args.uf]
+            df = filtrar_escopo(municipios, args.uf, args.somente_semiarido, args.regiao)
             if df.empty:
-                return _not_found(engine_src, "Nenhum município encontrado para a UF."), "not_found"
-            df = add_financials(df, FinancialParams(), Alavancas())
+                return _not_found(engine_src, "Nenhum município encontrado no escopo pedido."), "not_found"
+            df = add_financials(df, cenario.params, cenario.alavancas)
+            df["_alunos_por_mi"] = df.get("alunos_sem_internet", 0) / df["_capex"]
+            avisos: list[str] = []
+            pool = df
+            if args.max_payback is not None:
+                atende = df[df["_payback"] <= args.max_payback]
+                melhor = float(df["_payback"].min())
+                if atende.empty:
+                    avisos.append(
+                        f"Nenhum município atende payback ≤ {args.max_payback} anos; o menor "
+                        f"payback encontrado é {melhor:.2f}. A lista abaixo NÃO atende à restrição "
+                        "(ranking sem o teto)."
+                    )
+                else:
+                    pool = atende
             col, asc = {
                 "payback": ("_payback", True),
                 "vpl": ("_npv", False),
+                "alunos_por_capex": ("_alunos_por_mi", False),
             }.get(args.criterio, (args.criterio, False))
             # Desempate: payback empata muito (CapEx e receita escalam juntos); VPL desempata.
             col2, asc2 = {"payback": ("_npv", False), "vpl": ("_payback", True)}.get(
                 args.criterio, ("score_total", False)
             )
-            ordenado = df.assign(
-                _k=df[col].replace(float("inf"), float("nan")),
-                _k2=df[col2].replace(float("inf"), float("nan")),
+            ordenado = pool.assign(
+                _k=pool[col].replace(float("inf"), float("nan")),
+                _k2=pool[col2].replace(float("inf"), float("nan")),
             ).sort_values(["_k", "_k2"], ascending=[asc, asc2], na_position="last")
             return _source_result(
                 engine_src,
                 {
                     "criterio": args.criterio,
-                    "uf": args.uf,
+                    "escopo": {
+                        "uf": args.uf, "semiarido": args.somente_semiarido, "regiao": args.regiao,
+                    },
                     "ordem": "crescente (menor é melhor)" if asc else "decrescente",
-                    "total_avaliado": len(df),
+                    "total_no_escopo": len(df),
+                    "elegiveis_payback": (
+                        None if args.max_payback is None else int((df["_payback"] <= args.max_payback).sum())
+                    ),
+                    "menor_payback_no_escopo": round(float(df["_payback"].min()), 2),
+                    "avisos": avisos,
                     "municipios": _resumo_municipios(ordenado.head(args.top_n)),
-                    "premissas": "FinancialParams padrão; CapEx e VPL em R$ milhões.",
+                    "premissas": cenario.descricao(),
                 },
             ), "success"
 
         if name == "otimizar_portfolio":
             assert isinstance(args, PortfolioArguments)
-            df = municipios
-            if args.uf:
-                df = df[df["uf"].str.upper() == args.uf]
+            df = filtrar_escopo(municipios, args.uf, args.somente_semiarido, args.regiao)
             result = optimize_portfolio(
-                df, FinancialParams(), Alavancas(),
+                df, cenario.params, cenario.alavancas,
                 budget=args.orcamento_mi, lambda_=args.peso_impacto, max_payback=args.max_payback,
+                objetivo_modo=args.objetivo,
             )
             sel = result.municipios
             if not sel.empty:
@@ -663,16 +727,21 @@ class ToolDispatcher:
             return _source_result(
                 engine_src,
                 {
-                    "uf": args.uf,
+                    "escopo": {
+                        "uf": args.uf, "semiarido": args.somente_semiarido, "regiao": args.regiao,
+                    },
                     "status": result.status,
                     "candidatos": result.n_candidatos,
                     "selecionados": result.n_selecionados,
                     "capex_total_mi": result.capex_total,
                     "payback_medio_anos": result.payback_medio,
+                    "alunos_atendidos": int(sel["alunos_sem_internet"].sum())
+                    if "alunos_sem_internet" in sel and not sel.empty else 0,
+                    "vpl_total_mi": round(float(sel["_npv"].sum()), 2) if not sel.empty else 0.0,
                     "municipios_top15": _resumo_municipios(sel.head(15)) if not sel.empty else [],
                     "premissas": (
-                        f"peso_impacto={args.peso_impacto}; max_payback={args.max_payback} anos; "
-                        "FinancialParams padrão."
+                        f"objetivo={args.objetivo}; peso_impacto={args.peso_impacto}; "
+                        f"max_payback={args.max_payback} anos; {cenario.descricao()}"
                     ),
                 },
             ), "success"
@@ -684,10 +753,14 @@ class ToolDispatcher:
             ausentes = sorted(set(args.codigos_ibge) - set(ids[ids.isin(args.codigos_ibge)]))
             if df.empty:
                 return _not_found(engine_src, "Nenhum dos municípios está disponível no motor."), "not_found"
-            df = add_financials(df, FinancialParams(), Alavancas())
+            df = add_financials(df, cenario.params, cenario.alavancas)
             return _source_result(
                 engine_src,
-                {"municipios": _resumo_municipios(df), "ausentes": ausentes},
+                {
+                    "municipios": _resumo_municipios(df),
+                    "ausentes": ausentes,
+                    "premissas": cenario.descricao(),
+                },
             ), "success"
 
         assert isinstance(args, EngineMunicipalityArguments)
@@ -715,15 +788,18 @@ class ToolDispatcher:
             }
             return _source_result(engine_src, scores), "success"
 
-        alavancas = Alavancas().model_copy(
-            update={"backhaul_comprometido": bool(municipality["acordo_migracao"])}
+        alavancas = cenario.alavancas.model_copy(
+            update={
+                "backhaul_comprometido": cenario.alavancas.backhaul_comprometido
+                and bool(municipality["acordo_migracao"])
+            }
         )
         result = business_case(
             id_municipio=str(municipality["id_municipio"]),
             domicilios_urbanos=int(municipality["domicilios_urbanos"]),
             dist_backhaul_km=float(municipality.get("dist_backhaul_km") or 0.0),
-            num_escolas=int(municipality.get("eace_escolas", 0)),
-            params=FinancialParams(),
+            num_escolas=num_escolas_b2g(municipality),
+            params=cenario.params,
             alavancas=alavancas,
         )
         return _source_result(

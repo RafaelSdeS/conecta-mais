@@ -20,7 +20,7 @@ from conecta.agent.schemas import (
     ToolExecution,
 )
 from conecta.agent.score_explanation import build_score_explanation
-from conecta.agent.tools import TOOL_DEFINITIONS, ToolDispatcher
+from conecta.agent.tools import TOOL_DEFINITIONS, Cenario, ToolDispatcher
 from conecta.agent.watsonx import (
     WatsonxClient,
     WatsonxError,
@@ -28,6 +28,7 @@ from conecta.agent.watsonx import (
     WatsonxInvalidResponseError,
     WatsonxTimeoutError,
 )
+from conecta.financial.models import Alavancas, FinancialParams
 
 MAX_TOOL_ROUNDS = 5
 MAX_TOOL_CALLS = 10
@@ -59,6 +60,15 @@ não de decisão de investimento. Se o VPL for negativo, diga isso com clareza; 
 afirme retorno positivo sem VPL positivo. Seja conciso (até cerca de 150 palavras,
 em texto simples: sem tabelas nem títulos com #; use listas com hífen e **negrito**) e nunca cite nomes internos de ferramentas ao usuário. Para
 dados de escolas, use as ferramentas SQLite.
+
+Restrições do usuário (payback máximo, região, Semiárido) devem virar argumentos da
+ferramenta. Se o resultado trouxer avisos ou "elegiveis_payback" igual a 0, diga isso
+logo no início, antes de qualquer lista, e nunca apresente municípios como se
+atendessem à restrição. Estudantes por real investido é o critério alunos_por_capex.
+O score total é a média ponderada de M, I, C e A (não a soma). O payback simples tem
+piso de cerca de 5,7 anos com as premissas padrão, pois CapEx e receita crescem juntos
+com os domicílios; só a distância ao backhaul e as premissas o alteram. Use as
+premissas e alavancas informadas pela ferramenta e pelo contexto da tela.
 
 Não invente números, indicadores, scores, resultados, fontes ou consultas. Use
 somente dados retornados pelas ferramentas para afirmações específicas do
@@ -132,6 +142,7 @@ class _RunState:
     resolved_municipalities: dict[str, str] = field(default_factory=dict)
     references: list[DocumentReference] = field(default_factory=list)
     tool_calls: int = 0
+    cenario: Cenario = field(default_factory=Cenario)
 
 
 class ChatOrchestrator:
@@ -156,6 +167,11 @@ class ChatOrchestrator:
             {"role": "user", "content": question},
         ]
         state = _RunState()
+        if context is not None:
+            state.cenario = Cenario(
+                params=context.premissas or FinancialParams(),
+                alavancas=context.alavancas or Alavancas(),
+            )
 
         for _ in range(MAX_TOOL_ROUNDS):
             assistant_message = self._client.chat(messages, TOOL_DEFINITIONS)
@@ -382,7 +398,9 @@ class ChatOrchestrator:
         if cache_key in state.cached_results:
             return state.cached_results[cache_key], "cached"
 
-        result, status = self._dispatcher.dispatch(name, parsed_arguments, municipios)
+        result, status = self._dispatcher.dispatch(
+            name, parsed_arguments, municipios, state.cenario
+        )
         state.cached_results[cache_key] = result
         return result, status
 
@@ -692,8 +710,11 @@ class ChatOrchestrator:
                     for i, r in enumerate(rows, 1)
                     if isinstance(r, dict)
                 ]
+                avisos = [a for a in data.get("avisos") or [] if isinstance(a, str)]
                 return (
-                    f"Ranking por {data.get('criterio')} ({data.get('ordem')}):\n" + "\n".join(lines),
+                    "\n".join(avisos)
+                    + f"\nRanking por {data.get('criterio')} ({data.get('ordem')}):\n"
+                    + "\n".join(lines),
                     True,
                 )
 

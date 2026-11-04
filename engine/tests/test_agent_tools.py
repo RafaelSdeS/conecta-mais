@@ -95,3 +95,56 @@ def test_sintese_final_escrita_pelo_modelo_e_contexto_no_prompt(mun):
     assert "3550308" in fake.calls[0][0][0]["content"]
     assert "hhi (neutro)" in fake.calls[0][0][0]["content"]
     assert out.data_sources[0].id == "engine" and out.has_demo_data is False
+
+
+# ── Filtros, restrições e cenário ─────────────────────────────────────────────
+
+def test_ranking_com_teto_de_payback_sem_elegiveis_avisa(mun):
+    result, _ = _run("ranking_municipios", {"criterio": "payback", "max_payback": 1}, mun)
+    data = result["data"]
+    assert data["elegiveis_payback"] == 0
+    assert "NÃO atende" in data["avisos"][0]
+    assert data["municipios"]  # mostra os mais próximos, mas sinalizados
+
+
+def test_ranking_semiarido_e_regiao(mun):
+    df = mun.assign(semiarido=mun["uf"].isin(["BA", "CE"]))
+    df.attrs.update(mun.attrs)
+    result, status = _run("ranking_municipios", {"somente_semiarido": True, "top_n": 10}, df)
+    assert status == "success"
+    assert {r["uf"] for r in result["data"]["municipios"]} <= {"BA", "CE"}
+    sul = _run("ranking_municipios", {"regiao": "Sul", "top_n": 10}, df)[0]["data"]["municipios"]
+    assert sul and all(r["id_municipio"].startswith("4") for r in sul)
+
+
+def test_ranking_alunos_por_capex_ordena_pela_razao(mun):
+    df = mun.assign(alunos_sem_internet=mun["matriculas_publicas"])
+    df.attrs.update(mun.attrs)
+    rows = _run("ranking_municipios", {"criterio": "alunos_por_capex", "top_n": 5}, df)[0]["data"]["municipios"]
+    razoes = [r["alunos_por_mi_capex"] for r in rows]
+    assert razoes == sorted(razoes, reverse=True)
+
+
+def test_ferramentas_usam_o_cenario_da_tela(mun):
+    from conecta.agent.tools import Cenario
+    from conecta.financial.models import Alavancas
+
+    d = ToolDispatcher()
+    base = d.dispatch("ranking_municipios", {"criterio": "vpl", "top_n": 1}, mun)[0]["data"]
+    fust = d.dispatch(
+        "ranking_municipios", {"criterio": "vpl", "top_n": 1}, mun,
+        Cenario(alavancas=Alavancas(fust_reembolsavel=True)),
+    )[0]["data"]
+    assert fust["municipios"][0]["vpl_mi"] > base["municipios"][0]["vpl_mi"]
+    assert "FUST" in fust["premissas"] and "nenhuma" in base["premissas"]
+
+
+def test_contexto_com_cenario_chega_as_ferramentas(mun):
+    from conecta.financial.models import Alavancas, FinancialParams
+
+    call = _call("a", "ranking_municipios", {"criterio": "payback", "max_payback": 50, "top_n": 1})
+    fake = _Fake([call, {"role": "assistant", "content": "ok", "finish_reason": "stop"}])
+    ctx = ChatContext(alavancas=Alavancas(receita_escolar=True), premissas=FinancialParams(arpu_mensal=120))
+    ChatOrchestrator(fake).respond("onde?", [], mun, ctx)
+    resultado = json.loads(fake.calls[1][0][-1]["content"])
+    assert "ENEC" in resultado["data"]["premissas"] and "120" in resultado["data"]["premissas"]
