@@ -86,12 +86,10 @@ def test_lambda_1_vs_lambda_0(df_com_scores):
     lambda_=1 maximiza impacto (score_I), lambda_=0 maximiza VPL.
     Os portfólios não precisam ser iguais com orçamento restrito.
     """
-    r_impacto = optimize_portfolio(
-        df_com_scores, PARAMS, ALAVANCAS, budget=30.0, lambda_=1.0
-    )
-    r_retorno = optimize_portfolio(
-        df_com_scores, PARAMS, ALAVANCAS, budget=30.0, lambda_=0.0
-    )
+    # alavanca TCU ligada: só os municípios do acordo ficam com backhaul zerado (CapEx menor)
+    tcu = Alavancas(backhaul_comprometido=True)
+    r_impacto = optimize_portfolio(df_com_scores, PARAMS, tcu, budget=30.0, lambda_=1.0)
+    r_retorno = optimize_portfolio(df_com_scores, PARAMS, tcu, budget=30.0, lambda_=0.0)
     # Ambos são soluções viáveis
     assert r_impacto.status == "Optimal"
     assert r_retorno.status == "Optimal"
@@ -114,3 +112,34 @@ def test_resultado_tem_campos_esperados(df_com_scores):
     assert hasattr(result, "status")
     assert hasattr(result, "n_candidatos")
     assert hasattr(result, "n_selecionados")
+
+
+# ── Alavancas ─────────────────────────────────────────────────────────────────
+
+def test_alavanca_tcu_so_zera_backhaul_de_municipios_do_acordo(df_com_scores):
+    from conecta.optimizer.portfolio import add_financials
+
+    sem = add_financials(df_com_scores, PARAMS, Alavancas())
+    com = add_financials(df_com_scores, PARAMS, Alavancas(backhaul_comprometido=True))
+    acordo = df_com_scores["acordo_migracao"].astype(bool)
+    assert acordo.any()
+    assert (com.loc[acordo, "_capex"] < sem.loc[acordo, "_capex"]).any()
+    assert (com.loc[~acordo, "_capex"] == sem.loc[~acordo, "_capex"]).all()
+
+
+def test_alavanca_enace_e_fust_mudam_payback_e_vpl(df_com_scores):
+    from conecta.optimizer.portfolio import add_financials
+
+    base = add_financials(df_com_scores, PARAMS, Alavancas())
+    enec = add_financials(df_com_scores, PARAMS, Alavancas(receita_escolar=True))
+    fust = add_financials(df_com_scores, PARAMS, Alavancas(fust_reembolsavel=True))
+    assert (enec["_payback"] <= base["_payback"]).all() and (enec["_payback"] < base["_payback"]).any()
+    assert (fust["_npv"] > base["_npv"]).all()
+    assert (fust["_payback"] == base["_payback"]).all()  # FUST muda o custo de capital, não o payback simples
+
+
+def test_objetivo_alunos_prioriza_municipios_com_mais_alunos(df_com_scores):
+    df = df_com_scores.assign(alunos_sem_internet=df_com_scores["matriculas_publicas"])
+    r = optimize_portfolio(df, PARAMS, Alavancas(backhaul_comprometido=True), budget=300.0,
+                           max_payback=20.0, objetivo_modo="alunos")
+    assert r.status == "Optimal" and r.n_selecionados > 0

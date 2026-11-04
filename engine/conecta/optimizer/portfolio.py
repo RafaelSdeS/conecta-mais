@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 import pulp
 
-from conecta.financial.calculator import business_case
+from conecta.financial.calculator import capex, npv, payback
 from conecta.financial.models import Alavancas, FinancialParams
 from conecta.scores.models import ScoreWeights
 
@@ -45,27 +45,35 @@ def _minmax_series(s: pd.Series) -> pd.Series:
     return (s - lo) / (hi - lo)
 
 
+def num_escolas_b2g(row) -> int:
+    """Escolas que geram receita B2G quando a alavanca ENEC está ligada: as sem internet para aprendizagem."""
+    return int(row.get("escolas_sem_internet_aprendizagem", 0) or 0)
+
+
 def add_financials(
     df: pd.DataFrame, params: FinancialParams, alavancas: Alavancas
 ) -> pd.DataFrame:
-    """Acrescenta _capex, _payback e _npv (business case) a cada município."""
+    """
+    Acrescenta _capex, _payback e _npv (business case) a cada município.
+
+    Alavanca TCU: só zera o backhaul dos municípios marcados no acordo (acordo_migracao).
+    """
     out = df.copy()
-    capex, payback, npv = [], [], []
+    cx, pb, vpl = [], [], []
     for _, row in out.iterrows():
-        bc = business_case(
-            id_municipio=str(row["id_municipio"]),
-            domicilios_urbanos=int(row["domicilios_urbanos"]),
-            dist_backhaul_km=float(row.get("dist_backhaul_km") or 0.0),
-            num_escolas=int(row.get("eace_escolas", 0)),
-            params=params,
-            alavancas=alavancas.model_copy(
-                update={"backhaul_comprometido": bool(row.get("acordo_migracao", False))}
-            ),
+        alav = alavancas.model_copy(
+            update={
+                "backhaul_comprometido": alavancas.backhaul_comprometido
+                and bool(row.get("acordo_migracao", False)),
+                "num_escolas": num_escolas_b2g(row),
+            }
         )
-        capex.append(bc.capex.total)
-        payback.append(bc.payback_anos)
-        npv.append(bc.npv)
-    out["_capex"], out["_payback"], out["_npv"] = capex, payback, npv
+        homes = int(row["domicilios_urbanos"])
+        dist = float(row.get("dist_backhaul_km") or 0.0)
+        cx.append(capex(homes, dist, params, alav).total)
+        pb.append(payback(homes, dist, params, alav))
+        vpl.append(npv(homes, dist, params, alav))
+    out["_capex"], out["_payback"], out["_npv"] = cx, pb, vpl
     return out
 
 
@@ -77,6 +85,7 @@ def optimize_portfolio(
     lambda_: float = 0.5,
     max_payback: float = 10.0,
     weights: ScoreWeights | None = None,
+    objetivo_modo: str = "equilibrado",
 ) -> PortfolioResult:
     """
     Seleciona o portfólio ótimo de municípios.
@@ -92,6 +101,8 @@ def optimize_portfolio(
         max_payback:   Payback máximo aceitável (anos). Municípios acima
                        são excluídos antes do solver.
         weights:       Pesos dos scores (usado para score_total).
+        objetivo_modo: "retorno" (só VPL), "equilibrado" (usa lambda_) ou "alunos"
+                       (maximiza alunos em escolas sem internet).
 
     Returns:
         PortfolioResult com os municípios selecionados e métricas agregadas.
@@ -102,7 +113,8 @@ def optimize_portfolio(
     df = municipios_df.copy()
 
     # ── 1. Calcular business case para cada município ─────────────────────────
-    df = add_financials(df, params, alavancas)
+    if "_capex" not in df.columns:  # o chamador pode passar o resultado já calculado (cache)
+        df = add_financials(df, params, alavancas)
 
     # ── 2. Pré-filtro: payback e orçamento individual ─────────────────────────
     elegivel = df["_payback"] <= max_payback
@@ -128,7 +140,11 @@ def optimize_portfolio(
     norm_I   = _minmax_series(candidatos["score_I"])
     norm_npv = _minmax_series(candidatos["_npv"])
 
-    objetivo = lambda_ * norm_I + (1 - lambda_) * norm_npv
+    if objetivo_modo == "alunos" and "alunos_sem_internet" in candidatos.columns:
+        objetivo = _minmax_series(candidatos["alunos_sem_internet"])
+    else:
+        lam = 0.0 if objetivo_modo == "retorno" else lambda_
+        objetivo = lam * norm_I + (1 - lam) * norm_npv
 
     # ── 4. Problema PuLP ──────────────────────────────────────────────────────
     idx = list(candidatos.index)

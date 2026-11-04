@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from conecta.financial.calculator import business_case
 from conecta.financial.models import Alavancas, FinancialParams
+from conecta.optimizer.portfolio import num_escolas_b2g
 
 router = APIRouter(tags=["financial"])
 
@@ -31,16 +32,19 @@ def post_financial(body: FinancialRequest, request: Request):
 
     m = row.iloc[0]
 
-    # Sobrescrever backhaul_comprometido com o acordo real do município
+    # Alavanca TCU só vale para municípios do acordo (mesma regra do portfólio)
     alavancas = body.alavancas.model_copy(
-        update={"backhaul_comprometido": bool(m.get("acordo_migracao", False))}
+        update={
+            "backhaul_comprometido": body.alavancas.backhaul_comprometido
+            and bool(m.get("acordo_migracao", False))
+        }
     )
 
     result = business_case(
         id_municipio=str(body.id_municipio),
         domicilios_urbanos=int(m["domicilios_urbanos"]),
         dist_backhaul_km=float(m.get("dist_backhaul_km") or 0.0),
-        num_escolas=int(m.get("eace_escolas", 0)),
+        num_escolas=num_escolas_b2g(m),
         params=body.params,
         alavancas=alavancas,
     )

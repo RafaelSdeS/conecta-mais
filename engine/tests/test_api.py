@@ -136,3 +136,30 @@ def test_get_backtest_retorna_estrutura(client):
     assert "f1" in data
     assert 0.0 <= data["precision"] <= 1.0
     assert 0.0 <= data["recall"] <= 1.0
+
+
+# ── Cenário: financeiro, efeito das alavancas e escopo ───────────────────────
+
+def test_portfolio_devolve_financeiro_e_efeito_das_alavancas(client):
+    r = client.post("/portfolio", json={"budget": 600, "alavancas": {"fust_reembolsavel": True}})
+    assert r.status_code == 200
+    d = r.json()
+    assert len(d["financeiro"]) == 49 and {"id_municipio", "capex", "payback", "npv"} <= set(d["financeiro"][0])
+    assert d["n_selecionados"] > 0
+    assert d["efeito_alavancas"]["com"]["vpl_total"] > d["efeito_alavancas"]["sem"]["vpl_total"]
+
+
+def test_portfolio_objetivo_e_escopo(client):
+    r = client.post("/portfolio", json={"budget": 600, "objetivo": "alunos", "regiao": "Sudeste"})
+    assert r.status_code == 200
+    assert all(str(m["id_municipio"]).startswith("3") for m in r.json()["municipios"])
+    assert client.post("/portfolio", json={"budget": 5, "objetivo": "invalido"}).status_code == 422
+
+
+def test_qualidade_informa_fonte(client):
+    d = client.get("/qualidade").json()
+    assert d["fonte_dados"] == "mock" and d["campos"] == []
+
+
+def test_backtest_e_rotulado_como_demonstrativo(client):
+    assert client.get("/backtest").json()["fonte"] == "demonstrativo"

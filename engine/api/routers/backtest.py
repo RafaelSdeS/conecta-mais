@@ -39,6 +39,8 @@ def get_backtest():
     r = _get_result()
     return {
         "status": "ok",
+        # Roda sobre CSVs demonstrativos (49 municípios): não há base histórica de 2021 em fonte aberta.
+        "fonte": "demonstrativo",
         "precision": r.precision,
         "recall": r.recall,
         "f1": r.f1,

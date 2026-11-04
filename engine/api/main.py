@@ -18,6 +18,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -33,6 +34,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 from api.routers import backtest, chat, dados, financial, ia, municipios, portfolio, scores
 
+logger = logging.getLogger("uvicorn.error")
 DATA_DIR = Path(__file__).parent.parent / "data"
 
 
@@ -57,6 +59,10 @@ async def lifespan(app: FastAPI):
         app.state.qualidade_dados = load_data_quality(db)
     else:
         fonte = "mock"  # ponytail: fallback demonstrativo só quando não há base real
+        logger.warning(
+            "Base real não encontrada em %s: usando dados DEMONSTRATIVOS. "
+            "Rode `python -m etl.run_etl` e reinicie a API.", db,
+        )
         mun = load_municipios(DATA_DIR / "mock_municipios.csv")
         bh  = load_backhaul(DATA_DIR / "mock_backhaul.csv")
         app.state.qualidade_dados = []
@@ -97,6 +103,12 @@ app.include_router(backtest.router)
 app.include_router(dados.router)
 app.include_router(chat.router)
 app.include_router(ia.router)
+
+
+@app.get("/qualidade", tags=["infra"])
+def qualidade(request: Request):
+    """Estado de cada campo do motor (real, aproximado ou neutro), registrado pelo ETL."""
+    return {"fonte_dados": request.app.state.fonte_dados, "campos": request.app.state.qualidade_dados}
 
 
 @app.get("/health", tags=["infra"])
