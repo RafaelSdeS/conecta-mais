@@ -45,6 +45,7 @@ async def lifespan(app: FastAPI):
         has_engine_data,
         load_backhaul,
         load_backhaul_db,
+        load_bl_2021,
         load_data_quality,
         load_municipios,
         load_municipios_db,
@@ -57,6 +58,7 @@ async def lifespan(app: FastAPI):
         fonte = "real"
         mun, bh = load_municipios_db(db), load_backhaul_db(db)
         app.state.qualidade_dados = load_data_quality(db)
+        app.state.bl_2021 = load_bl_2021(db)
     else:
         fonte = "mock"  # ponytail: fallback demonstrativo só quando não há base real
         logger.warning(
@@ -66,6 +68,7 @@ async def lifespan(app: FastAPI):
         mun = load_municipios(DATA_DIR / "mock_municipios.csv")
         bh  = load_backhaul(DATA_DIR / "mock_backhaul.csv")
         app.state.qualidade_dados = []
+        app.state.bl_2021 = None
 
     mun = add_backhaul_distances(mun, bh)
     mun = calculate_scores(mun)

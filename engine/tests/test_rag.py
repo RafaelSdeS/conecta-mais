@@ -85,11 +85,15 @@ def test_catalogo_indexa_documentos_do_projeto_e_codigo_sem_normas_oficiais(
         REPOSITORY_ROOT / "docs" / "engine-technical-reference.md"
     ).read_text(encoding="utf-8")
 
-    assert documents == len(DOCUMENT_SOURCES) == 11
+    assert documents == len(DOCUMENT_SOURCES) == 15
     assert chunks > documents
     assert (rebuilt_documents, rebuilt_chunks) == (documents, chunks)
-    assert all(not source.is_official for source in DOCUMENT_SOURCES)
-    assert OFFICIAL_REGULATORY_SOURCES == ()
+    # só as fontes de docs/fontes-oficiais (leis e nota do TCU) são oficiais; o resto é interno
+    assert all(
+        source.is_official == source.path.startswith("docs/fontes-oficiais/")
+        for source in DOCUMENT_SOURCES
+    )
+    assert len(OFFICIAL_REGULATORY_SOURCES) == 4
     assert "41,33" not in derived_reference
     assert "41.33" not in derived_reference
 
@@ -451,4 +455,5 @@ def test_registro_adiciona_rag_sem_remover_ferramentas_existentes():
         "otimizar_portfolio",
         "comparar_municipios",
         "consultar_qualidade_dados",
+        "consultar_provedores_municipio",
     }

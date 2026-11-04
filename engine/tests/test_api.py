@@ -163,3 +163,10 @@ def test_qualidade_informa_fonte(client):
 
 def test_backtest_e_rotulado_como_demonstrativo(client):
     assert client.get("/backtest").json()["fonte"] == "demonstrativo"
+
+
+def test_financial_traz_comparacao_de_tecnologias(client):
+    r = client.post("/financial", json={"id_municipio": "3550308"})
+    d = r.json()
+    assert r.status_code == 200 and d["tecnologia_recomendada"] in {"FTTH", "FWA 5G", "Satélite"}
+    assert len(d["tecnologias"]) == 3 and "regra" in d

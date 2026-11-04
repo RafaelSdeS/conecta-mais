@@ -68,17 +68,18 @@ export const FLUXO: { titulo: string; itens: { nome: string; status: StatusEntre
   {
     titulo: 'Fontes',
     itens: [
-      { nome: 'IBGE', status: 'entregue', desc: 'Municípios, área, centroides e domicílios (SIDRA).' },
+      { nome: 'IBGE', status: 'entregue', desc: 'Municípios, área, centroides, domicílios e renda per capita municipal (Censo 2022).' },
       { nome: 'INEP', status: 'entregue', desc: 'Censo Escolar 2024: escolas, matrículas e internet por escola.' },
-      { nome: 'Anatel (Base dos Dados)', status: 'entregue', desc: 'Backhaul de fibra e densidade de banda larga por município.' },
+      { nome: 'Anatel', status: 'entregue', desc: 'Acessos de banda larga fixa e telefonia móvel por município, empresa e porte; backhaul.' },
+      { nome: 'CNES (SUS)', status: 'entregue', desc: 'Unidades Básicas de Saúde habilitadas, pela API de dados abertos.' },
       { nome: 'Ipeadata, SRTM e IBGE/SUDENE', status: 'entregue', desc: 'IVS por UF, elevação (OpenTopoData) e delimitação do Semiárido.' },
     ],
   },
   {
     titulo: 'Dados',
     itens: [
-      { nome: 'ETL em 9 passos', status: 'entregue', desc: 'Baixa, valida contra o schema e classifica cada campo como real, aproximado ou neutro.' },
-      { nome: 'Base SQLite', status: 'entregue', desc: '5.565 municípios e 137,8 mil escolas; tabelas do motor, backhaul e qualidade dos dados.' },
+      { nome: 'ETL em 12 passos', status: 'entregue', desc: 'Baixa, valida contra o schema e classifica cada campo como real, aproximado ou neutro.' },
+      { nome: 'Base SQLite', status: 'entregue', desc: '5.565 municípios, 137,8 mil escolas, 43,8 mil UBS e os provedores por município.' },
     ],
   },
   {
@@ -86,23 +87,29 @@ export const FLUXO: { titulo: string; itens: { nome: string; status: StatusEntre
     itens: [
       { nome: 'Scores M·I·C·A', status: 'entregue', desc: 'Mercado, impacto educacional, custo e alavancas; classificação em 5 quadrantes.' },
       { nome: 'Business case', status: 'entregue', desc: 'CapEx, payback e VPL com alavancas FUST, TCU e ENEC e premissas editáveis.' },
-      { nome: 'Otimizador de portfólio', status: 'entregue', desc: 'MILP (PuLP/CBC) por orçamento, escopo e objetivo. CPLEX / IBM Decision Optimization seguem planejados.' },
+      { nome: 'Otimizador de portfólio', status: 'entregue', desc: 'MILP por orçamento, escopo e objetivo. Usa o CBC; o IBM CPLEX é opcional (CONECTA_SOLVER=cplex, exige licença).' },
+      { nome: 'Tecnologia de acesso', status: 'parcial', desc: 'Regra da proposta (FTTH, FWA 5G ou satélite) com comparação de custos; custos de FWA e satélite são ilustrativos.' },
+      { nome: 'Construir × comprar', status: 'parcial', desc: 'Triagem de provedores locais com fibra instalada (Anatel); sem preço, qualidade da rede ou análise jurídica.' },
+      { nome: 'Backtest com histórico real', status: 'entregue', desc: 'Fibra de dezembro de 2021 contra o último mês da Anatel, com taxa-base e lift; parcial nos demais indicadores.' },
     ],
   },
   {
     titulo: 'API',
     itens: [
-      { nome: 'FastAPI', status: 'entregue', desc: '/municipios, /portfolio, /financial, /qualidade, /chat e /ia; consultas somente leitura ao SQLite.' },
+      { nome: 'FastAPI', status: 'entregue', desc: '/municipios, /portfolio, /financial, /qualidade, /chat, /ia e /dados; OpenAPI em /docs.' },
     ],
   },
   {
     titulo: 'Interfaces e IA',
     itens: [
       { nome: 'Painel, mapa e ficha', status: 'entregue', desc: 'Filtros compartilhados, mapa por região, tabela, ficha executiva e PDF.' },
-      { nome: 'Agente Granite (watsonx.ai)', status: 'entregue', desc: 'Chat com ferramentas de ranking, portfólio e comparação; justificativas e filtros em linguagem natural.' },
-      { nome: 'Agente regulatório (RAG)', status: 'parcial', desc: 'Busca na documentação interna do projeto; ainda sem normas oficiais (FUST, TCU).' },
-      { nome: 'Auditoria', status: 'parcial', desc: 'Log local de cada chamada de IA; watsonx.governance ainda não integrado.' },
-      { nome: 'watsonx Orchestrate', status: 'planejado', desc: 'Hoje a orquestração é própria (tool calling com Granite).' },
+      { nome: 'Listas para secretarias', status: 'parcial', desc: 'Escolas sem internet, UBS e provedores por município, com CSV. Sem login nem contrato B2G.' },
+      { nome: 'Módulo Saúde', status: 'parcial', desc: 'UBS por município (CNES) como indicador de demanda; não há dado de conectividade das UBS.' },
+      { nome: 'Agente Granite (watsonx.ai)', status: 'entregue', desc: 'Chat com ferramentas de ranking, portfólio, comparação e provedores; justificativas e filtros em linguagem natural.' },
+      { nome: 'Agente regulatório (RAG)', status: 'entregue', desc: 'Documentação do projeto e textos oficiais (Leis 9.998/2000, 14.109/2020, 14.172/2021 e nota do TCU). Sem lista nominal de municípios elegíveis.' },
+      { nome: 'Auditoria de IA', status: 'entregue', desc: 'Log local de cada chamada (sem o texto da pergunta) com painel de uso, latência e ferramentas.' },
+      { nome: 'watsonx.governance', status: 'planejado', desc: 'Exige uma instância do serviço IBM e credenciais próprias; hoje vale a auditoria local.' },
+      { nome: 'watsonx Orchestrate', status: 'planejado', desc: 'Exige o serviço IBM; hoje a orquestração é própria (tool calling com Granite). A API expõe o OpenAPI para importação.' },
     ],
   },
 ]
@@ -155,26 +162,27 @@ export const PESOS_SCORE: {
 /** Fonte e próximo passo de cada campo do motor; o estado (real/aproximado/neutro) vem de /qualidade. */
 export const FONTES_CAMPOS: Record<string, { rotulo: string; fonte: string; melhoria: string }> = {
   domicilios_urbanos:  { rotulo: 'Domicílios', fonte: 'IBGE SIDRA (Censo 2022)', melhoria: '—' },
-  renda_media:         { rotulo: 'Renda média', fonte: 'IBGE, média por UF', melhoria: 'Renda domiciliar municipal (Censo 2022).' },
-  acessos_fibra:       { rotulo: 'Acessos de fibra', fonte: 'Anatel (densidade × domicílios)', melhoria: 'Acessos por tecnologia (microdados Anatel).' },
-  acessos_total_bl:    { rotulo: 'Acessos de banda larga', fonte: 'Anatel (Base dos Dados)', melhoria: '—' },
-  market_share_vivo_movel: { rotulo: 'Share móvel Vivo', fonte: 'Sem fonte aberta municipal', melhoria: 'Microdados por prestadora da Anatel.' },
-  hhi:                 { rotulo: 'HHI de banda larga', fonte: 'Sem fonte aberta municipal', melhoria: 'Microdados por prestadora da Anatel.' },
-  ppp_share:           { rotulo: 'Pequenas prestadoras', fonte: 'Sem fonte aberta municipal', melhoria: 'Microdados por prestadora da Anatel.' },
+  renda_media:         { rotulo: 'Renda per capita', fonte: 'IBGE, Censo 2022 (SIDRA 10295)', melhoria: '—' },
+  acessos_fibra:       { rotulo: 'Acessos de fibra', fonte: 'Anatel, banda larga fixa (pessoa física)', melhoria: '—' },
+  acessos_total_bl:    { rotulo: 'Acessos de banda larga', fonte: 'Anatel, banda larga fixa (pessoa física)', melhoria: '—' },
+  market_share_vivo_movel: { rotulo: 'Share móvel Vivo', fonte: 'Anatel, acessos móveis por município (sem M2M)', melhoria: '—' },
+  hhi:                 { rotulo: 'HHI de banda larga', fonte: 'Anatel, acessos por grupo econômico', melhoria: '—' },
+  ppp_share:           { rotulo: 'Pequenas prestadoras', fonte: 'Anatel, acessos por porte da prestadora', melhoria: '—' },
   area_km2:            { rotulo: 'Área', fonte: 'IBGE', melhoria: '—' },
   elevacao_media_m:    { rotulo: 'Elevação', fonte: 'SRTM 90m no centroide (OpenTopoData)', melhoria: 'Média zonal sobre o polígono municipal.' },
   matriculas_publicas: { rotulo: 'Matrículas públicas', fonte: 'INEP, Censo Escolar 2024', melhoria: '—' },
   matriculas_rurais_pct: { rotulo: 'Matrículas rurais', fonte: 'INEP, Censo Escolar 2024', melhoria: '—' },
-  velocidade_medida_mbps: { rotulo: 'Velocidade medida', fonte: 'NIC.br / Medidor Educação Conectada', melhoria: 'Obter a base de medições por município.' },
+  velocidade_medida_mbps: { rotulo: 'Velocidade medida', fonte: 'NIC.br / Medidor Educação Conectada', melhoria: 'Sem base aberta por município; depende de acordo com o NIC.br.' },
   alunos_maior_turno_est: { rotulo: 'Alunos no maior turno', fonte: 'INEP (estimativa)', melhoria: '—' },
   escolas_sem_internet_aprendizagem: { rotulo: 'Escolas sem internet', fonte: 'INEP, Censo Escolar 2024', melhoria: '—' },
   alunos_sem_internet: { rotulo: 'Alunos em escolas sem internet', fonte: 'INEP, Censo Escolar 2024', melhoria: '—' },
-  ivs:                 { rotulo: 'IVS', fonte: 'Ipeadata, nível estadual', melhoria: 'Atlas da Vulnerabilidade Social municipal.' },
+  ivs:                 { rotulo: 'IVS', fonte: 'Ipeadata, nível estadual', melhoria: 'O Atlas municipal não tem download aberto acessível.' },
   tem_backhaul_fibra:  { rotulo: 'Backhaul de fibra', fonte: 'Anatel (Base dos Dados)', melhoria: 'Traçado da rede (hoje só presença por município).' },
-  acordo_migracao:     { rotulo: 'Acordo TCU', fonte: 'TCU/Anatel (lista não aberta)', melhoria: 'Lista dos 121 municípios do acordo.' },
+  acordo_migracao:     { rotulo: 'Acordo TCU', fonte: 'TCU/Anatel (lista nominal não aberta)', melhoria: 'Lista dos 121 municípios do acordo (pedido à Anatel).' },
   fust_elegivel:       { rotulo: 'Elegibilidade FUST', fonte: 'Editais FUST/BNDES', melhoria: 'Lista de municípios dos editais.' },
   eace_escolas:        { rotulo: 'Escolas EACE', fonte: 'EACE / Aprender Conectado', melhoria: 'Base de escolas atendidas por município.' },
   semiarido:           { rotulo: 'Semiárido', fonte: 'IBGE/SUDENE, lista de 2022', melhoria: '—' },
+  ubs:                 { rotulo: 'UBS', fonte: 'CNES (API de dados abertos do SUS)', melhoria: 'Conectividade de cada UBS.' },
 }
 
 export const ROADMAP: { titulo: string; status: StatusEntrega | 'proximo'; itens: string[] }[] = [
@@ -182,47 +190,53 @@ export const ROADMAP: { titulo: string; status: StatusEntrega | 'proximo'; itens
     titulo: 'Entregue',
     status: 'entregue',
     itens: [
-      'Base nacional: 5.565 municípios e 137,8 mil escolas',
-      'Scores M·I·C·A e quadrantes',
-      'Business case com alavancas e premissas editáveis',
-      'Portfólio por orçamento, escopo e objetivo',
-      'Painel com mapa por região, ficha e PDF',
-      'Agente Granite com ferramentas, RAG e justificativas',
+      'Base nacional com dados reais de mercado (Anatel), renda municipal, escolas e UBS',
+      'Scores M·I·C·A, quadrantes e business case com alavancas e premissas editáveis',
+      'Portfólio por orçamento, escopo e objetivo (CBC; CPLEX opcional)',
+      'Painel com mapa por região, ficha, PDF e listas CSV para secretarias',
+      'Backtest com histórico real da Anatel',
+      'Agente Granite com RAG sobre textos oficiais e painel de auditoria',
     ],
   },
   {
-    titulo: 'Próximo: dados',
+    titulo: 'Parcial: a evoluir',
+    status: 'parcial',
+    itens: [
+      'Custos de FWA 5G e satélite validados com a engenharia',
+      'Construir × comprar com preço, qualidade da rede e análise jurídica',
+      'Módulo Saúde com a conectividade de cada UBS',
+      'Listas para secretarias com login e contrato B2G',
+    ],
+  },
+  {
+    titulo: 'Próximo: dados sem fonte aberta',
     status: 'proximo',
     itens: [
-      'Listas oficiais do Acordo TCU, FUST e EACE',
+      'Lista nominal do Acordo TCU, dos municípios FUST e das escolas EACE',
       'Velocidade medida por município (NIC.br)',
-      'Share, HHI e pequenas prestadoras (Anatel)',
-      'IVS e renda em nível municipal',
+      'IVS municipal (Atlas da Vulnerabilidade Social)',
+      'Elevação média por município (hoje no centroide)',
     ],
   },
   {
-    titulo: 'Planejado: 6 a 12 meses',
+    titulo: 'Planejado: depende de serviços e parcerias',
     status: 'planejado',
     itens: [
-      'FWA 5G e satélite no motor de custo',
-      'Backtest com histórico real',
-      'watsonx Orchestrate e watsonx.governance',
-      'IBM Decision Optimization (CPLEX)',
+      'watsonx Orchestrate e watsonx.governance (serviços IBM)',
+      'IBM Decision Optimization (CPLEX) em produção',
+      'Conecta Gov (MCom/BNDES)',
+      'Integração com os sistemas de planejamento da operadora',
     ],
-  },
-  {
-    titulo: 'Planejado: 12 a 24 meses',
-    status: 'planejado',
-    itens: ['Módulo Saúde (UBSs)', 'Portal B2G para secretarias', 'Conecta Gov (MCom/BNDES)', 'Motor de M&A (build vs. buy)'],
   },
 ]
 
 export const RISCOS: string[] = [
-  'Campos neutros não diferenciam municípios: o score A hoje depende de listas ainda não carregadas.',
+  'Campos neutros não diferenciam municípios: o score A depende de listas ainda não carregadas (Acordo TCU, FUST e EACE) e o déficit de banda não tem velocidade medida.',
   'Premissas financeiras da proposta: com os padrões o payback simples não cai abaixo de ~5,7 anos e o VPL é negativo (editáveis em Premissas).',
+  'Backtest real: a classificação Q1/Q2a prevê o crescimento de fibra pouco acima do acaso (lift entre 1,0 e 1,2). Os scores precisam de revisão antes de sustentar decisões.',
+  'Os custos de FWA e satélite são ilustrativos: a recomendação de tecnologia segue a regra da proposta, não uma otimização de custos.',
   'Censo Escolar 2024 sem latitude/longitude das escolas: a análise é por município, não por escola.',
   'Backhaul só como presença por município, sem traçado da rede.',
-  'Backtest demonstrativo: não há histórico de 2021 em fonte aberta.',
 ]
 
 export const ROI_ROWS: { label: string; value: string; highlight?: boolean }[] = [

@@ -84,3 +84,18 @@ def test_auditoria_registra_sem_texto_do_usuario(api):
     api.post("/ia/filtros", json={"texto": "segredo-do-usuario"})
     linhas = open(log, encoding="utf-8").read()
     assert '"/ia/filtros"' in linhas and "segredo-do-usuario" not in linhas
+
+
+def test_painel_de_auditoria_resume_o_log(api):
+    log = os.environ["CONECTA_AUDIT_LOG"]
+    if os.path.exists(log):
+        os.remove(log)
+    assert api.get("/ia/auditoria").json()["total"] == 0
+    _use(_Fake('{"uf": null}'))
+    api.post("/ia/filtros", json={"texto": "qualquer coisa"})
+    _use(_Fake(error=WatsonxUnavailableError()))
+    api.post("/ia/filtros", json={"texto": "outra coisa"})
+    d = api.get("/ia/auditoria").json()
+    assert d["total"] == 2 and d["ok"] == 1 and d["taxa_ok"] == 0.5
+    assert d["por_endpoint"] == {"/ia/filtros": 2} and len(d["ultimas"]) == 2
+    assert "texto" not in json.dumps(d)  # nada do que o usuário digitou

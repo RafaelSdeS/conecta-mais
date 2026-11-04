@@ -19,7 +19,33 @@ class DocumentSource:
     is_official: bool = False
 
 
-OFFICIAL_REGULATORY_SOURCES: tuple[DocumentSource, ...] = ()
+# Textos oficiais (leis e nota do TCU) guardados em docs/fontes-oficiais, com a URL e a data de obtenção.
+OFFICIAL_REGULATORY_SOURCES: tuple[DocumentSource, ...] = (
+    DocumentSource(
+        "docs/fontes-oficiais/lei-14109-2020-fust.md",
+        "Lei nº 14.109/2020 (Fust)",
+        "official_legislation",
+        is_official=True,
+    ),
+    DocumentSource(
+        "docs/fontes-oficiais/lei-9998-2000-fust.md",
+        "Lei nº 9.998/2000 (institui o Fust)",
+        "official_legislation",
+        is_official=True,
+    ),
+    DocumentSource(
+        "docs/fontes-oficiais/lei-14172-2021-conectividade-escolar.md",
+        "Lei nº 14.172/2021 (conectividade escolar)",
+        "official_legislation",
+        is_official=True,
+    ),
+    DocumentSource(
+        "docs/fontes-oficiais/tcu-solucao-consensual-telefonica.md",
+        "TCU: solução consensual da Telefônica em telefonia fixa",
+        "official_summary",
+        is_official=True,
+    ),
+)
 
 
 DOCUMENT_SOURCES = (

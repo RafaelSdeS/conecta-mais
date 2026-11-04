@@ -143,3 +143,11 @@ def test_objetivo_alunos_prioriza_municipios_com_mais_alunos(df_com_scores):
     r = optimize_portfolio(df, PARAMS, Alavancas(backhaul_comprometido=True), budget=300.0,
                            max_payback=20.0, objetivo_modo="alunos")
     assert r.status == "Optimal" and r.n_selecionados > 0
+
+
+def test_solver_padrao_e_cbc_e_cplex_indisponivel_cai_no_cbc(df_com_scores, monkeypatch):
+    monkeypatch.delenv("CONECTA_SOLVER", raising=False)
+    assert optimize_portfolio(df_com_scores, PARAMS, Alavancas(backhaul_comprometido=True), budget=300.0).solver == "CBC"
+    monkeypatch.setenv("CONECTA_SOLVER", "cplex")  # sem o CPLEX instalado neste ambiente
+    r = optimize_portfolio(df_com_scores, PARAMS, Alavancas(backhaul_comprometido=True), budget=300.0)
+    assert r.solver in {"CBC", "CPLEX"} and r.status == "Optimal"

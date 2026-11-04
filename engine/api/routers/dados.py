@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TypeVar
 
-from fastapi import APIRouter, HTTPException, Path, Query, Response
+from fastapi import APIRouter, HTTPException, Path, Query, Request, Response
 
+from conecta.mercado.analise import analisar_mercado
 from conecta.data.sqlite_repository import (
     SQLiteDataRepository,
     SQLiteDataUnavailable,
@@ -91,6 +92,39 @@ def listar_escolas_sem_internet(
         "offset": offset,
         "escolas": escolas,
     }
+
+
+@router.get("/ubs")
+def listar_ubs(
+    response: Response,
+    codigo_municipio: str = Query(..., pattern=r"^\d{7}$"),
+    limite: int = Query(default=100, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    """UBS habilitadas do município (CNES), base do módulo Saúde."""
+    _set_source(response)
+    total, ubs = _query(lambda: _repository().list_ubs(codigo_municipio, limite, offset))
+    return {
+        "fonte_dados": FONTE_DADOS, "fonte": "CNES (API de dados abertos do SUS), tipo 2",
+        "total": total, "total_retornado": len(ubs), "limite": limite, "offset": offset, "ubs": ubs,
+    }
+
+
+@router.get("/provedores/{codigo_ibge}")
+def analisar_provedores(
+    request: Request,
+    response: Response,
+    codigo_ibge: str = Path(..., pattern=r"^\d{7}$"),
+):
+    """Provedores de banda larga do município e leitura construir × comprar (PPPs com fibra instalada)."""
+    _set_source(response)
+    provedores = _query(lambda: _repository().list_provedores(codigo_ibge))
+    df = request.app.state.municipios
+    linha = df[df["id_municipio"].astype(str) == codigo_ibge]
+    if not provedores and linha.empty:
+        raise HTTPException(status_code=404, detail="Município não encontrado")
+    domicilios = int(linha["domicilios_urbanos"].iloc[0]) if not linha.empty else 1
+    return {"fonte_dados": FONTE_DADOS, "fonte": "Anatel, banda larga fixa", **analisar_mercado(provedores, domicilios)}
 
 
 @router.get("/escolas")

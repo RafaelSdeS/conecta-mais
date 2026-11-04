@@ -26,6 +26,8 @@ from conecta.data.sqlite_repository import (
 )
 from conecta.financial.calculator import business_case
 from conecta.financial.models import Alavancas, FinancialParams
+from conecta.financial.tecnologia import comparar_tecnologias
+from conecta.mercado.analise import analisar_mercado
 from conecta.data.escopo import Regiao, filtrar_escopo
 from conecta.optimizer.portfolio import add_financials, num_escolas_b2g, optimize_portfolio
 from conecta.rag.retriever import RAGIndexUnavailable, search_documents
@@ -205,6 +207,10 @@ class NoArguments(ToolArguments):
     pass
 
 
+class MarketArguments(MunicipalityReferenceArguments):
+    pass
+
+
 _REFERENCE_DESCRIPTION = (
     "Identifique o município com codigo_ibge de 7 dígitos ou, se não o conhecer, "
     "informe municipio e uf."
@@ -323,6 +329,18 @@ TOOL_DEFINITIONS = [
     {
         "type": "function",
         "function": {
+            "name": "consultar_provedores_municipio",
+            "description": (
+                "Provedores de banda larga fixa de um município (Anatel) e a leitura construir × comprar: "
+                "pequenos provedores com fibra já instalada, candidatos a compra ou parceria. "
+                f"{_REFERENCE_DESCRIPTION}"
+            ),
+            "parameters": MarketArguments.model_json_schema(),
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "consultar_qualidade_dados",
             "description": (
                 "Informa quais campos do motor são reais, aproximados ou neutros "
@@ -374,6 +392,7 @@ _ARGUMENT_MODELS: dict[str, type[ToolArguments]] = {
     "otimizar_portfolio": PortfolioArguments,
     "comparar_municipios": CompareArguments,
     "consultar_qualidade_dados": NoArguments,
+    "consultar_provedores_municipio": MarketArguments,
 }
 
 
@@ -656,6 +675,22 @@ class ToolDispatcher:
 
         engine_src = _engine_source(municipios)
 
+        if name == "consultar_provedores_municipio":
+            assert isinstance(args, MarketArguments)
+            municipality = _engine_municipality(municipios, args)
+            if municipality is None:
+                return _not_found(engine_src, "Município não disponível no motor."), "not_found"
+            provedores = self._repository_factory().list_provedores(str(municipality["id_municipio"]))
+            return _source_result(
+                _SQLITE_SOURCE,
+                {
+                    "codigo_ibge": str(municipality["id_municipio"]),
+                    "municipio": municipality["nome"],
+                    "uf": municipality["uf"],
+                    **analisar_mercado(provedores, int(municipality["domicilios_urbanos"])),
+                },
+            ), "success"
+
         if name == "consultar_qualidade_dados":
             return _source_result(
                 engine_src, {"campos": municipios.attrs.get("qualidade", [])}
@@ -811,6 +846,12 @@ class ToolDispatcher:
                 else "Estimativa com as premissas do cenário; não substitui estudo de viabilidade."
             ),
             unidades="CapEx, receita, EBITDA e VPL em R$ milhões; payback em anos.",
+            comparacao_tecnologias=comparar_tecnologias(
+                int(municipality["domicilios_urbanos"]),
+                float(municipality.get("dist_backhaul_km") or 0.0),
+                cenario.params,
+                alavancas,
+            ),
         ), "success"
 
 

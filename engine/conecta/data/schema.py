@@ -26,7 +26,7 @@ class Municipio(BaseModel):
 
     # --- Potencial de Mercado (score M) ---
     domicilios_urbanos: int = Field(..., ge=0)
-    renda_media: float = Field(..., ge=0.0, description="Renda domiciliar média (R$)")
+    renda_media: float = Field(..., ge=0.0, description="Rendimento domiciliar per capita médio (R$/mês)")
     acessos_fibra: int = Field(..., ge=0, description="Acessos de fibra óptica (Anatel)")
     acessos_total_bl: int = Field(..., ge=0, description="Total de acessos de banda larga fixa")
     market_share_vivo_movel: float = Field(..., ge=0.0, le=1.0, description="Share móvel da Vivo no município")
@@ -46,6 +46,7 @@ class Municipio(BaseModel):
     velocidade_medida_mbps: float = Field(..., ge=0.0, description="Velocidade medida (Medidor NIC.br); 0 = sem medição")
     alunos_maior_turno_est: int = Field(..., ge=0, description="Estimativa de alunos no maior turno")
     escolas_sem_internet_aprendizagem: int = Field(..., ge=0)
+    ubs: int = Field(0, ge=0, description="Unidades Básicas de Saúde habilitadas no município (CNES)")
     total_escolas: int = Field(0, ge=0, description="Escolas públicas ativas no município (Censo Escolar)")
     alunos_sem_internet: int = Field(
         0, ge=0, description="Matrículas nas escolas sem internet para aprendizagem"

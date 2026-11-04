@@ -14,6 +14,8 @@ Solver: PuLP + CBC (open-source, sem licença).
 
 from __future__ import annotations
 
+import logging
+import os
 import warnings
 from dataclasses import dataclass, field
 
@@ -24,6 +26,8 @@ import pulp
 from conecta.financial.calculator import capex, npv, payback
 from conecta.financial.models import Alavancas, FinancialParams
 from conecta.scores.models import ScoreWeights
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -37,6 +41,7 @@ class PortfolioResult:
     status: str                       # Status do solver PuLP ("Optimal", "Infeasible", etc.)
     n_candidatos: int                 # Municípios elegíveis antes da otimização
     n_selecionados: int               # Municípios no portfólio final
+    solver: str = "CBC"               # Solver que resolveu o MILP
 
 
 def _minmax_series(s: pd.Series) -> pd.Series:
@@ -49,6 +54,18 @@ def _minmax_series(s: pd.Series) -> pd.Series:
 def num_escolas_b2g(row) -> int:
     """Escolas que geram receita B2G quando a alavanca ENEC está ligada: as sem internet para aprendizagem."""
     return int(row.get("escolas_sem_internet_aprendizagem", 0) or 0)
+
+
+def _escolhe_solver() -> tuple[pulp.LpSolver, str]:
+    """CBC por padrão. CONECTA_SOLVER=cplex usa o IBM CPLEX se estiver instalado e licenciado."""
+    if os.getenv("CONECTA_SOLVER", "").strip().lower() == "cplex":
+        cplex = pulp.CPLEX_CMD(msg=0, timeLimit=30)
+        if cplex.available():
+            return cplex, "CPLEX"
+        logger.warning("CONECTA_SOLVER=cplex, mas o CPLEX não está disponível: usando CBC.")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        return pulp.PULP_CBC_CMD(msg=0, timeLimit=30), "CBC"  # ponytail: 30 s; sem prova de otimalidade se estourar
 
 
 def add_financials(
@@ -112,6 +129,7 @@ def optimize_portfolio(
         weights = ScoreWeights()
 
     df = municipios_df.copy()
+    solver, solver_nome = _escolhe_solver()
 
     # ── 1. Calcular business case para cada município ─────────────────────────
     if "_capex" not in df.columns:  # o chamador pode passar o resultado já calculado (cache)
@@ -132,6 +150,7 @@ def optimize_portfolio(
             status="Infeasible" if n_candidatos > 0 else "NoFeasibleCandidates",
             n_candidatos=n_candidatos,
             n_selecionados=0,
+            solver=solver_nome,
         )
 
     # ── 3. Normalizar Î (score_I) e VPL̂ ──────────────────────────────────────
@@ -161,10 +180,6 @@ def optimize_portfolio(
     # Restrição de orçamento
     prob += pulp.lpSum(x[i] * float(candidatos.loc[i, "_capex"]) for i in idx) <= budget
 
-    # Resolver silenciosamente (PULP_CBC_CMD deprecado no PuLP 4.0; suprimir aviso)
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        solver = pulp.PULP_CBC_CMD(msg=0, timeLimit=30)  # ponytail: 30 s; sem prova de otimalidade se estourar
     prob.solve(solver)
 
     status = pulp.LpStatus[prob.status]
@@ -182,6 +197,7 @@ def optimize_portfolio(
             status=status,
             n_candidatos=n_candidatos,
             n_selecionados=0,
+            solver=solver_nome,
         )
 
     capex_total = float(selecionados["_capex"].sum())
@@ -202,4 +218,5 @@ def optimize_portfolio(
         status=status,
         n_candidatos=n_candidatos,
         n_selecionados=len(selecionados),
+        solver=solver_nome,
     )

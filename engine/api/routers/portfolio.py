@@ -98,6 +98,7 @@ def post_portfolio(body: PortfolioRequest, request: Request):
         "payback_medio": result.payback_medio,
         "score_total": result.score_total,
         "status": result.status,
+        "solver": result.solver,
         "n_candidatos": result.n_candidatos,
         "n_selecionados": result.n_selecionados,
         "alunos_atendidos": int(result.municipios.get("alunos_sem_internet", pd.Series(dtype=int)).sum()),

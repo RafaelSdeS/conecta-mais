@@ -41,6 +41,8 @@ class BacktestResult:
     acertados: int                # interseção: Q1/Q2a em 2021 E cresceram até 2025
     threshold_crescimento: float  # multiplicador usado (padrão 1.2)
     detalhes: pd.DataFrame = field(repr=False)   # linha por município com flags
+    taxa_base: float = 0.0        # fração de todos os municípios que cresceram (referência do acaso)
+    lift: float = 0.0             # precision / taxa_base; 1,0 = o modelo não supera o acaso
 
 
 def run_backtest(
@@ -95,6 +97,8 @@ def run_backtest(
         if (precision + recall) > 0 else 0.0
     )
 
+    taxa_base = float(cresceu.mean()) if len(cresceu) else 0.0
+
     # ── 5. DataFrame de detalhes por município ────────────────────────────────
     detalhes = pd.DataFrame({
         "id_municipio":     ids_comuns,
@@ -114,4 +118,6 @@ def run_backtest(
         acertados=tp,
         threshold_crescimento=threshold_crescimento,
         detalhes=detalhes,
+        taxa_base=round(taxa_base, 4),
+        lift=round(precision / taxa_base, 2) if taxa_base > 0 else 0.0,
     )

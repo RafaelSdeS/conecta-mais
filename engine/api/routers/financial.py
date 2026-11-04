@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from conecta.financial.calculator import business_case
 from conecta.financial.models import Alavancas, FinancialParams
+from conecta.financial.tecnologia import comparar_tecnologias
 from conecta.optimizer.portfolio import num_escolas_b2g
 
 router = APIRouter(tags=["financial"])
@@ -48,4 +49,9 @@ def post_financial(body: FinancialRequest, request: Request):
         params=body.params,
         alavancas=alavancas,
     )
-    return result.model_dump()
+    return {
+        **result.model_dump(),
+        **comparar_tecnologias(
+            int(m["domicilios_urbanos"]), float(m.get("dist_backhaul_km") or 0.0), body.params, alavancas
+        ),
+    }

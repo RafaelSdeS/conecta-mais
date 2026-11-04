@@ -174,3 +174,24 @@ def test_business_case_payback_consistente():
     bc = business_case("1234567", DOM, DIST_KM, NUM_ESCOLAS, PARAMS, SEM_ALAVANCAS)
     pb = payback(DOM, DIST_KM, PARAMS, SEM_ALAVANCAS)
     assert bc.payback_anos == pytest.approx(pb, abs=1e-9)
+
+
+# ── Tecnologias ───────────────────────────────────────────────────────────────
+
+def test_recomendacao_de_tecnologia_segue_a_regra_da_proposta():
+    from conecta.financial.tecnologia import recomendar_tecnologia
+
+    assert recomendar_tecnologia(2_000, 60)[0] == "Satélite"
+    assert recomendar_tecnologia(10_000, 60)[0] == "FWA 5G"
+    assert recomendar_tecnologia(10_000, 5)[0] == "FTTH"
+    assert recomendar_tecnologia(500_000, 80)[0] == "FTTH"
+
+
+def test_comparacao_traz_tres_tecnologias_e_o_aviso():
+    from conecta.financial.models import Alavancas, FinancialParams
+    from conecta.financial.tecnologia import comparar_tecnologias
+
+    r = comparar_tecnologias(10_000, 60, FinancialParams(), Alavancas())
+    assert [t["tecnologia"] for t in r["tecnologias"]] == ["FTTH", "FWA 5G", "Satélite"]
+    assert r["tecnologias"][2]["capex_mi"] < r["tecnologias"][0]["capex_mi"]  # sem rede nem backhaul
+    assert "ilustrativas" in r["aviso"]

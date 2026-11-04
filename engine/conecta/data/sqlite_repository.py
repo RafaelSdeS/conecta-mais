@@ -121,6 +121,29 @@ class SQLiteDataRepository:
             ).fetchall()
         return total, [dict(row) for row in rows]
 
+    def list_ubs(self, codigo_municipio: str, limite: int, offset: int) -> tuple[int, list[dict]]:
+        """UBS habilitadas do município (tabela ubs, vinda do CNES)."""
+        with self._connection() as connection:
+            total = connection.execute(
+                "SELECT COUNT(*) FROM ubs WHERE id_municipio = ?", (codigo_municipio,)
+            ).fetchone()[0]
+            rows = connection.execute(
+                "SELECT codigo_cnes, nome, lat, lon FROM ubs WHERE id_municipio = ? "
+                "ORDER BY nome LIMIT ? OFFSET ?",
+                (codigo_municipio, limite, offset),
+            ).fetchall()
+        return total, [dict(row) for row in rows]
+
+    def list_provedores(self, codigo_municipio: str) -> list[dict]:
+        """Provedores de banda larga fixa do município, do maior para o menor em acessos."""
+        with self._connection() as connection:
+            rows = connection.execute(
+                "SELECT empresa, cnpj, grupo, porte, acessos, acessos_fibra FROM provedores "
+                "WHERE id_municipio = ? ORDER BY acessos DESC",
+                (codigo_municipio,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def get_indicadores(self, codigo_ibge: str) -> dict | None:
         with self._connection() as connection:
             row = connection.execute(

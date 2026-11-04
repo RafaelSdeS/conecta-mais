@@ -105,7 +105,7 @@ def has_engine_data(path: str | Path) -> bool:
 def load_municipios_db(path: str | Path) -> pd.DataFrame:
     """Municípios do motor a partir do SQLite do ETL (já validados pelo schema no ETL)."""
     df = _read_sql(path, "SELECT * FROM municipios_engine").infer_objects()
-    for col, default in (("semiarido", False), ("alunos_sem_internet", 0), ("total_escolas", 0)):
+    for col, default in (("semiarido", False), ("alunos_sem_internet", 0), ("total_escolas", 0), ("ubs", 0)):
         if col not in df.columns:  # bancos gerados antes dessas colunas
             df[col] = default
     for col in _BOOL_COLS:
@@ -115,6 +115,14 @@ def load_municipios_db(path: str | Path) -> pd.DataFrame:
 
 def load_backhaul_db(path: str | Path) -> pd.DataFrame:
     return _read_sql(path, "SELECT id_municipio, lat, lon FROM backhaul").infer_objects()
+
+
+def load_bl_2021(path: str | Path) -> pd.DataFrame | None:
+    """Banda larga fixa de dezembro de 2021 por município (base do backtest); None se a tabela não existir."""
+    try:
+        return _read_sql(path, "SELECT id_municipio, acessos_total_bl, acessos_fibra FROM bl_2021").infer_objects()
+    except (FileNotFoundError, sqlite3.Error, pd.errors.DatabaseError):
+        return None
 
 
 def load_data_quality(path: str | Path) -> list[dict]:

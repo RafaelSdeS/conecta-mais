@@ -71,6 +71,7 @@ export interface Municipio {
   // recortes e métrica de impacto
   alunos_sem_internet: number
   total_escolas: number
+  ubs: number
   semiarido: boolean
   // calculados pelo engine
   score_M: number
@@ -115,7 +116,19 @@ export interface CapexResult {
   total: number
 }
 
+export interface TecnologiaLinha {
+  tecnologia: 'FTTH' | 'FWA 5G' | 'Satélite'
+  capex_mi: number
+  payback_anos: number | null
+  vpl_mi: number
+}
+
 export interface FinancialResult {
+  /** Comparação de tecnologias (custos de FWA e satélite são ilustrativos). */
+  tecnologias?: TecnologiaLinha[]
+  tecnologia_recomendada?: string
+  regra?: string
+  aviso?: string
   id_municipio: string
   capex: CapexResult
   receita_anual: number
@@ -173,8 +186,56 @@ export interface PortfolioResult {
   n_selecionados: number
 }
 
+export interface Provedor {
+  empresa: string
+  grupo: string
+  porte: string
+  acessos: number
+  acessos_fibra: number
+}
+
+export interface MercadoMunicipio {
+  domicilios: number
+  penetracao_fibra_total: number
+  penetracao_fibra_ppp: number
+  n_provedores: number
+  candidatas_compra_ou_parceria: { empresa: string; cnpj: string; acessos_fibra: number; acessos: number; fibra_sobre_domicilios: number }[]
+  provedores: Provedor[]
+  leitura: string
+  aviso: string
+}
+
+export interface UbsLinha { codigo_cnes: string; nome: string; lat: number | null; lon: number | null }
+
+export interface EscolaSemInternet { codigo_inep: string; escola: string; municipio: string; uf: string }
+
+export interface Auditoria {
+  total: number
+  ok: number
+  taxa_ok: number | null
+  latencia_media_ms: number | null
+  latencia_p95_ms: number | null
+  por_endpoint: Record<string, number>
+  ferramentas: Record<string, number>
+  ultimas: { ts: string; endpoint: string; modelo: string; ok: boolean; latencia_ms: number; ferramentas?: string[]; erro?: string }[]
+}
+
+export interface LimiarBacktest {
+  limiar: number
+  precision: number
+  recall: number
+  f1: number
+  cresceram: number
+  taxa_base: number
+  lift: number
+}
+
 export interface BacktestResult {
   status: string
+  descricao?: string
+  taxa_base?: number
+  lift?: number
+  limiares?: LimiarBacktest[]
   /** O backtest roda sobre dados demonstrativos (sem histórico real de 2021). */
   fonte?: 'demonstrativo' | 'real'
   precision: number
@@ -198,6 +259,17 @@ export interface FiltrosIA {
 }
 
 export const api = {
+  getProvedores: (id: string) => get<MercadoMunicipio>(`/dados/provedores/${id}`),
+
+  getUbs: (id: string) => get<{ total: number; ubs: UbsLinha[] }>(`/dados/ubs?codigo_municipio=${id}&limite=100`),
+
+  getEscolasSemInternet: (id: string) =>
+    get<{ total_sem_internet: number; escolas: EscolaSemInternet[] }>(
+      `/dados/escolas/sem-internet?codigo_municipio=${id}&limite=100`,
+    ),
+
+  getAuditoria: () => get<Auditoria>('/ia/auditoria?limite=10'),
+
   getQualidade: () => get<{ fonte_dados: FonteDados; campos: CampoQualidade[] }>('/qualidade'),
 
   getHealth: () => get<{ status: string; fonte_dados: FonteDados }>('/health'),

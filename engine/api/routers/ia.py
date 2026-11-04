@@ -7,7 +7,7 @@ import re
 import time
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from api.routers.chat import get_watsonx_client
@@ -76,6 +76,12 @@ def _nao_reais(request: Request) -> list[str]:
 
 class JustificativaRequest(BaseModel):
     id_municipio: str = Field(pattern=r"^\d{7}$")
+
+
+@router.get("/auditoria")
+def get_auditoria(limite: int = Query(default=15, ge=1, le=100)):
+    """Resumo da trilha de auditoria das chamadas de IA (sem o texto das perguntas)."""
+    return audit.resumo(limite)
 
 
 @router.post("/justificativa")

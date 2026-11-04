@@ -14,6 +14,7 @@ import { useFavorites } from '../hooks/useFavorites'
 import { useToast } from '../hooks/toastContext'
 import QuadrantBadge from './QuadrantBadge'
 import AiText from './AiText'
+import DadosDoMunicipio from './DadosDoMunicipio'
 import logo from '../assets/logo-texto.svg'
 import { fmtMi, fmtAnos, fmtN0 } from '../utils/format'
 import { getTechRecommendation } from '../utils/calculation'
@@ -68,6 +69,7 @@ export default function DrawerContent({ municipio: m }: Props) {
   const [sensitivity, setSensitivity] = useState<{ adesao_pct: number; payback_anos: number }[]>([])
 
   const [bcErro, setBcErro] = useState(false)
+  const [tec, setTec] = useState<FinancialResult | null>(null)
   const dist    = m.dist_backhaul_km ?? 50
   const homes   = m.domicilios_urbanos ?? 5000
   const tcuMun  = m.acordo_migracao ?? false
@@ -76,6 +78,7 @@ export default function DrawerContent({ municipio: m }: Props) {
   useEffect(() => {
     setBcLoading(true)
     setBcErro(false)
+    setTec(null)
     setBcBase(null)
     setBcWith(null)
     setSensitivity([])
@@ -95,6 +98,7 @@ export default function DrawerContent({ municipio: m }: Props) {
         setBcBase(apiResultToRow(resBase))
         setBcWith(apiResultToRow(resWith))
         setSensitivity(resWith.sensitivity)
+        setTec(resWith)
       })
       .catch(() => setBcErro(true))
       .finally(() => setBcLoading(false))
@@ -207,7 +211,7 @@ export default function DrawerContent({ municipio: m }: Props) {
       {/* Plano de ação */}
       <h3>Plano de ação</h3>
       <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-        <li><b>Tecnologia:</b> {tech}</li>
+        <li><b>Tecnologia:</b> {tec?.tecnologia_recomendada ?? tech}</li>
         <li>
           <b>Financiamento:</b>{' '}
           {levers.fust ? 'FUST/BNDES (TR + 1,25% a.a.)' : 'WACC privado'}
@@ -267,6 +271,40 @@ export default function DrawerContent({ municipio: m }: Props) {
         </p>
       )}
 
+      {/* Tecnologia de acesso: regra da proposta + comparação ilustrativa de custos */}
+      {tec?.tecnologias && (
+        <>
+          <h3 style={{ marginTop: 14, marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--mu)' }}>
+            Tecnologia de acesso
+          </h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr>
+                {['Tecnologia', 'CapEx', 'Payback', 'VPL'].map((h, i) => (
+                  <th key={h} style={{ textAlign: i ? 'right' : 'left', padding: '4px 8px', borderBottom: '1px solid var(--ln)', color: 'var(--mu)', fontWeight: 500 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tec.tecnologias.map((t) => {
+                const rec = t.tecnologia === tec.tecnologia_recomendada
+                return (
+                  <tr key={t.tecnologia} style={{ background: rec ? 'var(--so)' : 'transparent', fontWeight: rec ? 600 : 400 }}>
+                    <td style={{ padding: '4px 8px' }}>{t.tecnologia}{rec ? ' (recomendada)' : ''}</td>
+                    <td style={{ padding: '4px 8px', textAlign: 'right' }}>{fmtMi(t.capex_mi)}</td>
+                    <td style={{ padding: '4px 8px', textAlign: 'right' }}>{fmtAnos(t.payback_anos)}</td>
+                    <td style={{ padding: '4px 8px', textAlign: 'right' }}>{fmtMi(t.vpl_mi)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          <p style={{ fontSize: 11, color: 'var(--mu)', margin: '6px 0 0' }}>
+            Regra: {tec.regra}. {tec.aviso}
+          </p>
+        </>
+      )}
+
       {/* Sensibilidade à adesão (apenas quando API retorna) */}
       {sensitivity.length > 0 && (
         <>
@@ -292,6 +330,8 @@ export default function DrawerContent({ municipio: m }: Props) {
           </div>
         </>
       )}
+
+      <DadosDoMunicipio key={m.id_municipio} id={m.id_municipio} nome={m.nome} ubsTotal={m.ubs ?? 0} />
     </div>
   )
 }
