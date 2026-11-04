@@ -148,11 +148,14 @@ cd engine
 python -m etl.run_etl
 ```
 
+O ETL grava num arquivo temporário e troca no final, então uma API em execução (`--reload`) nunca encontra o banco ausente. Se a API subir sem o banco, o log avisa que está usando dados demonstrativos; depois de rodar o ETL, reinicie a API.
+
 | Campo | Fonte | Estado |
 |---|---|---|
 | `domicilios_urbanos`, `acessos_fibra`, `acessos_total_bl`, `area_km2`, `lat`/`lon` | IBGE e Anatel (densidade) | real |
 | `tem_backhaul_fibra` | Anatel — backhaul (Base dos Dados) | real |
-| `matriculas_*`, `alunos_maior_turno_est`, `escolas_sem_internet_aprendizagem` | INEP — Censo Escolar 2024 | real |
+| `matriculas_*`, `alunos_maior_turno_est`, `escolas_sem_internet_aprendizagem`, `alunos_sem_internet` | INEP — Censo Escolar 2024 | real |
+| `semiarido` | IBGE/SUDENE — delimitação do Semiárido 2022 | real |
 | `renda_media`, `ivs` | média/IVS por UF (IBGE, IPEA) | aproximado |
 | `elevacao_media_m` | SRTM 90m no centroide (OpenTopoData) | aproximado |
 | `market_share_vivo_movel`, `hhi`, `ppp_share` | microdados Anatel por prestadora | neutro |

@@ -125,6 +125,14 @@ Seleciona o portfólio ótimo de municípios dado um orçamento (MILP binário).
 | `lambda_` | `0.5` | Peso impacto social (1.0) vs. retorno financeiro (0.0) |
 | `max_payback` | `10.0` | Payback máximo aceito (anos) |
 | `uf` | nenhum | Restringe o recorte a uma UF antes de otimizar |
+| `semiarido` | `false` | Só municípios do Semiárido (IBGE/SUDENE 2022) |
+| `regiao` | nenhum | `Norte`, `Nordeste`, `Sudeste`, `Sul` ou `Centro-Oeste` |
+| `objetivo` | `equilibrado` | `retorno` (só VPL), `equilibrado` (usa `lambda_`) ou `alunos` (maximiza alunos em escolas sem internet) |
+| `params` | padrão | Premissas financeiras (ARPU, adesão, margem, WACC, custos) |
+
+Regras das alavancas: `fust_reembolsavel` troca o WACC pelo `wacc_fust` no VPL (não altera o payback
+simples); `receita_escolar` soma a receita B2G das escolas sem internet para aprendizagem;
+`backhaul_comprometido` zera o CapEx de backhaul **só** dos municípios com `acordo_migracao`.
 
 **Response:**
 ```json
@@ -135,9 +143,21 @@ Seleciona o portfólio ótimo de municípios dado um orçamento (MILP binário).
   "score_total": 312.4,
   "status": "Optimal",
   "n_candidatos": 12,
-  "n_selecionados": 7
+  "n_selecionados": 7,
+  "alunos_atendidos": 45221,
+  "escolas_atendidas": 249,
+  "vpl_total": -44.81,
+  "efeito_alavancas": {
+    "com": { "payback_medio": 6.1, "vpl_total": -10.2 },
+    "sem": { "payback_medio": 6.1, "vpl_total": -40.6 }
+  },
+  "financeiro": [ { "id_municipio": "2927408", "capex": 1166.08, "payback": 5.72, "npv": -592.41 } ]
 }
 ```
+
+`efeito_alavancas` compara o mesmo conjunto de municípios com e sem as alavancas ligadas;
+`financeiro` traz CapEx (R$ mi), payback e VPL (R$ mi) de todos os municípios do escopo, no cenário
+pedido. O resultado de premissas e alavancas é memoizado no servidor.
 
 ---
 
@@ -164,6 +184,25 @@ Retorna o resultado do backtest 2021→2025.
 | `precision` | Dos municípios Q1/Q2a em 2021, quantos realmente cresceram em fibra até 2025 |
 | `recall` | Dos municípios que cresceram, quantos estavam em Q1/Q2a |
 | `threshold_crescimento` | Crescimento mínimo considerado (1.2 = +20% de acessos de fibra) |
+
+---
+
+## GET `/backtest` — rótulo da fonte
+
+A resposta inclui `"fonte": "demonstrativo"`: o backtest roda sobre CSVs demonstrativos (49 municípios), porque não há histórico de 2021 em fonte aberta.
+
+---
+
+## GET `/qualidade`
+
+Estado de cada campo do motor registrado pelo ETL:
+
+```json
+{ "fonte_dados": "real", "campos": [ { "campo": "hhi", "tipo": "neutro", "cobertura": 0.0 } ] }
+```
+
+`tipo` é `real`, `aproximado` ou `neutro` (mesmo valor para todos os municípios). O frontend usa essa lista
+para desabilitar alavancas sem dados (ex.: `acordo_migracao`).
 
 ---
 
@@ -273,8 +312,13 @@ bancos SQLite são ignorados pelo Git. Nunca coloque credenciais no frontend.
 ```
 
 `context` é opcional e descreve a tela do usuário (`pagina`, `municipio_id`,
-`municipio_nome`, `orcamento_mi`, `quadrante`, `busca`); entra no prompt como
-dado, nunca como instrução.
+`municipio_nome`, `orcamento_mi`, `quadrante`, `busca`, `uf`, `objetivo`) e o cenário ativo
+(`alavancas` e `premissas`, mesmos campos de `/portfolio`); as ferramentas de ranking, portfólio,
+comparação e análise financeira calculam com esse cenário. Entra no prompt como dado, nunca como instrução.
+
+`ranking_municipios` aceita `uf`, `somente_semiarido`, `regiao`, `max_payback` e os critérios
+`score_*`, `payback`, `vpl`, `escolas_sem_internet_aprendizagem` e `alunos_por_capex`; quando nenhum município
+atende ao teto de payback, a resposta traz `avisos` e `elegiveis_payback: 0`.
 
 Ferramentas do agente: busca e indicadores de escolas (SQLite), scores e business
 case de um município, `ranking_municipios`, `otimizar_portfolio`,

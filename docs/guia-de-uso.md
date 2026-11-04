@@ -6,18 +6,44 @@ Este guia explica como usar o painel e o assistente. Para fórmulas e premissas,
 
 O menu lateral tem quatro telas:
 
-- **Painel**: KPIs do portfólio, mapa dos municípios, botões de quadrante e histograma de payback.
+- **Painel**: KPIs do portfólio, filtros, mapa dos municípios, botões de quadrante e histograma de payback.
 - **Municípios**: tabela com busca, filtros, ordenação, favoritos e seleção para o portfólio.
 - **Agente**: chat com o assistente Conecta+ (IBM Granite no watsonx.ai).
-- **Solução**: arquitetura, ROI estimado e fases de entrega.
+- **Solução**: o que o Conecta+ faz hoje, com números da base real (por região), o fluxo da fonte ao agente com o estado de cada parte (entregue, parcial ou planejado), a composição dos scores, a qualidade de cada fonte de dados, o roadmap e os limites conhecidos. O ROI e os números de mercado são estimativas da proposta, e o backtest usa dados demonstrativos; ambos aparecem rotulados.
 
 Clicar em um município abre a **ficha executiva** com scores, quadrante, CapEx, payback e VPL.
 
-## Controles do topo
+## Cenário (barra do topo)
+
+O cenário é calculado no servidor e vale para o Painel, a tabela, o mapa, a ficha, o PDF e o chat.
 
 - **Orçamento**: limite de CapEx (R$ milhões) usado para montar o portfólio.
-- **Alavancas**: Subsídio FUST/BNDES, Backhaul Acordo TCU e Receita âncora ENEC. Ligar uma alavanca recalcula payback e municípios viáveis.
-- **Ctrl+K** (ou Cmd+K): paleta de comandos. Navega entre telas, aplica o cenário completo e abre a ficha de um município pelo nome.
+- **Escopo**: vem dos filtros (UF, região, Semiárido); o portfólio só escolhe municípios desse escopo.
+- **Objetivo**: *Retorno* maximiza o VPL, *Equilíbrio* combina impacto educacional e VPL, *Alunos* maximiza os alunos em escolas sem internet.
+- **Premissas**: ARPU, adesão, margem EBITDA, WACC e custos. Com as premissas padrão, o payback simples não cai abaixo de cerca de 5,7 anos e o VPL é negativo; ajuste as premissas para explorar cenários viáveis.
+- **Alavancas**:
+  - *Subsídio FUST/BNDES*: custo de capital menor; melhora o VPL, mas não altera o payback simples.
+  - *Backhaul Acordo TCU*: zera o CapEx de backhaul dos municípios do acordo. Fica desabilitada quando a lista de municípios não está carregada.
+  - *Receita âncora ENEC*: receita B2G por escola sem internet para aprendizagem.
+  Os KPIs mostram o efeito das alavancas sobre o mesmo portfólio.
+- **Ctrl+K** (ou Cmd+K): paleta de comandos. Navega entre telas, aplica o cenário completo, abre a ficha de um município e interpreta pedidos em linguagem natural.
+
+## Filtros e mapa
+
+Os filtros (busca, UF, região, Semiárido, quadrante, só portfólio, só favoritos) são os mesmos no Painel e em Municípios e valem para o mapa, as contagens de quadrante, o histograma e a tabela.
+Ao filtrar, o mapa enquadra o recorte. No mapa:
+
+- **Regiões**: os botões Brasil, Norte, Nordeste, Sudeste, Sul e Centro-Oeste ficam sobre o mapa, com a contagem de municípios de cada uma. Escolher uma região filtra o mapa, a tabela, o portfólio e o chat; clicar de novo (ou em Brasil) volta ao país todo. É o mesmo filtro de região da barra de filtros.
+
+- **Colorir por** quadrante, payback, score total ou alunos sem internet (a legenda muda junto).
+- **Camadas**: municípios com backhaul de fibra (Anatel) e bolhas de alunos sem internet.
+- Passar o mouse mostra score, payback, CapEx, VPL e alunos; passar o mouse numa linha da tabela destaca o município no mapa; abrir a ficha leva o mapa até ele.
+
+Links diretos: `/?uf=BA&semiarido=1`, `/?regiao=Nordeste&quadrante=Q1`, `/?view=sol` (aba Solução) e `/?m=<código IBGE>` (abre a ficha).
+
+## Ficha e PDF
+
+O botão **Imprimir / PDF** gera uma página com cabeçalho (data, fonte dos dados, cenário e campos neutros), diagnóstico, business case e a justificativa por IA, se já tiver sido gerada. Na janela de impressão, escolha "Salvar como PDF".
 
 ## KPIs do Painel
 
@@ -45,17 +71,18 @@ Exemplos de perguntas que ele responde com dados do motor:
 - "Qual município da Bahia você recomenda? Quero o menor payback."
 - "Tenho R$ 150 milhões para investir em Pernambuco. Como distribuo?"
 - "Compare Feira de Santana e Vitória da Conquista."
+- "Quais cidades do semiárido têm mais alunos conectados por real investido?" (se nenhum município atender a uma restrição, como payback abaixo de 5 anos, o assistente avisa antes de listar os mais próximos)
 - "Quantas escolas estão sem internet em Porto Alegre?"
 - "Como é calculado o score C?"
 
-O assistente conhece a tela em que você está (município aberto, orçamento e filtros), então pode responder "e este município?".
+O assistente conhece a tela em que você está (município aberto, orçamento, filtros, alavancas e premissas), então pode responder "e este município?" e calcula com o mesmo cenário.
 Cada resposta mostra as fontes usadas. Uma recomendação do assistente é uma priorização do modelo, não uma decisão de investimento.
 
 ## Qualidade dos dados
 
 Alguns campos não têm fonte pública municipal e entram no motor como valor neutro (igual para todos os municípios) ou aproximado:
 
-- **Neutros**: participação de mercado da Vivo, HHI e share de pequenas prestadoras (Anatel), velocidade medida (NIC.br), acordo de migração, elegibilidade FUST e escolas EACE.
+- **Neutros**: participação de mercado da Vivo, HHI e share de pequenas prestadoras (Anatel), velocidade medida (NIC.br), acordo de migração (a lista nominal dos municípios não é publicada em formato aberto, por isso a alavanca TCU fica desabilitada), elegibilidade FUST e escolas EACE.
 - **Aproximados**: renda média (por UF), IVS (por UF) e elevação (SRTM no centroide do município).
 
 Campos neutros não diferenciam municípios; a recomendação deve ser lida com essa limitação. Quando a base real não está disponível, o app mostra um aviso de dados demonstrativos.
