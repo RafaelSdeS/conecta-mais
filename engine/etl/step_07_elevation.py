@@ -1,29 +1,22 @@
 """
-Step 7 — Elevação média municipal via SRTM 90m (OpenTopography ou biblioteca elevation).
+Step 7 — Elevação municipal via SRTM 90m (OpenTopoData, API pública sem chave).
 
 Produz DataFrame com [id_municipio, elevacao_media_m].
 
-Fonte primária: OpenTopography API (SRTM 90m) + rasterstats.
-  Requer:
-    1. Registro gratuito em https://portal.opentopography.org
-    2. API key definida na variável de ambiente OPENTOPOGRAPHY_API_KEY
-    3. pip install rasterio rasterstats
+Fonte: https://api.opentopodata.org/v1/srtm90m — elevação SRTM 90m no centroide do
+município (aproximação da média municipal). Limites públicos: 100 pontos por
+requisição, 1 requisição/s, 1.000 requisições/dia (≈56 para os 5.571 municípios).
 
-Fallback: 400m (elevação média nacional aproximada do Brasil).
-  O campo elevação tem peso 20% dentro do score C (custo), que tem peso 25%
-  no score total. Impacto de usar o valor médio: diferencial de ~5 pontos
-  no score C para municípios extremos. Aceitável para o MVP.
+Fallback: 400m (elevação média nacional aproximada) para municípios sem leitura
+ou quando a API estiver indisponível. O campo pesa 20% do score C.
 
-Para ativar a coleta real:
-  export OPENTOPOGRAPHY_API_KEY=sua_chave
-  rm engine/data/raw/elevacao_municipios.parquet
-  python -m etl.step_07_elevation
+Para refazer a coleta: rm engine/data/raw/elevacao_municipios.parquet
 """
 
 from __future__ import annotations
 
 import logging
-import os
+import time
 
 import pandas as pd
 
@@ -33,27 +26,33 @@ logger = logging.getLogger(__name__)
 
 CACHE = RAW_DIR / "elevacao_municipios.parquet"
 ELEVACAO_FALLBACK = 400.0  # metros — média nacional aproximada
+OPENTOPODATA_URL = "https://api.opentopodata.org/v1/srtm90m"
 
 
 def _fetch_from_api(municipios: pd.DataFrame) -> pd.DataFrame | None:
-    """
-    Tenta calcular elevação via OpenTopography + rasterstats.
-    Requer rasterio, rasterstats e API key.
-    Retorna None se qualquer dependência estiver faltando.
-    """
-    api_key = os.getenv("OPENTOPOGRAPHY_API_KEY", "").strip()
-    if not api_key:
-        return None
-    try:
-        import rasterio  # noqa: F401
-        import rasterstats  # noqa: F401
-    except ImportError:
-        logger.warning("rasterio ou rasterstats não instalado. Use: pip install rasterio rasterstats")
-        return None
+    """Consulta o SRTM 90m no centroide de cada município. None se a API falhar."""
+    import requests
 
-    # Importação real só se tudo estiver disponível
-    from etl._elevation_api import fetch_all_elevations
-    return fetch_all_elevations(municipios, api_key)
+    pts = municipios.dropna(subset=["lat", "lon"])
+    out: dict[str, float] = {}
+    for i in range(0, len(pts), 100):
+        lote = pts.iloc[i : i + 100]
+        locs = "|".join(f"{la:.5f},{lo:.5f}" for la, lo in zip(lote["lat"], lote["lon"]))
+        for tentativa in range(3):
+            try:
+                r = requests.get(OPENTOPODATA_URL, params={"locations": locs}, timeout=30)
+                r.raise_for_status()
+                for mid, res in zip(lote["id_municipio"], r.json()["results"]):
+                    if res.get("elevation") is not None:
+                        out[mid] = max(float(res["elevation"]), 0.0)
+                break
+            except Exception as exc:
+                logger.warning("OpenTopoData lote %d, tentativa %d: %s", i // 100, tentativa + 1, exc)
+                time.sleep(3)
+        else:
+            return None
+        time.sleep(1.1)  # limite público: 1 requisição/s
+    return pd.DataFrame({"id_municipio": list(out), "elevacao_media_m": list(out.values())})
 
 
 def run(municipios: pd.DataFrame | None = None) -> pd.DataFrame:
@@ -66,15 +65,18 @@ def run(municipios: pd.DataFrame | None = None) -> pd.DataFrame:
         mun_cache = RAW_DIR / "ibge_municipios.parquet"
         municipios = pd.read_parquet(mun_cache) if mun_cache.exists() else pd.DataFrame({"id_municipio": []})
 
+    if "lat" not in municipios.columns:  # execução isolada do step: usa os centroides em cache
+        municipios = municipios.merge(pd.read_parquet(RAW_DIR / "ibge_centroids.parquet"), on="id_municipio", how="left")
+
     result = _fetch_from_api(municipios)
 
     if result is not None and len(result) > 100:
-        logger.info("Elevação via OpenTopography: %d municípios", len(result))
-        df = result
+        logger.info("Elevação via OpenTopoData: %d municípios", len(result))
+        df = municipios[["id_municipio"]].merge(result, on="id_municipio", how="left")
+        df["elevacao_media_m"] = df["elevacao_media_m"].fillna(ELEVACAO_FALLBACK)
     else:
         logger.warning(
-            "OpenTopography API indisponível (defina OPENTOPOGRAPHY_API_KEY e instale rasterio). "
-            "Usando elevação média neutra de %.0fm para todos os municípios.",
+            "OpenTopoData indisponível. Usando elevação neutra de %.0fm para todos os municípios.",
             ELEVACAO_FALLBACK,
         )
         df = pd.DataFrame({

@@ -6,6 +6,9 @@ Pydantic (Municipio) e grava o SQLite final com as tabelas:
   - municipios (5.570 linhas)
   - escolas   (137.847 linhas)
   - validacao_localizacao (vazia — preenchida por step futuro de geocodificação)
+  - municipios_engine (todos os campos do schema Municipio, usados pelo motor)
+  - backhaul (centroides dos municípios com backhaul de fibra)
+  - data_quality (por campo: real, aproximado ou neutro)
 
 Uso:
   python -m etl.run_etl [--output engine/data/conecta_mais.db]
@@ -169,6 +172,31 @@ def _validate_schema(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     return pd.DataFrame(valid_rows), errors
 
 
+# Campos do motor que não vêm de fonte municipal exata (ver docstrings dos steps).
+_APROXIMADOS = {"renda_media", "ivs", "elevacao_media_m"}  # por UF ou no centroide, não média municipal
+_CAMPOS_QUALIDADE = [
+    "domicilios_urbanos", "renda_media", "acessos_fibra", "acessos_total_bl",
+    "market_share_vivo_movel", "hhi", "ppp_share", "area_km2", "elevacao_media_m",
+    "matriculas_publicas", "matriculas_rurais_pct", "velocidade_medida_mbps",
+    "alunos_maior_turno_est", "escolas_sem_internet_aprendizagem", "ivs",
+    "tem_backhaul_fibra", "acordo_migracao", "fust_elegivel", "eace_escolas",
+]
+
+
+def _data_quality(df: pd.DataFrame) -> pd.DataFrame:
+    """Classifica cada campo: coluna constante = fallback neutro (sem informação)."""
+    rows = []
+    for campo in _CAMPOS_QUALIDADE:
+        serie = df[campo]
+        if serie.nunique() <= 1:
+            tipo, cobertura = "neutro", 0.0
+        else:
+            tipo = "aproximado" if campo in _APROXIMADOS else "real"
+            cobertura = float((serie != serie.mode().iloc[0]).mean())
+        rows.append((campo, tipo, round(cobertura, 4)))
+    return pd.DataFrame(rows, columns=["campo", "tipo", "cobertura"])
+
+
 def _write_sqlite(
     df_municipios: pd.DataFrame,
     df_escolas: pd.DataFrame,
@@ -278,6 +306,17 @@ def _write_sqlite(
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, esc_rows)
     logger.info("Escolas inseridas: %d", len(esc_rows))
+
+    # --- Tabelas do motor (scores, financeiro, otimização) ---
+    engine = df_municipios.drop(columns=["dist_backhaul_km"], errors="ignore")
+    engine.to_sql("municipios_engine", con, index=False)
+    engine.loc[engine["tem_backhaul_fibra"], ["id_municipio", "lat", "lon"]].to_sql(
+        "backhaul", con, index=False
+    )
+    _data_quality(engine).to_sql("data_quality", con, index=False)
+    for campo, tipo, _ in _data_quality(engine).itertuples(index=False):
+        if tipo != "real":
+            logger.warning("Qualidade: %s = %s", campo, tipo)
 
     con.commit()
     con.close()
