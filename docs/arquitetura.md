@@ -105,3 +105,6 @@ CSV / GeoParquet
 | PuLP `< 4.0` | API quebrou na v4; pino no `pyproject.toml` |
 | `astype(object).where()` no loader | Converte `NaN` pandas para `None` Python antes do Pydantic |
 | `df_to_records()` na API | `json.dumps` não aceita `float('nan')`; helper centraliza a limpeza |
+| Base real com fallback demonstrativo | `api/main.py` carrega `municipios_engine` e `backhaul` do SQLite do ETL; sem eles, usa os CSVs mock e `/health` informa `fonte_dados` |
+| `data_quality` no SQLite | O ETL classifica cada campo como real, aproximado ou neutro; agente e telas avisam sobre os limites |
+| IA em duas camadas | Chat com tool calling (ranking, portfólio, comparação) e `/ia/*` para textos de uma rodada; ambos redigidos pelo Granite sobre números do motor |

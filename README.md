@@ -61,7 +61,7 @@ npm run dev
 ```
 
 Acesse `http://localhost:5173`.  
-O frontend funciona **sem o backend** — dados mock são carregados automaticamente como fallback.  
+Sem o backend, o frontend (em localhost) carrega dados demonstrativos e mostra um aviso na tela.  
 A documentação interativa da API fica em `http://localhost:8000/docs`.
 
 ---
@@ -79,9 +79,9 @@ python -m pytest
 
 | View | Descrição |
 |---|---|
-| **Painel** | KPIs animados, mapa Leaflet com 417 municípios, quadrantes e histograma de payback |
+| **Painel** | KPIs animados, mapa Leaflet com todos os municípios, quadrantes, histograma de payback e explicação do portfólio por IA |
 | **Municípios** | Tabela ordenável com busca, filtros, favoritos e portfólio |
-| **Agente** | Chat com agente de IA simulado (substituível por watsonx.ai Granite) |
+| **Agente** | Chat com o IBM Granite (watsonx.ai): ranking, portfólio, comparação e dúvidas de uso |
 | **Solução** | Arquitetura IBM watsonx, ROI estimado e fases de entrega |
 
 **Atalhos:** `Ctrl+K` abre a paleta de comandos. Clique em qualquer município para abrir a ficha executiva.
@@ -114,7 +114,7 @@ engine/
     financial/      ← CapEx, payback, VPL, sensibilidade
     optimizer/      ← portfólio MILP (PuLP + CBC)
     backtest/       ← backtest 2021→2025
-  data/             ← dados mock (CSV com ~50 municípios reais)
+  data/             ← SQLite do ETL (base real) e CSVs demonstrativos de fallback
   tests/            ← pytest
 ```
 
@@ -137,19 +137,29 @@ Veja [`docs/api.md`](docs/api.md) para exemplos de request/response.
 
 ---
 
-## Dados mock
+## Dados
 
-Os CSVs em `engine/data/` simulam a base real. Os campos seguem as fontes da proposta:
+A API usa a base real quando `engine/data/conecta_mais.db` (ou `CONECTA_SQLITE_PATH`) tem as
+tabelas do motor; caso contrário cai nos CSVs demonstrativos de `engine/data/` e `GET /health`
+informa `fonte_dados: "mock"`. Para gerar ou atualizar a base real:
 
-| Campo | Fonte real |
-|---|---|
-| `acessos_fibra`, `ppp_share`, `hhi` | Anatel — `br_anatel_banda_larga_fixa` |
-| `tem_backhaul_fibra` | Anatel — CSV "Infraestrutura: Backhaul em municípios" |
-| `domicilios_urbanos`, `renda_media`, `area_km2` | IBGE Censo 2022 (SIDRA tabela 1301) |
-| `matriculas_publicas`, `escolas_sem_internet_aprendizagem` | INEP — Censo Escolar |
-| `velocidade_medida_mbps` | Medidor Educação Conectada (NIC.br/MEC) |
-| `ivs` | IPEA — Atlas da Vulnerabilidade Social |
-| `elevacao_media_m` | SRTM 90m |
-| `acordo_migracao`, `fust_elegivel`, `eace_escolas` | Acordo TCU, editais FUST, EACE |
+```bash
+cd engine
+python -m etl.run_etl
+```
 
-Para substituir pelos dados reais: trocar os CSVs por GeoParquet no [`engine/conecta/data/loader.py`](engine/conecta/data/loader.py).
+| Campo | Fonte | Estado |
+|---|---|---|
+| `domicilios_urbanos`, `acessos_fibra`, `acessos_total_bl`, `area_km2`, `lat`/`lon` | IBGE e Anatel (densidade) | real |
+| `tem_backhaul_fibra` | Anatel — backhaul (Base dos Dados) | real |
+| `matriculas_*`, `alunos_maior_turno_est`, `escolas_sem_internet_aprendizagem` | INEP — Censo Escolar 2024 | real |
+| `renda_media`, `ivs` | média/IVS por UF (IBGE, IPEA) | aproximado |
+| `elevacao_media_m` | SRTM 90m no centroide (OpenTopoData) | aproximado |
+| `market_share_vivo_movel`, `hhi`, `ppp_share` | microdados Anatel por prestadora | neutro |
+| `velocidade_medida_mbps` | NIC.br / Medidor Educação Conectada | neutro |
+| `acordo_migracao`, `fust_elegivel`, `eace_escolas` | Acordo TCU, editais FUST, EACE | neutro |
+
+Campos neutros têm o mesmo valor em todos os municípios e não diferenciam o ranking. Para preenchê-los,
+coloque os CSVs descritos nos steps 6 e 8 em `engine/data/raw/` (`nicbr_velocidade.csv`, `acordo_migracao.csv`,
+`fust_municipios.csv`, `eace_municipios.csv`), apague o cache do step correspondente (`.parquet` na mesma pasta)
+e rode o ETL de novo. A tabela `data_quality` do banco registra o estado de cada campo.

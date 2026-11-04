@@ -170,8 +170,13 @@ Retorna o resultado do backtest 2021→2025.
 ## GET `/health`
 
 ```json
-{ "status": "ok" }
+{ "status": "ok", "fonte_dados": "real" }
 ```
+
+`fonte_dados` é `real` quando o SQLite do ETL contém as tabelas do motor
+(`municipios_engine` e `backhaul`) e `mock` quando a API caiu no fallback
+demonstrativo (`engine/data/mock_*.csv`). O caminho do banco vem de
+`CONECTA_SQLITE_PATH` (padrão `engine/data/conecta_mais.db`).
 
 ---
 
@@ -267,6 +272,18 @@ bancos SQLite são ignorados pelo Git. Nunca coloque credenciais no frontend.
 }
 ```
 
+`context` é opcional e descreve a tela do usuário (`pagina`, `municipio_id`,
+`municipio_nome`, `orcamento_mi`, `quadrante`, `busca`); entra no prompt como
+dado, nunca como instrução.
+
+Ferramentas do agente: busca e indicadores de escolas (SQLite), scores e business
+case de um município, `ranking_municipios`, `otimizar_portfolio`,
+`comparar_municipios`, `consultar_qualidade_dados` e consulta à documentação (RAG).
+Quando as ferramentas terminam, o Granite redige a resposta final; o texto
+determinístico só é usado se essa chamada falhar. As fontes retornadas em
+`data_sources` são `sqlite_integrado`, `engine` (motor sobre a base real),
+`engine_mock` (demonstrativo) e `rag_tecnico`.
+
 `message` é obrigatório (1–4.000 caracteres). `history` é opcional e aceita até
 12 mensagens `user`/`assistant`; instruções de sistema e mensagens de ferramenta
 não podem ser enviadas pelo cliente.
@@ -352,3 +369,43 @@ afirmar elegibilidade ao FUST ou interpretar normas. Documentos oficiais só
 devem ser adicionados ao catálogo depois de sua origem e versão serem
 verificadas. Conteúdo recuperado é tratado pelo agente como dado não confiável,
 nunca como instruções.
+
+---
+
+## Endpoints de IA (`/ia`)
+
+Usam o IBM Granite sem ferramentas, sobre números já calculados pelo motor.
+Erros do watsonx.ai retornam o status e a mensagem pública em `detail`.
+
+### POST `/ia/justificativa`
+
+```json
+{ "id_municipio": "2927408" }
+```
+
+Resposta: `{ "texto": "...", "fonte_dados": "real" }`. O texto é cacheado por município
+enquanto a API estiver no ar.
+
+### POST `/ia/portfolio-narrativa`
+
+```json
+{ "ids": ["2922607", "2916708"], "orcamento_mi": 100 }
+```
+
+Explica o portfólio (composição, CapEx, payback e trade-off impacto × retorno).
+Os números são recalculados no servidor a partir dos ids.
+
+### POST `/ia/filtros`
+
+```json
+{ "texto": "municípios do Ceará no quadrante Q1" }
+```
+
+Resposta: `{ "uf": "CE", "quadrante": "Q1", "busca": null, "apenas_portfolio": false }`.
+Se o modelo não devolver um JSON válido, a API responde 422 e nada é aplicado.
+
+### Auditoria
+
+Cada chamada de `/chat` e `/ia/*` acrescenta uma linha JSON (data, endpoint, modelo,
+latência, ferramentas, fontes) em `engine/data/auditoria_ia.jsonl`, ou no caminho de
+`CONECTA_AUDIT_LOG`. O texto das perguntas não é gravado.

@@ -35,10 +35,10 @@ Backend de dados + camada inteligente. Os dados que ingere são os mesmos que os
 |---|---|---|
 | Pipeline ETL (Anatel, INEP, IBGE, NIC.br) | §6 | ✅ Concluído |
 | Base municipal e de escolas em GeoParquet | §6.2 | ✅ Concluído |
-| Agente Orquestrador (watsonx Orchestrate) | §5 — Componente 1 | ✅ Concluído |
+| Agente Orquestrador (tool calling com Granite; watsonx Orchestrate ainda não integrado) | §5 — Componente 1 | 🟡 Parcial |
 | Agente Regulatório (RAG com Granite) | §5 — Componente 6 | ✅ Concluído |
 | Agente de Justificativa (Granite via watsonx.ai) | §5 — Componente 7 | ✅ Concluído |
-| Registro e auditoria no watsonx.governance | §5 — Componente 7 | ✅ Concluído |
+| Registro e auditoria das chamadas de IA (log JSONL local; watsonx.governance ainda não integrado) | §5 — Componente 7 | 🟡 Parcial |
 
 ---
 
