@@ -63,7 +63,8 @@ export default function MunView() {
   const [favs]              = useFavorites()
   const [sortKey, setSortKey] = useState<SortKey>('payback')
   const [sortDir, setSortDir] = useState<1 | -1>(1)
-  const [portfolioOnly, setPortfolioOnly] = useState(false)
+  const portfolioOnly = filters.portfolioOnly
+  const setPortfolioOnly = (v: boolean) => setFilters({ portfolioOnly: v })
   const [favoritesOnly, setFavoritesOnly] = useState(false)
 
   const portfolioIds = useMemo(
@@ -96,6 +97,7 @@ export default function MunView() {
       .filter((m) => {
         if (search && !m.nome.toLowerCase().includes(search)) return false
         if (q && m.quadrante !== q) return false
+        if (filters.uf && m.uf !== filters.uf) return false
         if (portfolioOnly && !portfolioIds.has(m.id_municipio)) return false
         if (favoritesOnly && !favs.has(m.id_municipio)) return false
         return true
@@ -188,6 +190,17 @@ export default function MunView() {
             onChange={(e) => setFilters({ search: e.target.value })}
             style={inputStyle}
           />
+
+          {filters.uf && (
+            <button
+              type="button"
+              onClick={() => setFilters({ uf: '' })}
+              aria-label={`Remover filtro de UF ${filters.uf}`}
+              style={{ ...inputStyle, cursor: 'pointer' }}
+            >
+              UF: {filters.uf} ✕
+            </button>
+          )}
 
           <select
             aria-label="Filtrar por quadrante"

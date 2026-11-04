@@ -7,7 +7,7 @@ export interface ChatHistoryMessage {
   content: string
 }
 
-export type ChatSourceId = 'sqlite_integrado' | 'engine_mock' | 'rag_tecnico'
+export type ChatSourceId = 'sqlite_integrado' | 'engine' | 'engine_mock' | 'rag_tecnico'
 
 export interface ChatDataSource {
   id: ChatSourceId
@@ -91,6 +91,7 @@ function parseSources(value: unknown): ChatDataSource[] {
     if (!isRecord(source)) return false
     return (
       (source.id === 'sqlite_integrado' ||
+        source.id === 'engine' ||
         source.id === 'engine_mock' ||
         source.id === 'rag_tecnico') &&
       (source.tipo === 'real' ||
@@ -200,9 +201,18 @@ function errorMessage(status: number, code: string | undefined): string {
  * Envia a pergunta e até 12 mensagens anteriores compatíveis com o FastAPI.
  * O Vite reescreve /api/chat para /chat no backend local.
  */
+export interface ChatContext {
+  municipio_id?: string
+  municipio_nome?: string
+  orcamento_mi?: number
+  quadrante?: string
+  busca?: string
+}
+
 export async function getAnswer(
   question: string,
   history: ChatHistoryMessage[],
+  context?: ChatContext,
 ): Promise<ChatAnswer> {
   let response: Response
   try {
@@ -212,6 +222,7 @@ export async function getAnswer(
       body: JSON.stringify({
         message: question,
         history: history.slice(-MAX_HISTORY_MESSAGES),
+        ...(context ? { context } : {}),
       }),
     })
   } catch {

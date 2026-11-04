@@ -38,6 +38,7 @@ function renderText(text: string): ReactNode[] {
 
 const SOURCE_LABELS: Record<ChatDataSource['id'], string> = {
   sqlite_integrado: 'Dados reais · SQLite integrado',
+  engine: 'Motor Conecta+ sobre a base real (campos neutros sinalizados)',
   engine_mock: 'Resultado demonstrativo · motor Conecta+',
   rag_tecnico: 'Documentação interna · RAG técnico (não oficial)',
 }

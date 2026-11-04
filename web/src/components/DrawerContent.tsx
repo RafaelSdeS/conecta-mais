@@ -13,6 +13,7 @@ import { useAppStore } from '../store/appStore'
 import { useFavorites } from '../hooks/useFavorites'
 import { useToast } from '../hooks/useToast'
 import QuadrantBadge from './QuadrantBadge'
+import AiText from './AiText'
 import { QUADRANT_NAMES } from '../utils/constants'
 import { fmtMi, fmtAnos, fmtN0 } from '../utils/format'
 import { getTechRecommendation, calcFinancial } from '../utils/calculation'
@@ -155,6 +156,12 @@ export default function DrawerContent({ municipio: m }: Props) {
       <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--mu)' }}>
         · {QUADRANT_NAMES[m.quadrante]}
       </span>
+
+      <AiText
+        key={m.id_municipio}
+        label="Justificativa IA"
+        run={() => api.postJustificativa(m.id_municipio).then((r) => r.texto)}
+      />
 
       {/* Diagnóstico */}
       <h3>Diagnóstico</h3>

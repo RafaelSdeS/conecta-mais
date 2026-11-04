@@ -57,6 +57,7 @@ function AppInner({
   const setBudget      = useAppStore((s) => s.setBudget)
   const setAllLevers   = useAppStore((s) => s.setAllLevers)
   const kpis           = useAppStore((s) => s.kpis)
+  const fonteDados     = useAppStore((s) => s.fonteDados)
   const { toast }      = useToast()
 
   const [currentView, setCurrentView] = useState<ViewId>('painel')
@@ -178,7 +179,7 @@ function AppInner({
               {theme === 'dark' ? '☀ Tema claro' : '☾ Tema escuro'}
             </button>
             <p style={{ fontSize: 11, color: 'var(--mu)', margin: 0 }} className="sidebar-note">
-              Protótipo com dados simulados.<br />
+              {fonteDados === 'mock' ? 'Protótipo com dados simulados.' : 'Base real integrada.'}<br />
               IBM SkillsBuild &amp; Fundação Telefônica Vivo.
             </p>
           </div>
@@ -187,6 +188,14 @@ function AppInner({
         {/* ── Área principal ───────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100svh' }}>
           <Header />
+          {fonteDados === 'mock' && (
+            <div
+              role="status"
+              style={{ padding: '8px 24px', background: 'var(--q2b)', color: '#fff', fontSize: 13 }}
+            >
+              Dados demonstrativos: a base real não está carregada. Os resultados não representam recomendações.
+            </div>
+          )}
           <main
             id="main-content"
             tabIndex={-1}

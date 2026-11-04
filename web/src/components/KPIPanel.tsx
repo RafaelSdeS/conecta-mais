@@ -4,11 +4,15 @@
 
 import { useAppStore } from '../store/appStore'
 import KPICard from './KPICard'
+import AiText from './AiText'
+import { api } from '../api/client'
 import { fmtMi, fmtAnos, fmtN0 } from '../utils/format'
 
 export default function KPIPanel() {
   const kpis   = useAppStore((s) => s.kpis)
   const budget = useAppStore((s) => s.budget)
+  const total  = useAppStore((s) => s.municipios.length)
+  const portfolio = useAppStore((s) => s.portfolio)
 
   const pay   = kpis?.paybackMedio     ?? 0
   const count = kpis?.countPortfolio   ?? 0
@@ -17,6 +21,7 @@ export default function KPIPanel() {
   const pay0  = kpis?.paybackQ2Baseline ?? 0
 
   return (
+    <>
     <div
       style={{
         display: 'grid',
@@ -35,7 +40,7 @@ export default function KPIPanel() {
         label="Municípios no portfólio"
         value={count}
         format={(v) => String(Math.round(v))}
-        detail="de 417"
+        detail={`de ${total}`}
       />
       <KPICard
         label="Alunos conectados"
@@ -50,5 +55,15 @@ export default function KPIPanel() {
         detail={`de R$ ${budget} mi de orçamento`}
       />
     </div>
+    <AiText
+      label="Explicar portfólio (IA)"
+      disabled={portfolio.length === 0}
+      run={() =>
+        api
+          .postPortfolioNarrativa(portfolio.map((m) => m.id_municipio), budget)
+          .then((r) => r.texto)
+      }
+    />
+    </>
   )
 }

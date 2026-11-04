@@ -17,9 +17,13 @@ export function useInitialData() {
   const setMunicipios = useAppStore((s) => s.setMunicipios)
   const setLoading    = useAppStore((s) => s.setLoading)
   const setError      = useAppStore((s) => s.setError)
+  const setFonteDados = useAppStore((s) => s.setFonteDados)
 
   useEffect(() => {
     setLoading(true)
+    api.getHealth()
+      .then((h) => setFonteDados(h.fonte_dados))
+      .catch(() => {})  // sem health, o erro de /municipios abaixo já avisa o usuário
     api.getMunicipios()
       .then((data) => {
         setMunicipios(data)
@@ -28,6 +32,7 @@ export function useInitialData() {
         if (IS_DEV) {
           // Dev sem back rodando — injeta mock silenciosamente
           setMunicipios(generateMockMunicipios())
+          setFonteDados('mock')
           setError(null)
         } else {
           // Produção — expõe erro para o usuário

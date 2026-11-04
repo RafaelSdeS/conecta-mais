@@ -11,6 +11,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../store/appStore'
 import { VIEWS } from '../utils/constants'
 import { calcFinancial } from '../utils/calculation'
+import { api } from '../api/client'
+import { useToast } from '../hooks/useToast'
 
 interface PaletteItem {
   label:       string
@@ -30,6 +32,8 @@ export default function CommandPalette({ onNavigate, onApplyAll }: Props) {
   const municipios   = useAppStore((s) => s.municipios)
   const levers       = useAppStore((s) => s.levers)
   const openDrawer   = useAppStore((s) => s.openDrawer)
+  const setFilters   = useAppStore((s) => s.setFilters)
+  const { toast }    = useToast()
 
   const [query, setQuery]   = useState('')
   const [active, setActive] = useState(0)
@@ -97,6 +101,30 @@ export default function CommandPalette({ onNavigate, onApplyAll }: Props) {
           action:      () => { openDrawer(m.id_municipio); close() },
         })
       })
+  }
+
+  // Texto livre → filtros via IBM Granite
+  if (q.length >= 3) {
+    items.push({
+      label: `Pedir à IA: “${query.trim()}”`,
+      description: 'Filtros por linguagem natural',
+      action: () => {
+        close()
+        toast('Interpretando o pedido com IA…')
+        api.postFiltros(query.trim())
+          .then((f) => {
+            setFilters({
+              uf: f.uf ?? '',
+              quadrante: f.quadrante ?? '',
+              search: f.busca ?? '',
+              portfolioOnly: f.apenas_portfolio,
+            })
+            onNavigate('mun')
+            toast('Filtros aplicados na tela Municípios')
+          })
+          .catch((e: unknown) => toast(e instanceof Error ? e.message : String(e)))
+      },
+    })
   }
 
   // Scroll automático para item ativo

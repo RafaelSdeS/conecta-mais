@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import ChatMessage from '../components/ChatMessage'
+import { useAppStore } from '../store/appStore'
 import {
   ChatServiceError,
   getAnswer,
@@ -61,7 +62,14 @@ export default function ChatView() {
     setLoading(true)
 
     try {
-      const answer = await getAnswer(q, history)
+      const { selectedId, municipios, budget, filters } = useAppStore.getState()
+      const selecionado = municipios.find((m) => m.id_municipio === selectedId)
+      const answer = await getAnswer(q, history, {
+        ...(selecionado ? { municipio_id: selecionado.id_municipio, municipio_nome: selecionado.nome } : {}),
+        orcamento_mi: budget,
+        ...(filters.quadrante ? { quadrante: filters.quadrante } : {}),
+        ...(filters.search ? { busca: filters.search } : {}),
+      })
       setHistory(answer.history)
 
       setMessages((prev) =>

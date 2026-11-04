@@ -43,7 +43,7 @@ export default function PanelView() {
     <div>
       {/* Cabeçalho */}
       <div style={{ marginBottom: 16 }}>
-        <h1>Expansão na Bahia: {totalMunicipios} municípios</h1>
+        <h1>Expansão da conectividade: {totalMunicipios} municípios</h1>
         <p style={{ color: 'var(--mu)' }}>
           Ajuste o orçamento e as alavancas acima. O mapa, os quadrantes e o portfólio recalculam em seguida.
         </p>

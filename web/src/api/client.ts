@@ -21,6 +21,20 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>
 }
 
+/** POST dos endpoints de IA: devolve a mensagem de erro do backend (campo detail). */
+async function postIa<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const detail = await res.json().then((j) => j?.detail).catch(() => undefined)
+    throw new Error(typeof detail === 'string' ? detail : `Falha na IA (HTTP ${res.status})`)
+  }
+  return res.json() as Promise<T>
+}
+
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
 export interface Municipio {
@@ -140,7 +154,26 @@ export interface BacktestResult {
 
 // ── Endpoints ─────────────────────────────────────────────────────────────────
 
+export type FonteDados = 'real' | 'mock'
+
+export interface FiltrosIA {
+  uf: string | null
+  quadrante: string | null
+  busca: string | null
+  apenas_portfolio: boolean
+}
+
 export const api = {
+  getHealth: () => get<{ status: string; fonte_dados: FonteDados }>('/health'),
+
+  postJustificativa: (id_municipio: string) =>
+    postIa<{ texto: string }>('/ia/justificativa', { id_municipio }),
+
+  postPortfolioNarrativa: (ids: string[], orcamento_mi: number) =>
+    postIa<{ texto: string }>('/ia/portfolio-narrativa', { ids, orcamento_mi }),
+
+  postFiltros: (texto: string) => postIa<FiltrosIA>('/ia/filtros', { texto }),
+
   getMunicipios: (params?: { uf?: string; quadrante?: string }) => {
     const qs = new URLSearchParams(
       Object.entries(params ?? {}).filter(([, v]) => v != null) as [string, string][]

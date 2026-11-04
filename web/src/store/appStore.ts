@@ -6,7 +6,7 @@
  */
 
 import { create } from 'zustand'
-import type { Municipio, PortfolioResult } from '../api/client'
+import type { FonteDados, Municipio, PortfolioResult } from '../api/client'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -25,6 +25,7 @@ export interface Layers {
 
 export interface Filters {
   search:         string
+  uf:             string
   quadrante:      string
   portfolioOnly:  boolean
   favoritesOnly:  boolean
@@ -59,6 +60,7 @@ interface AppState {
 
   // Dados
   municipios: Municipio[]
+  fonteDados: FonteDados | null
   portfolio: Municipio[]
   kpis: KPIs | null
 
@@ -83,6 +85,7 @@ interface AppState {
 
   // Actions — dados
   setMunicipios: (m: Municipio[]) => void
+  setFonteDados: (f: FonteDados) => void
   setPortfolioResult: (r: PortfolioResult) => void
 
   // Actions — UI
@@ -100,10 +103,11 @@ export const useAppStore = create<AppState>((set) => ({
   budget: 30,
   levers: { fust: false, tcu: false, enec: false },
   layers: { backhaul: true, schools: false, mobile: false, selected: true },
-  filters: { search: '', quadrante: '', portfolioOnly: false, favoritesOnly: false },
+  filters: { search: '', uf: '', quadrante: '', portfolioOnly: false, favoritesOnly: false },
   sort: { key: 'pay', dir: 1 },
 
   municipios: [],
+  fonteDados: null,
   portfolio: [],
   kpis: null,
 
@@ -126,6 +130,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   // Dados
   setMunicipios: (m) => set({ municipios: m }),
+  setFonteDados: (f) => set({ fonteDados: f }),
   setPortfolioResult: (r) =>
     set({
       portfolio: r.municipios,
