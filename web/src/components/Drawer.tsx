@@ -31,6 +31,13 @@ export default function Drawer() {
     return () => window.removeEventListener('keydown', handler)
   }, [drawerOpen, closeDrawer])
 
+  // Marca o body para o CSS de impressão mostrar só a ficha; desfaz quando a janela de impressão fecha.
+  function imprimirFicha() {
+    document.body.classList.add('imprimindo-ficha')
+    window.addEventListener('afterprint', () => document.body.classList.remove('imprimindo-ficha'), { once: true })
+    window.print()
+  }
+
   return (
     <>
       {/* Overlay */}
@@ -48,6 +55,7 @@ export default function Drawer() {
 
       {/* Drawer */}
       <aside
+        className="print-sheet"
         role="dialog"
         aria-modal="true"
         aria-labelledby="drawer-title"
@@ -67,7 +75,7 @@ export default function Drawer() {
         }}
       >
         {/* Cabeçalho do drawer */}
-        <div style={{
+        <div className="no-print" style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
@@ -77,7 +85,7 @@ export default function Drawer() {
           <b style={{ fontSize: 13 }}>Ficha executiva</b>
           <span style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <button
-              onClick={() => window.print()}
+              onClick={imprimirFicha}
               className="no-print"
               style={{
                 font: 'inherit',

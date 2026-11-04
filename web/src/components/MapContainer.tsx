@@ -1,58 +1,70 @@
 /**
- * MapContainer — Leaflet + OpenStreetMap.
- * Sem chave de API, sem restrição de domínio.
- * Funcionalidades: marcadores por quadrante, clustering, layers
- * (backhaul, escolas, mobile, portfólio), tooltip hover, click → drawer.
+ * MapContainer — Leaflet + OpenStreetMap (sem chave de API).
+ *
+ * Responde ao cenário: recebe os municípios já filtrados (mesmo filtro da tabela), colore por
+ * quadrante/payback/score/alunos, enquadra o recorte ao filtrar, voa até o município aberto na
+ * ficha, destaca o município sob o mouse na tabela e mostra camadas reais (backhaul de fibra e
+ * alunos em escolas sem internet). Marcadores em canvas para suportar os 5.565 municípios.
  */
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet.markercluster'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
-import { useAppStore } from '../store/appStore'
-import { QUADRANT_HEX } from '../utils/constants'
-import type { Municipio } from '../api/client'
+import { useAppStore, type ColorBy } from '../store/appStore'
+import { QUADRANT_HEX, QUADRANT_NAMES } from '../utils/constants'
+import { fmtAnos, fmtMi, fmtN0 } from '../utils/format'
+import RegionChips from './RegionChips'
+import type { FinanceiroLinha, Municipio } from '../api/client'
 
-// ── PoPs de backhaul simulados (mesmos do protótipo) ─────────────────────────
-const POPS = [
-  { lat: -12.97, lng: -38.51 }, { lat: -14.86, lng: -40.84 },
-  { lat: -11.86, lng: -41.67 }, { lat: -10.94, lng: -37.07 },
-  { lat: -15.60, lng: -39.04 }, { lat: -12.15, lng: -44.99 },
-  { lat: -16.44, lng: -39.07 }, { lat: -13.41, lng: -39.07 },
-  { lat: -11.41, lng: -41.86 }, { lat: -14.18, lng: -41.68 },
-  { lat: -9.40,  lng: -40.50 }, { lat: -10.47, lng: -42.75 },
-  { lat: -13.00, lng: -46.00 }, { lat: -15.24, lng: -44.00 },
+const BRASIL: [number, number] = [-14.2, -51.9]
+
+const COLOR_MODES: { value: ColorBy; label: string }[] = [
+  { value: 'quadrante', label: 'Quadrante' },
+  { value: 'payback',   label: 'Payback' },
+  { value: 'score',     label: 'Score total' },
+  { value: 'alunos',    label: 'Alunos sem internet' },
 ]
 
-const MAP_CENTER: [number, number] = [-13.0, -41.7]
-const ESC_ZOOM = 8
+/** Rampa verde (bom) → vermelho (ruim); t em [0,1], 0 = melhor. */
+const rampa = (t: number) => `hsl(${Math.round(140 * (1 - Math.min(1, Math.max(0, t))))}, 70%, 45%)`
+const GRADIENTE = `linear-gradient(90deg, ${[0, 0.25, 0.5, 0.75, 1].map(rampa).join(',')})`
 
-// Helper: cria ícone SVG circular colorido
-function circleIcon(color: string, size: number, strokeColor = '#fff', strokeWidth = 1): L.DivIcon {
-  const r = size / 2
-  const s = size + strokeWidth * 2
-  return L.divIcon({
-    className: '',
-    iconSize: [s, s],
-    iconAnchor: [s / 2, s / 2],
-    html: `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="${s/2}" cy="${s/2}" r="${r}" fill="${color}" fill-opacity="0.95" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>
-    </svg>`,
-  })
+interface Escala {
+  cor: (m: Municipio) => string
+  min: string
+  max: string
+  titulo: string
 }
 
-// Helper: cria ícone quadrado para PoPs
-function squareIcon(color: string): L.DivIcon {
-  return L.divIcon({
-    className: '',
-    iconSize: [10, 10],
-    iconAnchor: [5, 5],
-    html: `<svg width="10" height="10" viewBox="0 0 10 10" xmlns="http://www.w3.org/2000/svg">
-      <rect x="0" y="0" width="10" height="10" fill="${color}"/>
-    </svg>`,
-  })
+function criaEscala(colorBy: ColorBy, municipios: Municipio[], fin: Record<string, FinanceiroLinha>): Escala {
+  if (colorBy === 'payback') {
+    return {
+      titulo: 'Payback (anos)', min: '≤ 5,7 (melhor)', max: '≥ 12 (pior)',
+      cor: (m) => {
+        const p = fin[m.id_municipio]?.payback
+        return p == null ? '#8a94a3' : rampa((p - 5.7) / (12 - 5.7))
+      },
+    }
+  }
+  if (colorBy === 'score') {
+    const v = municipios.map((m) => m.score_total ?? 0)
+    const lo = Math.min(...v), hi = Math.max(...v)
+    return {
+      titulo: 'Score total', min: `${lo.toFixed(0)} (baixo)`, max: `${hi.toFixed(0)} (alto)`,
+      cor: (m) => rampa(1 - ((m.score_total ?? 0) - lo) / ((hi - lo) || 1)),
+    }
+  }
+  if (colorBy === 'alunos') {
+    const hi = Math.log10(Math.max(10, ...municipios.map((m) => m.alunos_sem_internet ?? 0)))
+    return {
+      titulo: 'Alunos em escolas sem internet (escala log)', min: 'poucos', max: `${fmtN0(10 ** hi)}`,
+      cor: (m) => rampa(1 - Math.log10(Math.max(1, m.alunos_sem_internet ?? 0)) / hi),
+    }
+  }
+  return { titulo: 'Quadrante', min: '', max: '', cor: (m) => QUADRANT_HEX[m.quadrante] ?? '#8a94a3' }
 }
 
 interface Props {
@@ -62,39 +74,40 @@ interface Props {
 }
 
 export default function MapContainer({ municipios, portfolioIds, onMunicipioClick }: Props) {
-  const layers    = useAppStore((s) => s.layers)
-  const setLayers = useAppStore((s) => s.setLayers)
-  const filters   = useAppStore((s) => s.filters)
+  const layers     = useAppStore((s) => s.layers)
+  const setLayers  = useAppStore((s) => s.setLayers)
+  const colorBy    = useAppStore((s) => s.colorBy)
+  const setColorBy = useAppStore((s) => s.setColorBy)
+  const filters    = useAppStore((s) => s.filters)
+  const financeiro = useAppStore((s) => s.financeiro)
+  const selectedId = useAppStore((s) => s.selectedId)
+  const drawerOpen = useAppStore((s) => s.drawerOpen)
+  const hoveredId  = useAppStore((s) => s.hoveredId)
+  const totalCarregado = useAppStore((s) => s.municipios.length > 0)
 
   const mapElRef      = useRef<HTMLDivElement | null>(null)
   const mapRef        = useRef<L.Map | null>(null)
   const clusterRef    = useRef<L.MarkerClusterGroup | null>(null)
-  const overlayLayersRef = useRef<L.Layer[]>([])
-  const escLayerRef   = useRef<L.LayerGroup | null>(null)
-  const tooltipRef    = useRef<HTMLDivElement | null>(null)
+  const overlayRef    = useRef<L.LayerGroup | null>(null)
+  const destaqueRef   = useRef<L.LayerGroup | null>(null)
+  const porIdRef      = useRef<Map<string, Municipio>>(new Map())
+  const onClickRef    = useRef(onMunicipioClick)
+  useEffect(() => { onClickRef.current = onMunicipioClick }, [onMunicipioClick])
 
-  const getCssVar = useCallback((name: string) =>
-    getComputedStyle(document.documentElement).getPropertyValue(name).trim()
-  , [])
+  const cssVar = useCallback((n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), [])
+  const escala = useMemo(() => criaEscala(colorBy, municipios, financeiro), [colorBy, municipios, financeiro])
 
   // ── Inicializa o mapa uma única vez ────────────────────────────────────────
   useEffect(() => {
     if (!mapElRef.current || mapRef.current) return
-
-    const map = L.map(mapElRef.current, {
-      center: MAP_CENTER,
-      zoom: 6,
-      zoomControl: true,
-      attributionControl: true,
-    })
-
+    const map = L.map(mapElRef.current, { center: BRASIL, zoom: 4, preferCanvas: true })
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     }).addTo(map)
-
+    overlayRef.current = L.layerGroup().addTo(map)
+    destaqueRef.current = L.layerGroup().addTo(map)
     mapRef.current = map
-
     return () => {
       map.remove()
       mapRef.current = null
@@ -102,206 +115,152 @@ export default function MapContainer({ municipios, portfolioIds, onMunicipioClic
     }
   }, [])
 
-  // ── Redesenha marcadores e layers quando dados/filtros mudam ──────────────
+  // ── Marcadores (só reconstruídos quando recorte, cor ou cenário mudam) ─────
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
+    if (clusterRef.current) map.removeLayer(clusterRef.current)
 
-    const acColor = getCssVar('--ac') || '#5b2a86'
-
-    // Remove overlays anteriores
-    overlayLayersRef.current.forEach((l) => map.removeLayer(l))
-    overlayLayersRef.current = []
-    if (clusterRef.current) {
-      map.removeLayer(clusterRef.current)
-      clusterRef.current = null
-    }
-    if (escLayerRef.current) {
-      map.removeLayer(escLayerRef.current)
-      escLayerRef.current = null
-    }
-
-    // ── Layer: densidade móvel (círculos vermelhos) ─────────────────────────
-    if (layers.mobile) {
-      municipios.forEach((m) => {
-        if (!m.lat || !m.lon) return
-        const circle = L.circle([m.lat, m.lon], {
-          radius: 15000,
-          color: 'transparent',
-          fillColor: '#c0392b',
-          fillOpacity: 0.12,
-          interactive: false,
-        }).addTo(map)
-        overlayLayersRef.current.push(circle)
-      })
-    }
-
-    // ── Layer: backhaul PoPs (linhas + quadrados) ───────────────────────────
-    if (layers.backhaul) {
-      POPS.forEach((p, i) => {
-        POPS.forEach((q, j) => {
-          if (j <= i) return
-          const dist = Math.hypot(p.lng - q.lng, p.lat - q.lat)
-          if (dist < 3.2) {
-            const line = L.polyline([[p.lat, p.lng], [q.lat, q.lng]], {
-              color: acColor,
-              opacity: 0.45,
-              weight: 2,
-              interactive: false,
-            }).addTo(map)
-            overlayLayersRef.current.push(line)
-          }
-        })
-        const popMk = L.marker([p.lat, p.lng], {
-          icon: squareIcon(acColor),
-          interactive: false,
-          title: 'PoP backhaul',
-          zIndexOffset: 20,
-        }).addTo(map)
-        overlayLayersRef.current.push(popMk)
-      })
-    }
-
-    // ── Marcadores de municípios + cluster ─────────────────────────────────
+    const acento = cssVar('--ac') || '#5b2a86'
+    const contorno = cssVar('--tx') || '#1c2430'
     const cluster = L.markerClusterGroup({
       maxClusterRadius: 40,
       disableClusteringAtZoom: 10,
+      chunkedLoading: true,
       iconCreateFunction: (c: L.MarkerCluster) => {
-        const count = c.getChildCount()
-        const size = 24 + Math.min(20, Math.sqrt(count) * 2.5)
+        const n = c.getChildCount()
+        const size = 24 + Math.min(20, Math.sqrt(n) * 2.5)
         return L.divIcon({
           className: '',
           iconSize: [size, size],
-          html: `<div style="
-            width:${size}px;height:${size}px;border-radius:50%;
-            background:${acColor};opacity:0.85;
-            display:flex;align-items:center;justify-content:center;
-            color:#fff;font-size:11px;font-weight:600;border:2px solid #fff;">
-            ${count}
-          </div>`,
+          html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${acento};opacity:.85;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;border:2px solid #fff;">${n}</div>`,
         })
       },
     })
 
-    // Escolas — layer group separado controlado pelo zoom
-    const escLayer = L.layerGroup()
-
+    const porId = new Map<string, Municipio>()
+    const marcadores: L.Layer[] = []
     municipios.forEach((m) => {
       if (!m.lat || !m.lon) return
-      if (filters.search && !m.nome.toLowerCase().includes(filters.search.toLowerCase())) return
-      if (filters.quadrante && m.quadrante !== filters.quadrante) return
-      if (filters.portfolioOnly && !portfolioIds.has(m.id_municipio)) return
-
-      const isSel  = layers.selected && portfolioIds.has(m.id_municipio)
-      const color  = QUADRANT_HEX[m.quadrante] ?? '#8a94a3'
-      const size   = 8 + Math.min(8, (m.domicilios_urbanos ?? 5000) / 25000)
-      const stroke = isSel ? (getCssVar('--tx') || '#1c2430') : '#fff'
-      const sw     = isSel ? 2.5 : 0.8
-
-      const mk = L.marker([m.lat, m.lon], {
-        icon: circleIcon(color, size, stroke, sw),
-        zIndexOffset: 10,
-        title: m.nome,
+      porId.set(m.id_municipio, m)
+      const noPortfolio = layers.selected && portfolioIds.has(m.id_municipio)
+      const mk = L.circleMarker([m.lat, m.lon], {
+        radius: 4 + Math.min(6, Math.sqrt(m.domicilios_urbanos ?? 0) / 60),
+        fillColor: escala.cor(m),
+        fillOpacity: 0.9,
+        color: noPortfolio ? contorno : '#fff',
+        weight: noPortfolio ? 2.5 : 0.8,
       })
-
-      const tooltip = tooltipRef.current
-      mk.on('mouseover', (e) => {
-        if (!tooltip) return
-        const ev = e.originalEvent as MouseEvent
-        tooltip.style.display = 'block'
-        tooltip.style.left = (ev.clientX + 12) + 'px'
-        tooltip.style.top  = (ev.clientY + 12) + 'px'
-        tooltip.innerHTML = `<b>${m.nome}</b><br>${m.quadrante} · M ${m.score_M?.toFixed(0) ?? '—'} · I ${m.score_I?.toFixed(0) ?? '—'}`
-      })
-      mk.on('mouseout', () => { if (tooltip) tooltip.style.display = 'none' })
-      mk.on('click', () => {
-        if (tooltip) tooltip.style.display = 'none'
-        onMunicipioClick(m.id_municipio)
-      })
-
-      cluster.addLayer(mk)
-
-      // Escolas com déficit ENEC
-      if (layers.schools && (m.escolas_sem_internet_aprendizagem ?? 0) > 3) {
-        const escMk = L.circleMarker([m.lat, m.lon], {
-          radius: 5,
-          color: QUADRANT_HEX['Q2b'] ?? '#d9822b',
-          fillColor: 'transparent',
-          weight: 1.5,
-          interactive: false,
+      // Tooltip montado só ao passar o mouse; textContent evita injetar HTML do dado.
+      mk.bindTooltip(() => {
+        const f = financeiro[m.id_municipio]
+        const el = document.createElement('div')
+        const nome = document.createElement('b')
+        nome.textContent = `${m.nome} (${m.uf})`
+        el.append(nome)
+        ;[
+          `${m.quadrante} · ${QUADRANT_NAMES[m.quadrante] ?? ''}`,
+          `Score ${m.score_total?.toFixed(0) ?? '—'} · M ${m.score_M?.toFixed(0) ?? '—'} · I ${m.score_I?.toFixed(0) ?? '—'}`,
+          f ? `Payback ${fmtAnos(f.payback)} · CapEx ${fmtMi(f.capex)}` : '',
+          f ? `VPL ${fmtMi(f.npv)}` : '',
+          `Alunos sem internet: ${fmtN0(m.alunos_sem_internet)}`,
+          noPortfolio ? 'No portfólio' : '',
+        ].filter(Boolean).forEach((t) => {
+          const linha = document.createElement('div')
+          linha.textContent = t
+          el.append(linha)
         })
-        escLayer.addLayer(escMk)
-      }
+        return el
+      }, { sticky: true, direction: 'top', opacity: 0.95 })
+      mk.on('click', () => onClickRef.current(m.id_municipio))
+      marcadores.push(mk)
     })
-
+    cluster.addLayers(marcadores)
     cluster.addTo(map)
     clusterRef.current = cluster
+    porIdRef.current = porId
+  }, [municipios, escala, financeiro, portfolioIds, layers.selected, cssVar])
 
-    escLayerRef.current = escLayer
-    // Escolas aparecem só a partir do zoom ESC_ZOOM
-    if (map.getZoom() >= ESC_ZOOM && layers.schools) {
-      escLayer.addTo(map)
-    }
-
-    map.on('zoomend', () => {
-      if (!escLayerRef.current) return
-      if (map.getZoom() >= ESC_ZOOM && layers.schools) {
-        if (!map.hasLayer(escLayerRef.current)) escLayerRef.current.addTo(map)
-      } else {
-        if (map.hasLayer(escLayerRef.current)) map.removeLayer(escLayerRef.current)
+  // ── Camadas de contexto: backhaul real e alunos sem internet ───────────────
+  useEffect(() => {
+    const grupo = overlayRef.current
+    if (!grupo) return
+    grupo.clearLayers()
+    const acento = cssVar('--ac') || '#5b2a86'
+    municipios.forEach((m) => {
+      if (!m.lat || !m.lon) return
+      if (layers.backhaul && m.tem_backhaul_fibra) {
+        grupo.addLayer(L.circleMarker([m.lat, m.lon], {
+          radius: 3, color: acento, weight: 1.5, fillColor: '#fff', fillOpacity: 1, interactive: false,
+        }))
+      }
+      if (layers.schools && (m.alunos_sem_internet ?? 0) > 0) {
+        grupo.addLayer(L.circleMarker([m.lat, m.lon], {
+          radius: 6 + Math.min(18, Math.sqrt(m.alunos_sem_internet) / 25),
+          color: QUADRANT_HEX['Q2b'], weight: 1, fillColor: QUADRANT_HEX['Q2b'], fillOpacity: 0.18, interactive: false,
+        }))
       }
     })
+  }, [municipios, layers.backhaul, layers.schools, cssVar])
 
-  }, [municipios, portfolioIds, layers, filters, getCssVar, onMunicipioClick])
-
-  // ── Enquadrar visíveis ─────────────────────────────────────────────────────
-  function fitVisible() {
+  // ── Enquadra o recorte ao filtrar ──────────────────────────────────────────
+  const filtrosKey = JSON.stringify(filters)
+  useEffect(() => {
     const map = mapRef.current
-    if (!map) return
-    const visible = municipios.filter((m) => {
-      if (!m.lat || !m.lon) return false
-      if (filters.search && !m.nome.toLowerCase().includes(filters.search.toLowerCase())) return false
-      if (filters.quadrante && m.quadrante !== filters.quadrante) return false
-      return true
-    })
-    if (!visible.length) return
-    if (visible.length === 1) {
-      map.setView([visible[0].lat, visible[0].lon], 11)
-      return
+    const pontos = municipios.filter((m) => m.lat && m.lon)
+    if (!map || !pontos.length) return
+    if (pontos.length === 1) map.setView([pontos[0].lat, pontos[0].lon], 10)
+    else map.fitBounds(L.latLngBounds(pontos.map((m) => [m.lat, m.lon] as [number, number])), { padding: [30, 30], maxZoom: 9 })
+  // Só quando os filtros mudam (ou os dados chegam), não a cada recálculo do cenário.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtrosKey, totalCarregado])
+
+  // ── Destaque: município aberto na ficha e município sob o mouse na tabela ──
+  useEffect(() => {
+    const map = mapRef.current
+    const grupo = destaqueRef.current
+    if (!map || !grupo) return
+    grupo.clearLayers()
+    const acento = cssVar('--ac') || '#5b2a86'
+    const anel = (m: Municipio, raio: number, peso: number) =>
+      L.circleMarker([m.lat, m.lon], { radius: raio, color: acento, weight: peso, fillOpacity: 0, interactive: false })
+    const sel = drawerOpen && selectedId ? porIdRef.current.get(selectedId) : undefined
+    if (sel) {
+      grupo.addLayer(anel(sel, 16, 3))
+      map.flyTo([sel.lat, sel.lon], Math.max(map.getZoom(), 9), { duration: 0.8 })
     }
-    const bounds = L.latLngBounds(visible.map((m) => [m.lat, m.lon]))
-    map.fitBounds(bounds, { padding: [40, 40] })
+    const hov = hoveredId ? porIdRef.current.get(hoveredId) : undefined
+    if (hov && hov !== sel) grupo.addLayer(anel(hov, 13, 2))
+  }, [selectedId, drawerOpen, hoveredId, municipios, cssVar])
+
+  function enquadrar() {
+    const map = mapRef.current
+    const pontos = municipios.filter((m) => m.lat && m.lon)
+    if (map && pontos.length) {
+      map.fitBounds(L.latLngBounds(pontos.map((m) => [m.lat, m.lon] as [number, number])), { padding: [30, 30], maxZoom: 9 })
+    }
   }
 
-  const LAYER_LABELS: { key: keyof ReturnType<typeof useAppStore.getState>['layers']; label: string }[] = [
-    { key: 'backhaul', label: 'Backhaul (PoPs)' },
-    { key: 'schools',  label: 'Escolas déficit ENEC' },
-    { key: 'mobile',   label: 'Densidade móvel Vivo' },
-    { key: 'selected', label: 'Portfólio selecionado' },
-  ]
+  const seletor: React.CSSProperties = {
+    font: 'inherit', fontSize: 12, background: 'var(--pn)', color: 'var(--tx)',
+    border: '1px solid var(--ln)', borderRadius: 4, padding: '3px 8px',
+  }
 
   return (
     <div>
-      {/* Tooltip fixo */}
-      <div
-        ref={tooltipRef}
-        style={{
-          position: 'fixed',
-          pointerEvents: 'none',
-          background: 'var(--tx)',
-          color: 'var(--pn)',
-          padding: '6px 10px',
-          borderRadius: 4,
-          fontSize: 12,
-          display: 'none',
-          zIndex: 9999,
-          maxWidth: 220,
-        }}
-      />
-
-      {/* Layer toggles */}
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, color: 'var(--mu)', marginBottom: 10 }}>
-        {LAYER_LABELS.map(({ key, label }) => (
+      {/* Controles */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center', fontSize: 13, color: 'var(--mu)', marginBottom: 10 }}>
+        <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          Colorir por
+          <select value={colorBy} onChange={(e) => setColorBy(e.target.value as ColorBy)} style={seletor} aria-label="Colorir mapa por">
+            {COLOR_MODES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </label>
+        {([
+          ['backhaul', 'Backhaul de fibra (Anatel)'],
+          ['schools', 'Alunos sem internet'],
+          ['selected', 'Destacar portfólio'],
+        ] as const).map(([key, label]) => (
           <label key={key} style={{ display: 'flex', gap: 6, alignItems: 'center', cursor: 'pointer' }}>
             <input
               type="checkbox"
@@ -314,37 +273,39 @@ export default function MapContainer({ municipios, portfolioIds, onMunicipioClic
         ))}
       </div>
 
-      {/* Mapa */}
-      <div
-        ref={mapElRef}
-        style={{
-          width: '100%',
-          height: 'clamp(320px, 62vh, 640px)',
-          borderRadius: 4,
-          background: 'var(--land)',
-          zIndex: 0,
-        }}
-      />
+      <div style={{ position: 'relative' }}>
+        <div
+          ref={mapElRef}
+          style={{ width: '100%', height: 'clamp(320px, 62vh, 640px)', borderRadius: 4, background: 'var(--land)', zIndex: 0 }}
+        />
+        <RegionChips />
+      </div>
 
-      {/* Botão enquadrar */}
-      <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <p style={{ fontSize: 12, color: 'var(--mu)', margin: 0 }}>
-          Clique em um município para abrir a ficha executiva.
-        </p>
+      {/* Legenda + ações */}
+      <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 12, color: 'var(--mu)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <b style={{ color: 'var(--tx)' }}>{escala.titulo}</b>
+          {colorBy === 'quadrante' ? (
+            Object.entries(QUADRANT_HEX).map(([q, hex]) => (
+              <span key={q} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', background: hex, display: 'inline-block' }} />
+                {q}
+              </span>
+            ))
+          ) : (
+            <>
+              <span>{escala.min}</span>
+              <span style={{ width: 120, height: 8, borderRadius: 4, background: GRADIENTE, display: 'inline-block' }} />
+              <span>{escala.max}</span>
+            </>
+          )}
+          <span>· {fmtN0(municipios.length)} municípios no mapa</span>
+        </div>
         <button
-          onClick={fitVisible}
-          style={{
-            font: 'inherit',
-            fontSize: 12,
-            background: 'none',
-            border: '1px solid var(--ln)',
-            borderRadius: 4,
-            padding: '4px 10px',
-            cursor: 'pointer',
-            color: 'var(--mu)',
-          }}
+          onClick={enquadrar}
+          style={{ font: 'inherit', fontSize: 12, background: 'none', border: '1px solid var(--ln)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', color: 'var(--mu)' }}
         >
-          ⤢ Enquadrar visíveis
+          ⤢ Enquadrar recorte
         </button>
       </div>
     </div>

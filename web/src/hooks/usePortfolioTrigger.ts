@@ -1,6 +1,6 @@
 /**
- * Hook que observa budget + levers na store e dispara POST /portfolio
- * com debounce de 400ms. Atualiza portfolio e kpis na store.
+ * Hook que observa o cenário (orçamento, escopo, objetivo, alavancas e premissas) e dispara
+ * POST /portfolio com debounce de 400ms. Atualiza portfolio, financeiro por município e KPIs.
  */
 
 import { useEffect, useRef } from 'react'
@@ -10,7 +10,12 @@ import { useAppStore } from '../store/appStore'
 export function usePortfolioTrigger() {
   const budget              = useAppStore((s) => s.budget)
   const levers              = useAppStore((s) => s.levers)
-  const municipios          = useAppStore((s) => s.municipios)
+  const params              = useAppStore((s) => s.params)
+  const objetivo            = useAppStore((s) => s.objetivo)
+  const uf                  = useAppStore((s) => s.filters.uf)
+  const regiao              = useAppStore((s) => s.filters.regiao)
+  const semiarido           = useAppStore((s) => s.filters.semiarido)
+  const nMunicipios         = useAppStore((s) => s.municipios.length)
   const setPortfolioResult  = useAppStore((s) => s.setPortfolioResult)
   const setPortfolioLoading = useAppStore((s) => s.setPortfolioLoading)
   const setError            = useAppStore((s) => s.setError)
@@ -19,7 +24,7 @@ export function usePortfolioTrigger() {
 
   useEffect(() => {
     // Sem municípios carregados ainda — não dispara
-    if (municipios.length === 0) return
+    if (nMunicipios === 0) return
 
     if (timerRef.current) clearTimeout(timerRef.current)
 
@@ -28,8 +33,12 @@ export function usePortfolioTrigger() {
       try {
         const result = await api.postPortfolio({
           budget,
-          lambda_: 0.5,
           max_payback: 10,
+          objetivo,
+          params,
+          ...(uf ? { uf } : {}),
+          ...(regiao ? { regiao } : {}),
+          ...(semiarido ? { semiarido } : {}),
           alavancas: {
             backhaul_comprometido: levers.tcu,
             fust_reembolsavel:     levers.fust,
@@ -49,5 +58,5 @@ export function usePortfolioTrigger() {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [budget, levers, municipios.length])
+  }, [budget, levers, params, objetivo, uf, regiao, semiarido, nMunicipios])
 }

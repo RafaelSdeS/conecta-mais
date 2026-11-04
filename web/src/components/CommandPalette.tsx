@@ -10,7 +10,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../store/appStore'
 import { VIEWS } from '../utils/constants'
-import { calcFinancial } from '../utils/calculation'
 import { api } from '../api/client'
 import { useToast } from '../hooks/useToast'
 
@@ -30,7 +29,7 @@ export default function CommandPalette({ onNavigate, onApplyAll }: Props) {
   const open         = useAppStore((s) => s.cmdPaletteOpen)
   const setOpen      = useAppStore((s) => s.setCmdPaletteOpen)
   const municipios   = useAppStore((s) => s.municipios)
-  const levers       = useAppStore((s) => s.levers)
+  const financeiro   = useAppStore((s) => s.financeiro)
   const openDrawer   = useAppStore((s) => s.openDrawer)
   const setFilters   = useAppStore((s) => s.setFilters)
   const { toast }    = useToast()
@@ -88,16 +87,10 @@ export default function CommandPalette({ onNavigate, onApplyAll }: Props) {
       .filter((m) => m.nome.toLowerCase().includes(q))
       .slice(0, 8)
       .forEach((m) => {
-        const calc = calcFinancial(
-          m.domicilios_urbanos ?? 5000,
-          m.dist_backhaul_km ?? 50,
-          m.escolas_sem_internet_aprendizagem ?? 0,
-          m.acordo_migracao ?? false,
-          levers,
-        )
+        const pay = financeiro[m.id_municipio]?.payback
         items.push({
           label:       m.nome,
-          description: `${m.quadrante} · ${calc.pay.toFixed(1)} anos`,
+          description: `${m.uf} · ${m.quadrante}${pay != null ? ` · ${pay.toFixed(1)} anos` : ''}`,
           action:      () => { openDrawer(m.id_municipio); close() },
         })
       })

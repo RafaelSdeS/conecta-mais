@@ -2,8 +2,8 @@
  * DrawerContent — conteúdo da ficha executiva de um município.
  * Renderiza diagnóstico, plano de ação e business case comparativo.
  *
- * Business case: chama POST /financial com e sem alavancas. Se a API estiver
- * offline, cai no modelo local (calcFinancial) para não quebrar em dev.
+ * Business case: chama POST /financial com e sem alavancas, usando as premissas do cenário.
+ * Se a API estiver offline, mostra o aviso em vez de números aproximados.
  */
 
 import { useEffect, useState } from 'react'
@@ -14,26 +14,13 @@ import { useFavorites } from '../hooks/useFavorites'
 import { useToast } from '../hooks/useToast'
 import QuadrantBadge from './QuadrantBadge'
 import AiText from './AiText'
-import { QUADRANT_NAMES } from '../utils/constants'
+import logo from '../assets/logo-texto.svg'
 import { fmtMi, fmtAnos, fmtN0 } from '../utils/format'
-import { getTechRecommendation, calcFinancial } from '../utils/calculation'
+import { getTechRecommendation } from '../utils/calculation'
 import type { Municipio } from '../api/client'
 
 interface Props {
   municipio: Municipio
-}
-
-const DEFAULT_PARAMS = {
-  custo_hp: 477,
-  custo_backhaul_km: 61800,
-  custo_ativacao: 500,
-  adesao_pct: 0.25,
-  arpu_mensal: 87.7,
-  margem_ebitda: 0.40,
-  wacc: 0.15,
-  wacc_fust: 0.0325,
-  anos_projeto: 10,
-  aliquota_imposto: 0.34,
 }
 
 const btnGhost: React.CSSProperties = {
@@ -48,21 +35,28 @@ const btnGhost: React.CSSProperties = {
 }
 
 // Converte FinancialResult da API para o formato da tabela local
-interface BCRow { capex: number; back: number; b2c: number; b2g: number; ebitda: number; pay: number }
+interface BCRow { capex: number; back: number; b2c: number; ebitda: number; pay: number; npv: number }
 
 function apiResultToRow(r: FinancialResult): BCRow {
   return {
     capex:  r.capex.total,
     back:   r.capex.backhaul,
     b2c:    r.receita_anual,
-    b2g:    0, // receita_anual já inclui B2G; separação requer endpoint futuro
     ebitda: r.ebitda_anual,
     pay:    r.payback_anos,
+    npv:    r.npv,
   }
 }
 
 export default function DrawerContent({ municipio: m }: Props) {
   const levers     = useAppStore((s) => s.levers)
+  const params     = useAppStore((s) => s.params)
+  const objetivo    = useAppStore((s) => s.objetivo)
+  const budget     = useAppStore((s) => s.budget)
+  const fonteDados  = useAppStore((s) => s.fonteDados)
+  const qualidade   = useAppStore((s) => s.qualidade)
+  const justificativa = useAppStore((s) => s.justificativas[m.id_municipio])
+  const setJustificativa = useAppStore((s) => s.setJustificativa)
   const portfolio  = useAppStore((s) => s.portfolio)
   const [favs, toggleFav] = useFavorites()
   const { toast } = useToast()
@@ -73,17 +67,15 @@ export default function DrawerContent({ municipio: m }: Props) {
   const [bcLoading, setBcLoading] = useState(false)
   const [sensitivity, setSensitivity] = useState<{ adesao_pct: number; payback_anos: number }[]>([])
 
-  // Fallback local (usado quando API offline)
+  const [bcErro, setBcErro] = useState(false)
   const dist    = m.dist_backhaul_km ?? 50
   const homes   = m.domicilios_urbanos ?? 5000
-  const schools = m.escolas_sem_internet_aprendizagem ?? 0
   const tcuMun  = m.acordo_migracao ?? false
-  const noLevers = { fust: false, tcu: false, enec: false }
-  const fallbackBase = calcFinancial(homes, dist, schools, tcuMun, noLevers)
-  const fallbackWith = calcFinancial(homes, dist, schools, tcuMun, levers)
+  const schools = m.escolas_sem_internet_aprendizagem ?? 0
 
   useEffect(() => {
     setBcLoading(true)
+    setBcErro(false)
     setBcBase(null)
     setBcWith(null)
     setSensitivity([])
@@ -96,26 +88,24 @@ export default function DrawerContent({ municipio: m }: Props) {
     }
 
     Promise.all([
-      api.postFinancial(m.id_municipio, DEFAULT_PARAMS, alavancasSem),
-      api.postFinancial(m.id_municipio, DEFAULT_PARAMS, alavancasCom),
+      api.postFinancial(m.id_municipio, params, alavancasSem),
+      api.postFinancial(m.id_municipio, params, alavancasCom),
     ])
       .then(([resBase, resWith]) => {
         setBcBase(apiResultToRow(resBase))
         setBcWith(apiResultToRow(resWith))
         setSensitivity(resWith.sensitivity)
       })
-      .catch(() => {
-        // API offline — usa modelo local como fallback silencioso
-        setBcBase(fallbackBase)
-        setBcWith(fallbackWith)
-      })
+      .catch(() => setBcErro(true))
       .finally(() => setBcLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [m.id_municipio, levers.fust, levers.tcu, levers.enec])
+  }, [m.id_municipio, levers.fust, levers.tcu, levers.enec, params])
 
-  // Valores a exibir: API real ou fallback
-  const base    = bcBase  ?? fallbackBase
-  const withLev = bcWith  ?? fallbackWith
+  const base    = bcBase
+  const withLev = bcWith
+
+  const alavancasAtivas = [levers.tcu && 'TCU', levers.fust && 'FUST', levers.enec && 'ENEC'].filter(Boolean).join(', ') || 'nenhuma'
+  const camposLimitados = qualidade.filter((q) => q.tipo !== 'real').map((q) => `${q.campo} (${q.tipo})`)
 
   const tech       = getTechRecommendation(dist, homes)
   const professors = Math.round((m.escolas_sem_internet_aprendizagem ?? 2) * 3.7)
@@ -132,16 +122,34 @@ export default function DrawerContent({ municipio: m }: Props) {
     { label: 'Backhaul',         key: 'back'   },
     { label: 'Receita/ano',      key: 'b2c'    },
     { label: 'EBITDA/ano',       key: 'ebitda' },
+    { label: 'VPL',              key: 'npv'    },
   ]
 
   return (
     <div>
+      {/* Cabeçalho exclusivo da impressão / PDF */}
+      <div className="print-only" style={{ marginBottom: 16, paddingBottom: 8, borderBottom: '2px solid var(--ac)' }}>
+        <img src={logo} alt="Conecta+" style={{ height: 28 }} />
+        <p style={{ margin: '6px 0 0', fontSize: 11 }}>
+          Ficha executiva · gerada em {new Date().toLocaleString('pt-BR')} · dados {fonteDados === 'mock' ? 'DEMONSTRATIVOS' : 'reais (IBGE, INEP, Anatel)'}
+        </p>
+        <p style={{ margin: '2px 0 0', fontSize: 11 }}>
+          Cenário: orçamento R$ {budget} mi · objetivo {objetivo} · alavancas: {alavancasAtivas} · ARPU R$ {params.arpu_mensal} · adesão {(params.adesao_pct * 100).toFixed(0)}% · WACC {(params.wacc * 100).toFixed(1)}%
+        </p>
+        {camposLimitados.length > 0 && (
+          <p style={{ margin: '2px 0 0', fontSize: 11 }}>
+            Campos neutros ou aproximados no motor: {camposLimitados.join(', ')}.
+          </p>
+        )}
+      </div>
+
       {/* Cabeçalho */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <h2 id="drawer-title" style={{ fontSize: 18, margin: 0 }}>
           {m.nome} / {m.uf}
         </h2>
         <button
+          className="no-print"
           onClick={handleFav}
           aria-pressed={isFav}
           style={btnGhost}
@@ -153,14 +161,13 @@ export default function DrawerContent({ municipio: m }: Props) {
       </div>
 
       <QuadrantBadge quadrante={m.quadrante} showLabel />
-      <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--mu)' }}>
-        · {QUADRANT_NAMES[m.quadrante]}
-      </span>
 
       <AiText
         key={m.id_municipio}
         label="Justificativa IA"
+        initial={justificativa}
         run={() => api.postJustificativa(m.id_municipio).then((r) => r.texto)}
+        onResult={(t) => setJustificativa(m.id_municipio, t)}
       />
 
       {/* Diagnóstico */}
@@ -172,14 +179,18 @@ export default function DrawerContent({ municipio: m }: Props) {
         <dt style={{ color: 'var(--mu)' }}>Escolas públicas</dt>
         <dd style={{ margin: 0 }}>
           {fmtN0(m.matriculas_publicas ?? 0)} matrículas
-          {schools > 0 ? ` · ${schools} sem internet` : ''}
+          {schools > 0 ? ` · ${fmtN0(m.alunos_sem_internet)} alunos em ${schools} escolas sem internet` : ''}
         </dd>
 
         <dt style={{ color: 'var(--mu)' }}>PoP de fibra</dt>
-        <dd style={{ margin: 0 }}>{dist} km</dd>
+        <dd style={{ margin: 0 }}>{dist.toFixed(1)} km{m.tem_backhaul_fibra ? ' (município com backhaul de fibra)' : ''}</dd>
 
         <dt style={{ color: 'var(--mu)' }}>Base móvel Vivo</dt>
-        <dd style={{ margin: 0 }}>{((m.market_share_vivo_movel ?? 0) * 100).toFixed(0)}%</dd>
+        <dd style={{ margin: 0 }}>
+          {qualidade.some((q) => q.campo === 'market_share_vivo_movel' && q.tipo === 'neutro')
+            ? 'sem dados (valor neutro no motor)'
+            : `${((m.market_share_vivo_movel ?? 0) * 100).toFixed(0)}%`}
+        </dd>
 
         <dt style={{ color: 'var(--mu)' }}>Scores</dt>
         <dd style={{ margin: 0 }}>
@@ -235,20 +246,26 @@ export default function DrawerContent({ municipio: m }: Props) {
             {BC_ROWS.map(({ label, key }) => (
               <tr key={key}>
                 <td style={{ padding: '5px 8px', borderBottom: '1px solid var(--ln)', color: 'var(--mu)' }}>{label}</td>
-                <td style={{ padding: '5px 8px', borderBottom: '1px solid var(--ln)', textAlign: 'right' }}>{fmtMi(base[key])}</td>
-                <td style={{ padding: '5px 8px', borderBottom: '1px solid var(--ln)', textAlign: 'right' }}>{fmtMi(withLev[key])}</td>
+                <td style={{ padding: '5px 8px', borderBottom: '1px solid var(--ln)', textAlign: 'right' }}>{base ? fmtMi(base[key]) : '—'}</td>
+                <td style={{ padding: '5px 8px', borderBottom: '1px solid var(--ln)', textAlign: 'right' }}>{withLev ? fmtMi(withLev[key]) : '—'}</td>
               </tr>
             ))}
             <tr>
               <td style={{ padding: '5px 8px', fontWeight: 600 }}>Payback</td>
-              <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 600 }}>{fmtAnos(base.pay)}</td>
-              <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 600, color: withLev.pay <= 6 ? 'var(--ok)' : 'var(--tx)' }}>
-                {fmtAnos(withLev.pay)}
+              <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 600 }}>{base ? fmtAnos(base.pay) : '—'}</td>
+              <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 600, color: withLev && withLev.pay <= 6 ? 'var(--ok)' : 'var(--tx)' }}>
+                {withLev ? fmtAnos(withLev.pay) : '—'}
               </td>
             </tr>
           </tbody>
         </table>
       </div>
+
+      {bcErro && (
+        <p role="alert" style={{ fontSize: 12, color: 'var(--q2b)', margin: '8px 0 0' }}>
+          Não foi possível calcular o business case: a API está indisponível.
+        </p>
+      )}
 
       {/* Sensibilidade à adesão (apenas quando API retorna) */}
       {sensitivity.length > 0 && (

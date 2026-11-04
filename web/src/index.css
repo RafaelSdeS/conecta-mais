@@ -176,18 +176,37 @@ p     { margin: 0; }
 }
 
 /* ── Print ────────────────────────────────────────────────────────────────── */
+.print-only { display: none; }
+
+@page { margin: 14mm; }
+
 @media print {
   .no-print { display: none !important; }
-  /* Oculta tudo exceto o conteúdo do drawer */
-  body > * { display: none !important; }
-  aside[role="dialog"] {
-    display: block !important;
+  .print-only { display: block !important; }
+
+  /* Só a ficha: o botão "Imprimir / PDF" liga body.imprimindo-ficha. A ficha fica dentro de #root,
+     então escondemos os irmãos dela (display:none não ocupa espaço, evita páginas em branco). */
+  body.imprimindo-ficha #root > :not(.print-sheet) { display: none !important; }
+  body.imprimindo-ficha .print-sheet {
     position: static !important;
+    display: block !important;
     transform: none !important;
     width: auto !important;
+    height: auto !important;
     border: 0 !important;
     overflow: visible !important;
     padding: 0 !important;
+    --pn: #fff; --tx: #111; --mu: #555; --ln: #c9ced6; --so: #f3eff7; --ok: #138a5b;
+    background: #fff !important;
+    color: #111 !important;
   }
-  aside[role="dialog"] .no-print { display: none !important; }
+  body.imprimindo-ficha, body.imprimindo-ficha html { background: #fff !important; }
+  body.imprimindo-ficha .print-sheet * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body.imprimindo-ficha .print-sheet table,
+  body.imprimindo-ficha .print-sheet dl,
+  body.imprimindo-ficha .print-sheet li { break-inside: avoid; }
+  body.imprimindo-ficha .print-sheet h3 { break-after: avoid; }
 }

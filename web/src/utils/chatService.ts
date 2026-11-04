@@ -207,6 +207,11 @@ export interface ChatContext {
   orcamento_mi?: number
   quadrante?: string
   busca?: string
+  uf?: string
+  objetivo?: 'retorno' | 'equilibrado' | 'alunos'
+  /** Cenário ativo na tela: as ferramentas do agente calculam com as mesmas alavancas e premissas. */
+  alavancas?: { backhaul_comprometido: boolean; fust_reembolsavel: boolean; receita_escolar: boolean }
+  premissas?: Record<string, number>
 }
 
 export async function getAnswer(

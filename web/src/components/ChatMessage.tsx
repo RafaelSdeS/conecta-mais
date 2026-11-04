@@ -27,13 +27,53 @@ function renderInline(text: string): ReactNode[] {
   })
 }
 
+const LINHA_TABELA = /^\s*\|.*\|\s*$/
+
+/** Texto do chat: negrito/itálico, títulos (#), linhas horizontais e tabelas markdown simples. */
 function renderText(text: string): ReactNode[] {
-  return text.split('\n').map((line, index) => (
-    <span key={index}>
-      {index > 0 && <br />}
-      {renderInline(line)}
-    </span>
-  ))
+  const lines = text.split('\n')
+  const out: ReactNode[] = []
+  let i = 0
+  while (i < lines.length) {
+    if (LINHA_TABELA.test(lines[i])) {
+      const rows: string[][] = []
+      while (i < lines.length && LINHA_TABELA.test(lines[i])) {
+        const cells = lines[i].trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim())
+        if (!cells.every((c) => /^:?-{2,}:?$/.test(c))) rows.push(cells)
+        i++
+      }
+      out.push(
+        <div key={`t${i}`} style={{ overflowX: 'auto', margin: '6px 0' }}>
+          <table style={{ borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr>{rows[0]?.map((c, j) => (
+                <th key={j} style={{ textAlign: 'left', padding: '3px 8px', borderBottom: '1px solid var(--ln)' }}>{renderInline(c)}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {rows.slice(1).map((r, k) => (
+                <tr key={k}>{r.map((c, j) => (
+                  <td key={j} style={{ padding: '3px 8px', borderBottom: '1px solid var(--ln)' }}>{renderInline(c)}</td>
+                ))}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
+      )
+      continue
+    }
+    const line = lines[i]
+    i++
+    if (/^\s*-{3,}\s*$/.test(line)) continue
+    const titulo = line.match(/^#{1,6}\s+(.*)$/)
+    out.push(
+      <span key={`l${i}`}>
+        {out.length > 0 && <br />}
+        {titulo ? <strong>{renderInline(titulo[1])}</strong> : renderInline(line)}
+      </span>,
+    )
+  }
+  return out
 }
 
 const SOURCE_LABELS: Record<ChatDataSource['id'], string> = {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useAppStore } from './store/appStore'
 import { VIEWS, type ViewId } from './utils/constants'
 import { ToastProvider } from './hooks/useToast'
@@ -58,9 +58,11 @@ function AppInner({
   const setAllLevers   = useAppStore((s) => s.setAllLevers)
   const kpis           = useAppStore((s) => s.kpis)
   const fonteDados     = useAppStore((s) => s.fonteDados)
+  const apiOffline     = useAppStore((s) => s.apiOffline)
   const { toast }      = useToast()
 
-  const [currentView, setCurrentView] = useState<ViewId>('painel')
+  const currentView    = useAppStore((s) => s.view)
+  const setCurrentView = useAppStore((s) => s.setView)
 
   // Carrega municípios na inicialização
   useInitialData()
@@ -83,6 +85,11 @@ function AppInner({
   const handleApplyAll = useCallback(() => {
     setBudget(80)
     setAllLevers(true)
+    // Alavanca sem dados reais no ETL não tem efeito: não é ligada.
+    const { qualidade } = useAppStore.getState()
+    if (qualidade.some((q) => q.campo === 'acordo_migracao' && q.tipo === 'neutro')) {
+      useAppStore.getState().setLevers({ tcu: false })
+    }
     const viav = kpis?.municipiosViaveis ?? 0
     toast(`Orçamento de R$ 80 mi e todas as alavancas ligadas — ${viav} municípios viáveis`)
   }, [setBudget, setAllLevers, kpis, toast])
@@ -193,7 +200,9 @@ function AppInner({
               role="status"
               style={{ padding: '8px 24px', background: 'var(--q2b)', color: '#fff', fontSize: 13 }}
             >
-              Dados demonstrativos: a base real não está carregada. Os resultados não representam recomendações.
+              {apiOffline
+                ? 'Não foi possível conectar à API (porta 8000): exibindo municípios de demonstração da Bahia. Inicie o backend com `cd engine && .venv/bin/uvicorn api.main:app` e recarregue.'
+                : 'A API está usando os dados demonstrativos: o banco real não foi encontrado (confira CONECTA_SQLITE_PATH e rode o ETL). Os resultados não representam recomendações.'}
             </div>
           )}
           <main

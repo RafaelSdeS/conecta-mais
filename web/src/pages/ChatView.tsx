@@ -62,13 +62,21 @@ export default function ChatView() {
     setLoading(true)
 
     try {
-      const { selectedId, municipios, budget, filters } = useAppStore.getState()
+      const { selectedId, municipios, budget, filters, levers, params, objetivo } = useAppStore.getState()
       const selecionado = municipios.find((m) => m.id_municipio === selectedId)
       const answer = await getAnswer(q, history, {
         ...(selecionado ? { municipio_id: selecionado.id_municipio, municipio_nome: selecionado.nome } : {}),
         orcamento_mi: budget,
         ...(filters.quadrante ? { quadrante: filters.quadrante } : {}),
         ...(filters.search ? { busca: filters.search } : {}),
+        ...(filters.uf ? { uf: filters.uf } : {}),
+        objetivo,
+        alavancas: {
+          backhaul_comprometido: levers.tcu,
+          fust_reembolsavel:     levers.fust,
+          receita_escolar:       levers.enec,
+        },
+        premissas: { ...params },
       })
       setHistory(answer.history)
 

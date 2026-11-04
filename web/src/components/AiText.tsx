@@ -8,18 +8,23 @@ interface Props {
   label: string
   run: () => Promise<string>
   disabled?: boolean
+  /** Texto já gerado antes (ex.: guardado na store) para reexibir sem nova chamada. */
+  initial?: string
+  onResult?: (texto: string) => void
 }
 
-export default function AiText({ label, run, disabled }: Props) {
+export default function AiText({ label, run, disabled, initial, onResult }: Props) {
   const [loading, setLoading] = useState(false)
-  const [text, setText] = useState<string>()
+  const [text, setText] = useState<string | undefined>(initial)
   const [error, setError] = useState<string>()
 
   async function go() {
     setLoading(true)
     setError(undefined)
     try {
-      setText(await run())
+      const texto = await run()
+      setText(texto)
+      onResult?.(texto)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -31,6 +36,7 @@ export default function AiText({ label, run, disabled }: Props) {
     <div style={{ margin: '12px 0' }}>
       <button
         type="button"
+        className="no-print"
         onClick={go}
         disabled={disabled || loading}
         style={{

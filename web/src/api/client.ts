@@ -68,6 +68,10 @@ export interface Municipio {
   ano_backhaul: number | null
   fust_elegivel: boolean
   eace_escolas: number
+  // recortes e métrica de impacto
+  alunos_sem_internet: number
+  total_escolas: number
+  semiarido: boolean
   // calculados pelo engine
   score_M: number
   score_I: number
@@ -121,17 +125,45 @@ export interface FinancialResult {
   sensitivity: { adesao_pct: number; payback_anos: number }[]
 }
 
+export type Objetivo = 'retorno' | 'equilibrado' | 'alunos'
+
 export interface PortfolioRequest {
   budget: number
   lambda_?: number
   max_payback?: number
   uf?: string
+  semiarido?: boolean
+  regiao?: string
+  objetivo?: Objetivo
   alavancas?: Alavancas
   params?: FinancialParams
   weights?: ScoreWeights
 }
 
+export interface FinanceiroLinha {
+  id_municipio: string
+  capex: number
+  payback: number | null
+  npv: number
+}
+
+export interface ResumoPortfolio {
+  payback_medio: number
+  vpl_total: number
+}
+
+export interface CampoQualidade {
+  campo: string
+  tipo: 'real' | 'aproximado' | 'neutro'
+  cobertura: number
+}
+
 export interface PortfolioResult {
+  alunos_atendidos: number
+  escolas_atendidas: number
+  vpl_total: number
+  efeito_alavancas: { com: ResumoPortfolio; sem: ResumoPortfolio } | null
+  financeiro: FinanceiroLinha[]
   municipios: Municipio[]
   capex_total: number
   payback_medio: number
@@ -143,6 +175,8 @@ export interface PortfolioResult {
 
 export interface BacktestResult {
   status: string
+  /** O backtest roda sobre dados demonstrativos (sem histórico real de 2021). */
+  fonte?: 'demonstrativo' | 'real'
   precision: number
   recall: number
   f1: number
@@ -164,6 +198,8 @@ export interface FiltrosIA {
 }
 
 export const api = {
+  getQualidade: () => get<{ fonte_dados: FonteDados; campos: CampoQualidade[] }>('/qualidade'),
+
   getHealth: () => get<{ status: string; fonte_dados: FonteDados }>('/health'),
 
   postJustificativa: (id_municipio: string) =>
