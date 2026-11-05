@@ -4,7 +4,7 @@
  * Responde ao cenário: recebe os municípios já filtrados (mesmo filtro da tabela), colore por
  * quadrante/payback/score/alunos, enquadra o recorte ao filtrar, voa até o município aberto na
  * ficha, destaca o município sob o mouse na tabela e mostra camadas reais (backhaul de fibra e
- * alunos em escolas sem internet). Marcadores em canvas para suportar os 5.565 municípios.
+ * alunos em escolas sem internet). Marcadores em canvas para suportar os 5.570 municípios.
  */
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'

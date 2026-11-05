@@ -79,7 +79,7 @@ export const FLUXO: { titulo: string; itens: { nome: string; status: StatusEntre
     titulo: 'Dados',
     itens: [
       { nome: 'ETL em 12 passos', status: 'entregue', desc: 'Baixa, valida contra o schema e classifica cada campo como real, aproximado ou neutro.' },
-      { nome: 'Base SQLite', status: 'entregue', desc: '5.565 municípios, 137,8 mil escolas, 43,8 mil UBS e os provedores por município.' },
+      { nome: 'Base SQLite', status: 'entregue', desc: '5.570 municípios, 137,8 mil escolas, 43,8 mil UBS e os provedores por município.' },
     ],
   },
   {
