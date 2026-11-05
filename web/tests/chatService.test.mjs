@@ -19,7 +19,7 @@ const { outputText } = ts.transpileModule(source, {
   },
 })
 const serviceUrl = `data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`
-const { ChatServiceError, getAnswer } = await import(serviceUrl)
+const { ChatServiceError, avisoNumeros, getAnswer } = await import(serviceUrl)
 const messageSource = await readFile(
   new URL('../src/components/ChatMessage.tsx', import.meta.url),
   'utf8',
@@ -344,4 +344,10 @@ test('does not render a references section when no reference metadata exists', (
   )
 
   assert.doesNotMatch(markup, /Referências documentais/)
+})
+
+test('aviso de fidelidade só aparece quando há número não localizado', () => {
+  assert.equal(avisoNumeros([]), '')
+  assert.equal(avisoNumeros(undefined), '')
+  assert.match(avisoNumeros(['987,6', '12']), /987,6; 12/)
 })

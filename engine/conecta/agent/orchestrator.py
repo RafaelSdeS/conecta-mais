@@ -10,6 +10,7 @@ from typing import Any
 
 import pandas as pd
 
+from conecta.agent.fidelidade import numeros_nao_confirmados
 from conecta.agent.schemas import (
     ChatContext,
     ChatError,
@@ -221,7 +222,7 @@ class ChatOrchestrator:
                     for name, result in state.tool_results
                 ):
                     return self._finalize_tool_results(question, history, state)
-                return self._response(question, content, history, state)
+                return self._response(question, content, history, state, do_modelo=True)
 
             assistant_turn = {
                 "role": "assistant",
@@ -306,7 +307,7 @@ class ChatOrchestrator:
                     and isinstance(content, str)
                     and content.strip()
                 ):
-                    return self._response(question, content, history, state)
+                    return self._response(question, content, history, state, do_modelo=True)
             except WatsonxError:
                 pass  # cai no template determinístico
         return self._finalize_tool_results(question, history, state)
@@ -850,7 +851,11 @@ class ChatOrchestrator:
         history: list[ChatHistoryMessage],
         state: _RunState,
         error: ChatError | None = None,
+        do_modelo: bool = False,
     ) -> ChatResponse:
+        # Só o texto do Granite é conferido; o template determinístico cita fórmulas e pesos do código.
+        fontes = [[resultado for _, resultado in state.tool_results], question, [m.content for m in history]]
+        faltando = numeros_nao_confirmados(answer, fontes) if do_modelo else []
         updated_history = [
             *history,
             ChatHistoryMessage(role="user", content=question),
@@ -864,5 +869,6 @@ class ChatOrchestrator:
             tools_executed=state.executions,
             has_demo_data=state.has_demo_data,
             references=state.references,
+            numeros_nao_confirmados=faltando,
             error=error,
         )

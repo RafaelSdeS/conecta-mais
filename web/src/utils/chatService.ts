@@ -45,6 +45,7 @@ interface ChatApiResponse {
   tools_executed?: unknown
   has_demo_data?: unknown
   references?: unknown
+  numeros_nao_confirmados?: unknown
   error?: {
     code?: unknown
     message?: unknown
@@ -184,6 +185,12 @@ function parseReferences(text: string, value: unknown): {
   }
 }
 
+/** Aviso da verificação de fidelidade: números do texto do Granite que não estão nos dados do motor. */
+export function avisoNumeros(numeros: unknown): string {
+  if (!Array.isArray(numeros) || numeros.length === 0) return ''
+  return `\n\n⚠ Números não localizados nos dados do motor: ${numeros.join('; ')}. Confira antes de usar.`
+}
+
 function errorMessage(status: number, code: string | undefined): string {
   if (status === 503 && code === 'watsonx_not_configured') {
     return 'O chat não está configurado no backend. Contate o responsável pelo serviço.'
@@ -291,7 +298,7 @@ export async function getAnswer(
     body.references,
   )
   return {
-    text,
+    text: text + avisoNumeros(body.numeros_nao_confirmados),
     history: parseHistory(body.history),
     sources,
     toolsExecuted,

@@ -3,6 +3,8 @@
  * Em dev o Vite faz proxy de /api → http://localhost:8000.
  */
 
+import { avisoNumeros } from '../utils/chatService'
+
 const BASE = '/api'
 
 async function get<T>(path: string): Promise<T> {
@@ -215,10 +217,15 @@ export interface Auditoria {
   taxa_ok: number | null
   latencia_media_ms: number | null
   latencia_p95_ms: number | null
+  com_numeros_nao_confirmados: number
   por_endpoint: Record<string, number>
   ferramentas: Record<string, number>
   ultimas: { ts: string; endpoint: string; modelo: string; ok: boolean; latencia_ms: number; ferramentas?: string[]; erro?: string }[]
 }
+
+type TextoIa = { texto: string; numeros_nao_confirmados?: string[] }
+
+const comAviso = (r: TextoIa): TextoIa => ({ ...r, texto: r.texto + avisoNumeros(r.numeros_nao_confirmados) })
 
 export interface LimiarBacktest {
   limiar: number
@@ -275,10 +282,10 @@ export const api = {
   getHealth: () => get<{ status: string; fonte_dados: FonteDados }>('/health'),
 
   postJustificativa: (id_municipio: string) =>
-    postIa<{ texto: string }>('/ia/justificativa', { id_municipio }),
+    postIa<TextoIa>('/ia/justificativa', { id_municipio }).then(comAviso),
 
   postPortfolioNarrativa: (ids: string[], orcamento_mi: number) =>
-    postIa<{ texto: string }>('/ia/portfolio-narrativa', { ids, orcamento_mi }),
+    postIa<TextoIa>('/ia/portfolio-narrativa', { ids, orcamento_mi }).then(comAviso),
 
   postFiltros: (texto: string) => postIa<FiltrosIA>('/ia/filtros', { texto }),
 

@@ -46,7 +46,8 @@ def resumo(limite: int = 15, max_linhas: int = 5_000) -> dict:
     registros = list(linhas)
     if not registros:
         return {"total": 0, "ok": 0, "taxa_ok": None, "latencia_media_ms": None, "latencia_p95_ms": None,
-                "por_endpoint": {}, "ferramentas": {}, "ultimas": [], "arquivo": path.name}
+                "com_numeros_nao_confirmados": 0, "por_endpoint": {}, "ferramentas": {}, "ultimas": [],
+                "arquivo": path.name}
     latencias = sorted(r.get("latencia_ms", 0) for r in registros)
     ferramentas = Counter(f for r in registros for f in r.get("ferramentas", []))
     ok = sum(1 for r in registros if r.get("ok"))
@@ -56,6 +57,7 @@ def resumo(limite: int = 15, max_linhas: int = 5_000) -> dict:
         "taxa_ok": round(ok / len(registros), 3),
         "latencia_media_ms": round(sum(latencias) / len(latencias)),
         "latencia_p95_ms": latencias[min(len(latencias) - 1, int(len(latencias) * 0.95))],
+        "com_numeros_nao_confirmados": sum(1 for r in registros if r.get("numeros_nao_confirmados")),
         "por_endpoint": dict(Counter(r.get("endpoint", "?") for r in registros)),
         "ferramentas": dict(ferramentas.most_common(8)),
         "ultimas": registros[-limite:][::-1],

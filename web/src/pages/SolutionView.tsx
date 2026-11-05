@@ -16,7 +16,7 @@ import {
   type StatusEntrega,
 } from '../utils/constants'
 import { useAppStore } from '../store/appStore'
-import { api, type BacktestResult, type CampoQualidade } from '../api/client'
+import { api, type Auditoria, type BacktestResult, type CampoQualidade } from '../api/client'
 import { resumoGeral, resumoPorRegiao } from '../utils/resumo'
 import { fmtN0 } from '../utils/format'
 import logoIcone       from '../assets/logo.svg'
@@ -103,6 +103,11 @@ export default function SolutionView() {
       .then(setBacktest)
       .catch((e: unknown) => setBtError(String(e)))
       .finally(() => setBtLoading(false))
+  }, [])
+
+  const [auditoria, setAuditoria] = useState<Auditoria | null>(null)
+  useEffect(() => {
+    api.getAuditoria().then(setAuditoria).catch(() => {})  // painel opcional: sem API, não aparece
   }, [])
 
   const temDados = municipios.length > 0
@@ -374,6 +379,30 @@ export default function SolutionView() {
           Custos: R$ 4,5 mi no ano 1 e R$ 2,5 mi/ano depois. Payback da ferramenta em menos de 2 meses após o primeiro ciclo trimestral.
         </p>
       </div>
+
+      {/* Auditoria das chamadas de IA */}
+      {auditoria && auditoria.total > 0 && (
+        <div style={pn}>
+          <h2 style={{ margin: '0 0 8px' }}>Auditoria da IA</h2>
+          <p style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 12 }}>
+            Cada chamada ao Granite fica em log local, sem o texto do usuário. Os números dos textos gerados são
+            conferidos com os dados entregues ao modelo, e os não localizados aparecem como aviso na resposta.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+            {[
+              { label: 'Chamadas registradas', value: fmtN0(auditoria.total) },
+              { label: 'Concluídas', value: auditoria.taxa_ok == null ? '—' : `${(auditoria.taxa_ok * 100).toFixed(0)}%` },
+              { label: 'Latência p95', value: auditoria.latencia_p95_ms == null ? '—' : `${(auditoria.latencia_p95_ms / 1000).toFixed(1)} s` },
+              { label: 'Com número não localizado', value: fmtN0(auditoria.com_numeros_nao_confirmados) },
+            ].map(({ label, value }) => (
+              <div key={label} style={{ ...pn, padding: 12 }}>
+                <div style={{ fontSize: 11, color: 'var(--mu)', marginBottom: 2 }}>{label}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>{value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Backtest */}
       <div style={pn}>

@@ -811,3 +811,10 @@ def test_rotas_existentes_do_motor_preservadas(client: TestClient):
     ).status_code == 200
     assert client.post("/portfolio", json={"budget": 50.0}).status_code == 200
     assert client.get("/backtest").status_code == 200
+
+
+def test_chat_aponta_numero_do_modelo_sem_fonte(client: TestClient):
+    _install_fake(FakeWatsonxClient([_assistant("O CapEx é de R$ 987,6 milhões para os 500 alunos.")]))
+    data = client.post("/chat", json={"message": "Quanto custa para 500 alunos?"}).json()
+    assert data["numeros_nao_confirmados"] == ["987,6"]  # 500 veio da pergunta
+

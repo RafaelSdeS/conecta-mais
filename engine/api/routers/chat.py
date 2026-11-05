@@ -41,6 +41,7 @@ def post_chat(
             int((time.monotonic() - inicio) * 1000),
             ferramentas=[t.name for t in result.tools_executed],
             fontes=[d.id for d in result.data_sources],
+            numeros_nao_confirmados=len(result.numeros_nao_confirmados),
         )
         return result
     except WatsonxError as exc:

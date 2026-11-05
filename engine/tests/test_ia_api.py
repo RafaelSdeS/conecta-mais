@@ -99,3 +99,14 @@ def test_painel_de_auditoria_resume_o_log(api):
     assert d["total"] == 2 and d["ok"] == 1 and d["taxa_ok"] == 0.5
     assert d["por_endpoint"] == {"/ia/filtros": 2} and len(d["ultimas"]) == 2
     assert "texto" not in json.dumps(d)  # nada do que o usuário digitou
+
+
+def test_numero_que_nao_veio_do_motor_e_apontado_e_auditado(api):
+    log = os.environ["CONECTA_AUDIT_LOG"]
+    if os.path.exists(log):
+        os.remove(log)
+    _use(_Fake("O VPL chega a R$ 987,6 milhões."))
+    r = api.post("/ia/justificativa", json={"id_municipio": "2927408"})
+    assert r.json()["numeros_nao_confirmados"] == ["987,6"]
+    assert api.get("/ia/auditoria").json()["com_numeros_nao_confirmados"] == 1
+

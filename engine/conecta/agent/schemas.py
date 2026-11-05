@@ -75,4 +75,5 @@ class ChatResponse(BaseModel):
     tools_executed: list[ToolExecution]
     has_demo_data: bool
     references: list[DocumentReference] = Field(default_factory=list)
+    numeros_nao_confirmados: list[str] = Field(default_factory=list)
     error: ChatError | None = None
