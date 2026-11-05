@@ -38,3 +38,9 @@ def test_ignora_siglas_anos_e_contagens_da_prosa():
 
 def test_booleano_nao_vira_numero():
     assert numeros_nao_confirmados("Foram 1,0 ponto.", {"ativo": True}) == ["1,0"]
+
+
+def test_respostas_reais_do_granite_nao_geram_falso_alarme():
+    assert numeros_nao_confirmados("VPL negativo de -R$ 592 milhões", {"vpl": -592.41}) == []
+    assert numeros_nao_confirmados("| 7 686 | 25,48 | 1\u00a0015 alunos |", {"a": 7686, "b": 25.48, "c": 1015}) == []
+

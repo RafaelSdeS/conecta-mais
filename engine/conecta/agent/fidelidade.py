@@ -7,8 +7,9 @@ from collections.abc import Iterator
 from numbers import Real
 from typing import Any
 
-# 12.345,67 | 12,5 | 12.5 | 1234. Não pega número colado em letra (Q1, M2) nem pedaço de outro número.
-_NUMERO = re.compile(r"(?<![\w.,])(?:\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)(?!\w)")
+# 12.345,67 | 12 345 | 12,5 | 12.5 | 1234. Não pega número colado em letra (Q1, M2) nem pedaço de outro número.
+_NUMERO = re.compile(r"(?<![\w.,])(?:\d{1,3}(?:[. \u00a0\u202f]\d{3})+(?:,\d+)?|\d+(?:[.,]\d+)?)(?!\w)")
+_ESPACOS = re.compile(r"[ \u00a0\u202f]")
 _SO_MILHAR = re.compile(r"\d{1,3}(?:\.\d{3})+")
 _ESCALAS = (1.0, 100.0, 1e-3, 1e-6, 1e-9)  # valor cru, fração em %, mil, milhão, bilhão
 
@@ -16,12 +17,11 @@ _ESCALAS = (1.0, 100.0, 1e-3, 1e-6, 1e-9)  # valor cru, fração em %, mil, milh
 def _numeros(texto: str) -> Iterator[tuple[str, float, int]]:
     """Cada número do texto: como foi escrito, valor e casas decimais escritas."""
     for literal in _NUMERO.findall(texto):
-        if "," in literal:
-            normal = literal.replace(".", "").replace(",", ".")
-        elif _SO_MILHAR.fullmatch(literal):
-            normal = literal.replace(".", "")
-        else:
-            normal = literal
+        normal = _ESPACOS.sub("", literal)
+        if "," in normal:
+            normal = normal.replace(".", "").replace(",", ".")
+        elif _SO_MILHAR.fullmatch(normal):
+            normal = normal.replace(".", "")
         yield literal, float(normal), len(normal.partition(".")[2])
 
 
@@ -29,7 +29,7 @@ def _valores(dados: Any) -> Iterator[float]:
     if isinstance(dados, bool) or dados is None:
         return
     if isinstance(dados, Real):
-        yield float(dados)
+        yield abs(float(dados))  # o texto costuma escrever "VPL negativo de R$ 592 mi" sem o sinal no número
     elif isinstance(dados, str):
         yield from (valor for _, valor, _ in _numeros(dados))
     elif isinstance(dados, dict):
