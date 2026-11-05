@@ -7,7 +7,7 @@ Produz um DataFrame com colunas:
   market_share_vivo_movel, hhi, ppp_share
 
 Fontes:
-  - Domicílios: IBGE SIDRA tabela 4709 (Censo 2022)
+  - Domicílios: IBGE SIDRA tabela 4712, domicílios particulares permanentes ocupados (Censo 2022)
   - Renda média: estimativa por UF (Censo 2022 IBGE — API instável, valores de referência)
   - Acessos BL total e fibra: derivados de densidade (Base dos Dados GCS) × domicílios
   - market_share_vivo_movel, hhi, ppp_share: valores neutros (microdados por
@@ -59,17 +59,17 @@ _PPP_SHARE_NEUTRO = 0.55           # ~55% de PPPs — média nacional
 
 
 def _fetch_domicilios() -> pd.DataFrame:
-    """Busca domicílios particulares permanentes por município (IBGE Censo 2022)."""
+    """Busca domicílios particulares permanentes ocupados por município (IBGE Censo 2022)."""
     cache = RAW_DIR / "ibge_domicilios.parquet"
     if cache.exists():
         logger.info("Cache: ibge_domicilios.parquet")
         return pd.read_parquet(cache)
 
-    logger.info("Buscando domicílios no IBGE SIDRA (T4709 V93)…")
+    logger.info("Buscando domicílios no IBGE SIDRA (T4712 V381)…")
     for tentativa in range(3):
         try:
             data = get_json(
-                f"{IBGE_BASE}/v3/agregados/4709/periodos/2022/variaveis/93",
+                f"{IBGE_BASE}/v3/agregados/4712/periodos/2022/variaveis/381",
                 params={"localidades": "N6[all]"},
             )
             rows = []
@@ -149,11 +149,8 @@ def run(df_municipios: pd.DataFrame | None = None) -> pd.DataFrame:
 
     df = df.merge(df_densidade, on="id_municipio", how="left")
 
-    # domicilios_urbanos: assume 80% dos domicílios são urbanos (média nacional Censo 2022)
-    # (não temos separação urbano/rural por API estável no momento)
-    df["domicilios_urbanos"] = (
-        df["domicilios_total"].fillna(500) * 0.80
-    ).astype(int)
+    # ponytail: total de domicílios ocupados, sem separar urbano e rural; fração urbana municipal se a engenharia pedir
+    df["domicilios_urbanos"] = df["domicilios_total"].fillna(500).astype(int)
 
     # acessos_total_bl = densidade × domicílios / 100
     df["acessos_total_bl"] = (

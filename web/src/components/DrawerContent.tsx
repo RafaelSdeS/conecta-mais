@@ -184,7 +184,7 @@ export default function DrawerContent({ municipio: m }: Props) {
         </dd>
 
         <dt style={{ color: 'var(--mu)' }}>População</dt>
-        <dd style={{ margin: 0 }}>~{fmtN0(homes * 3.4 / 0.8)} hab. (estimativa) · {fmtN0(homes)} domicílios urbanos</dd>
+        <dd style={{ margin: 0 }}>~{fmtN0(homes * 2.79)} hab. (estimativa) · {fmtN0(homes)} domicílios urbanos</dd>
 
         <dt style={{ color: 'var(--mu)' }}>Escolas públicas</dt>
         <dd style={{ margin: 0 }}>

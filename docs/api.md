@@ -171,17 +171,17 @@ Backtest 2021→hoje. Com a base real, compara a fibra de dezembro de 2021 com o
   "status": "ok",
   "fonte": "real",
   "descricao": "Fibra e banda larga fixa de pessoa física (Anatel)...",
-  "precision": 0.6424,
-  "recall": 0.2107,
-  "f1": 0.3174,
-  "total_q1_q2a_2021": 1032,
+  "precision": 0.6796,
+  "recall": 0.2394,
+  "f1": 0.3541,
+  "total_q1_q2a_2021": 1108,
   "total_cresceram": 3146,
-  "acertados": 663,
+  "acertados": 753,
   "threshold_crescimento": 2.0,
   "taxa_base": 0.5648,
-  "lift": 1.14,
-  "auc": 0.5391,
-  "limiares": [{ "limiar": 1.2, "precision": 0.84, "recall": 0.19, "f1": 0.3, "cresceram": 4694, "taxa_base": 0.84, "lift": 1.0, "auc": 0.522 }]
+  "lift": 1.2,
+  "auc": 0.612,
+  "limiares": [{ "limiar": 1.2, "precision": 0.86, "recall": 0.2, "f1": 0.33, "cresceram": 4694, "taxa_base": 0.84, "lift": 1.02, "auc": 0.5525 }]
 }
 ```
 

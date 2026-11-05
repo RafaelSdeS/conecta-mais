@@ -233,7 +233,7 @@ export const ROADMAP: { titulo: string; status: StatusEntrega | 'proximo'; itens
 export const RISCOS: string[] = [
   'Campos neutros não diferenciam municípios: o score A depende de listas ainda não carregadas (Acordo TCU, FUST e EACE) e o déficit de banda não tem velocidade medida.',
   'Premissas financeiras da proposta: com os padrões o payback simples não cai abaixo de ~5,7 anos e o VPL é negativo (editáveis em Premissas).',
-  'Backtest real: a classificação Q1/Q2a prevê o crescimento de fibra pouco acima do acaso (lift entre 1,0 e 1,2). Os scores precisam de revisão antes de sustentar decisões.',
+  'Backtest real: a classificação Q1/Q2a prevê o crescimento de fibra pouco acima do acaso (lift entre 1,0 e 1,3). Os scores precisam de revisão antes de sustentar decisões.',
   'Os custos de FWA e satélite são ilustrativos: a recomendação de tecnologia segue a regra da proposta, não uma otimização de custos.',
   'Censo Escolar 2024 sem latitude/longitude das escolas: a análise é por município, não por escola.',
   'Backhaul só como presença por município, sem traçado da rede.',

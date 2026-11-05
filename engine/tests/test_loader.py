@@ -64,3 +64,10 @@ def test_area_cobre_municipios_criados_depois_de_2010():
     criados = {"1504752", "4212650", "4220000", "4314548", "5006275"}
     assert criados <= set(area["id_municipio"])
     assert (area["area_km2"] > 0).all()
+
+
+def test_domicilios_vem_da_tabela_de_domicilios_e_nao_da_populacao():
+    dom = pd.read_parquet(Path(__file__).parent.parent / "data" / "raw" / "ibge_domicilios.parquet")
+    assert dom["domicilios_total"].sum() == 72_456_368  # total de domicílios ocupados no Censo 2022
+    assert dom.set_index("id_municipio").loc["2927408", "domicilios_total"] == 958_575  # Salvador
+
