@@ -70,10 +70,11 @@ def _calcula(request: Request) -> dict:
         "threshold_crescimento": r.threshold_crescimento,
         "taxa_base": r.taxa_base,
         "lift": r.lift,
+        "auc": r.auc,
         "limiares": [
             {
                 "limiar": t, "precision": x.precision, "recall": x.recall, "f1": x.f1,
-                "cresceram": x.total_cresceram, "taxa_base": x.taxa_base, "lift": x.lift,
+                "cresceram": x.total_cresceram, "taxa_base": x.taxa_base, "lift": x.lift, "auc": x.auc,
             }
             for t, x in por_limiar.items()
         ],
@@ -86,6 +87,7 @@ def get_backtest(request: Request):
     Precision: dos municípios que o modelo classificou Q1/Q2a em 2021, quantos cresceram em fibra.
     Recall:    dos que cresceram, quantos estavam em Q1/Q2a.
     Lift:      precision ÷ taxa-base (fração de todos os municípios que cresceram); 1,0 = acaso.
+    AUC:       chance de um município que cresceu ter score maior que um que não cresceu; 0,5 = acaso.
     """
     cache = request.app.state.__dict__.setdefault("cache_backtest", {})
     if "r" not in cache:

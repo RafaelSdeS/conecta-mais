@@ -4,9 +4,10 @@ Testes do backtest 2021 → 2025.
 
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
-from conecta.backtest.runner import run_backtest
+from conecta.backtest.runner import _auc, run_backtest
 from conecta.data.loader import load_backhaul, load_municipios
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -79,3 +80,12 @@ def test_taxa_base_e_lift(data_2021, data_2025, backhaul):
     r = run_backtest(data_2021, data_2025, backhaul)
     assert 0.0 <= r.taxa_base <= 1.0
     assert r.lift == pytest.approx(r.precision / r.taxa_base, abs=0.01)
+
+
+def test_auc_ordem_perfeita_invertida_e_empate():
+    cresceu = pd.Series([False, False, True, True])
+    assert _auc(pd.Series([1.0, 2.0, 3.0, 4.0]), cresceu) == 1.0
+    assert _auc(pd.Series([4.0, 3.0, 2.0, 1.0]), cresceu) == 0.0
+    assert _auc(pd.Series([1.0, 1.0, 1.0, 1.0]), cresceu) == 0.5
+    assert _auc(pd.Series([1.0, 2.0]), pd.Series([True, True])) == 0.5
+

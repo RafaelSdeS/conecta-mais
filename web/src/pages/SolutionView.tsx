@@ -412,6 +412,7 @@ export default function SolutionView() {
         </div>
         <p style={{ fontSize: 13, color: 'var(--mu)', marginBottom: 12 }}>
           Dos municípios classificados como Q1/Q2a em 2021, quantos expandiram a base de fibra até 2025.
+          {backtest?.fonte === 'real' && ` Validação parcial, não prova do modelo. ${backtest.descricao ?? ''}`}
           {backtest?.fonte !== 'real' && ' O cálculo usa 49 municípios de demonstração: não há histórico de 2021 em fonte aberta, então estes números ilustram o método e não validam o modelo.'}
         </p>
 
@@ -422,11 +423,12 @@ export default function SolutionView() {
         {backtest && !backtestLoading && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
             {[
+              { label: 'Lift',                   value: (backtest.lift ?? 0).toFixed(2),               detail: 'precision ÷ taxa-base; 1,00 = acaso' },
+              { label: 'AUC',                    value: (backtest.auc ?? 0.5).toFixed(2),              detail: 'ordem do score contra o crescimento; 0,50 = acaso' },
               { label: 'Precision',              value: `${(backtest.precision * 100).toFixed(0)}%`,   detail: 'dos Q1/Q2a que realmente cresceram' },
               { label: 'Recall',                 value: `${(backtest.recall * 100).toFixed(0)}%`,      detail: 'dos que cresceram que eram Q1/Q2a' },
-              { label: 'F1-Score',               value: backtest.f1.toFixed(2),                        detail: 'média harmônica precision/recall' },
               { label: 'Municípios Q1/Q2a 2021', value: String(backtest.total_q1_q2a_2021),            detail: 'classificados pelo modelo' },
-              { label: 'Cresceram em fibra',     value: String(backtest.total_cresceram),              detail: `threshold: +${((backtest.threshold_crescimento - 1) * 100).toFixed(0)}%` },
+              { label: 'Cresceram em fibra',     value: String(backtest.total_cresceram),              detail: `limiar: ${backtest.threshold_crescimento.toFixed(1).replace('.', ',')}× a fibra de 2021` },
               { label: 'Acertos',                value: String(backtest.acertados),                    detail: 'Q1/Q2a que de fato cresceram' },
             ].map(({ label, value, detail }) => (
               <div key={label} style={{ ...pn, padding: 12 }}>

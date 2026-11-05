@@ -11,11 +11,8 @@ Lógica:
 Interpretação (§8.1 Módulo 5 da proposta):
 - Precision alta  → quando o modelo diz "expandir", de fato havia crescimento.
 - Recall alto     → o modelo captura a maioria dos municípios que cresceram.
-- É a "principal evidência de que o modelo funciona" para o pitch.
-
-Quando o Joel entregar a série histórica real da Anatel:
-  - Substituir data_2021 e data_2025 pelos DataFrames reais.
-  - O resto do código não muda.
+- AUC              → chance de um município que cresceu ter score maior que um que não cresceu; 0,5 = acaso.
+- É uma validação parcial: a fibra é de 2021, mas os demais indicadores são atuais.
 """
 
 from __future__ import annotations
@@ -43,6 +40,15 @@ class BacktestResult:
     detalhes: pd.DataFrame = field(repr=False)   # linha por município com flags
     taxa_base: float = 0.0        # fração de todos os municípios que cresceram (referência do acaso)
     lift: float = 0.0             # precision / taxa_base; 1,0 = o modelo não supera o acaso
+    auc: float = 0.5              # ordem do score_total contra o crescimento; 0,5 = acaso
+
+
+def _auc(score: pd.Series, positivo: pd.Series) -> float:
+    """AUC pela soma dos postos (Mann-Whitney); empates contam meio ponto."""
+    n_pos, n_neg = int(positivo.sum()), int((~positivo).sum())
+    if not n_pos or not n_neg:
+        return 0.5
+    return float((score.rank()[positivo].sum() - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg))
 
 
 def run_backtest(
@@ -82,7 +88,7 @@ def run_backtest(
     )
 
     # ── 3. Predição do modelo: Q1 ou Q2a em 2021 ─────────────────────────────
-    scores_2021 = d21.set_index("id_municipio")[["quadrante"]].loc[ids_comuns]
+    scores_2021 = d21.set_index("id_municipio")[["quadrante", "score_total"]].loc[ids_comuns]
     previsto_positivo = scores_2021["quadrante"].isin(["Q1", "Q2a"])
 
     # ── 4. Métricas ───────────────────────────────────────────────────────────
@@ -120,4 +126,5 @@ def run_backtest(
         detalhes=detalhes,
         taxa_base=round(taxa_base, 4),
         lift=round(precision / taxa_base, 2) if taxa_base > 0 else 0.0,
+        auc=round(_auc(scores_2021["score_total"], cresceu), 4),
     )

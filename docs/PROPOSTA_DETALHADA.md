@@ -310,7 +310,7 @@ O valor de E deve ser definido com a Vivo.
    - Plano de ação sugerido: tecnologia indicada e ação pedagógica para a Fundação.
 5. **Validação retroativa (backtest):**
    - Calcular os scores com dados de 2021 e verificar se anteciparam onde a fibra cresceu até 2025, usando a série histórica da Anatel.
-   - É a principal evidência de que o modelo funciona.
+   - É uma validação parcial do modelo: a fibra é de 2021, mas os demais indicadores são atuais e podem antecipar parte do crescimento.
 
 ### 8.2 Roteiro da Demonstração (Pitch de 4 Minutos)
 

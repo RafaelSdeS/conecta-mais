@@ -242,6 +242,7 @@ export interface BacktestResult {
   descricao?: string
   taxa_base?: number
   lift?: number
+  auc?: number
   limiares?: LimiarBacktest[]
   /** O backtest roda sobre dados demonstrativos (sem histórico real de 2021). */
   fonte?: 'demonstrativo' | 'real'
