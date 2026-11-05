@@ -67,14 +67,18 @@ def _fetch_municipios() -> pd.DataFrame:
 
 
 def _fetch_area() -> pd.DataFrame:
-    """Baixa área km² de todos os municípios via SIDRA agregado 1301."""
+    """Baixa a área km² via SIDRA, agregado 4714 (Censo 2022).
+
+    O agregado 1301 (2010) não tem os municípios criados depois de 2010, e sem área eles
+    eram descartados na validação do schema.
+    """
     if CACHE_AREA.exists():
         logger.info("Cache: ibge_area_km2.parquet")
         return pd.read_parquet(CACHE_AREA)
 
     logger.info("Buscando área km² na IBGE SIDRA…")
     data = get_json(
-        f"{IBGE_BASE}/v3/agregados/1301/periodos/2010/variaveis/615",
+        f"{IBGE_BASE}/v3/agregados/4714/periodos/2022/variaveis/6318",
         params={"localidades": "N6[all]"},
     )
     rows = []

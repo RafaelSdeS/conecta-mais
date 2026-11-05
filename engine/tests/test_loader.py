@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from conecta.data.loader import load_backhaul, load_municipios
@@ -54,3 +55,12 @@ def test_total_escolas_e_opcional_no_schema():
 
     campos = Municipio.model_fields
     assert campos["total_escolas"].default == 0 and campos["semiarido"].default is False
+
+
+def test_area_cobre_municipios_criados_depois_de_2010():
+    """Sem área, o município é descartado na validação do ETL."""
+    area = pd.read_parquet(Path(__file__).parent.parent / "data" / "raw" / "ibge_area_km2.parquet")
+    assert len(area) == 5570
+    criados = {"1504752", "4212650", "4220000", "4314548", "5006275"}
+    assert criados <= set(area["id_municipio"])
+    assert (area["area_km2"] > 0).all()

@@ -33,6 +33,8 @@ from pathlib import Path
 import pandas as pd
 from pydantic import ValidationError
 
+from conecta.rag.indexer import build_index
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_DB = Path(__file__).parent.parent / "data" / "conecta_mais.db"
@@ -400,6 +402,8 @@ def run(output_path: Path | None = None) -> None:
         )
 
     _write_sqlite(df_valid, df_escolas, output_path, df_inep_agg=df_inep_agg, extras=extras)
+    documentos, trechos = build_index()  # sem o índice, a busca de documentos do agente fica indisponível
+    logger.info("Índice RAG: %d documentos, %d trechos", documentos, trechos)
     logger.info(
         "ETL concluído: %d municípios, %d erros de validação → %s",
         len(df_valid), len(errors), output_path,
