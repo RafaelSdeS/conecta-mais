@@ -6,8 +6,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Municipio } from '../api/client'
 import { useFavorites } from '../hooks/useFavorites'
+import { ROTULO_DECISAO, useRecomendacoes } from '../hooks/useRecomendacoes'
 import { useAppStore } from '../store/appStore'
 import { UFS } from '../utils/constants'
+import { baixaCsv, paraCsv } from '../utils/csv'
 import { salvaUf, semAcento } from '../utils/filtros'
 import { fmtAnos, fmtMi, fmtN0 } from '../utils/format'
 import { maisProximos, type Ponto } from '../utils/proximidade'
@@ -30,6 +32,7 @@ const campo: React.CSSProperties = {
 function Cartao({ m, km }: { m: Municipio; km?: number }) {
   const fin = useAppStore((s) => s.financeiro[m.id_municipio])
   const openDrawer = useAppStore((s) => s.openDrawer)
+  const recomendacao = useRecomendacoes()[m.id_municipio]
   const v = veredito(m, fin)
   // Muitos municípios têm o mesmo retorno (piso do modelo); o investimento é o que os diferencia.
   const financeiro = fin ? `${fmtMi(fin.capex)} · retorno em ${fmtAnos(fin.payback)}` : null
@@ -58,6 +61,11 @@ function Cartao({ m, km }: { m: Municipio; km?: number }) {
         {km != null && <span style={{ color: 'var(--mu)', fontSize: 13, whiteSpace: 'nowrap' }}>{km.toFixed(0)} km</span>}
       </span>
       <span style={{ display: 'block', fontWeight: 600, fontSize: 14, marginTop: 2 }}>{v.titulo}</span>
+      {recomendacao && (
+        <span style={{ display: 'block', fontSize: 13, marginTop: 2 }}>
+          Sua recomendação: <b>{ROTULO_DECISAO[recomendacao.decisao]}</b>{recomendacao.nota && ` · ${recomendacao.nota}`}
+        </span>
+      )}
       <span style={{ display: 'block', color: 'var(--mu)', fontSize: 13, marginTop: 2 }}>
         {[financeiro, `${fmtN0(m.alunos_sem_internet)} alunos sem internet`].filter(Boolean).join(' · ')}
       </span>
@@ -74,6 +82,7 @@ export default function CampoView() {
   const loading    = useAppStore((s) => s.loading)
   const error      = useAppStore((s) => s.error)
   const [favs]     = useFavorites()
+  const recomendacoes = useRecomendacoes()
 
   const [busca, setBusca]   = useState('')
   const [origem, setOrigem] = useState<Ponto | null>(null)
@@ -100,7 +109,41 @@ export default function CampoView() {
     return priorizar(regiao, financeiro).slice(0, LIMITE_LISTA)
   }, [origem, proximos, municipios, filters.uf, financeiro])
 
-  const carteira = useMemo(() => municipios.filter((m) => favs.has(m.id_municipio)), [municipios, favs])
+  const carteira = useMemo(
+    () => municipios.filter((m) => favs.has(m.id_municipio) || recomendacoes[m.id_municipio]),
+    [municipios, favs, recomendacoes],
+  )
+
+  function exportaCarteira() {
+    const linhas = carteira.map((m) => {
+      const fin = financeiro[m.id_municipio]
+      const rec = recomendacoes[m.id_municipio]
+      return {
+        municipio: m.nome,
+        uf: m.uf,
+        veredito: veredito(m, fin).titulo,
+        recomendacao: rec ? ROTULO_DECISAO[rec.decisao] : '',
+        observacao: rec?.nota ?? '',
+        data: rec ? new Date(rec.data).toLocaleDateString('pt-BR') : '',
+        investimento_mi: fin?.capex.toFixed(2) ?? '',
+        retorno_anos: fin?.payback?.toFixed(1) ?? '',
+        vpl_mi: fin?.npv.toFixed(2) ?? '',
+        alunos_sem_internet: m.alunos_sem_internet,
+      }
+    })
+    baixaCsv('carteira-conecta.csv', paraCsv(linhas, [
+      { chave: 'municipio', titulo: 'Município' },
+      { chave: 'uf', titulo: 'UF' },
+      { chave: 'veredito', titulo: 'Veredito' },
+      { chave: 'recomendacao', titulo: 'Recomendação' },
+      { chave: 'observacao', titulo: 'Observação' },
+      { chave: 'data', titulo: 'Data' },
+      { chave: 'investimento_mi', titulo: 'Investimento (R$ mi)' },
+      { chave: 'retorno_anos', titulo: 'Retorno (anos)' },
+      { chave: 'vpl_mi', titulo: 'VPL (R$ mi)' },
+      { chave: 'alunos_sem_internet', titulo: 'Alunos sem internet' },
+    ]))
+  }
 
   function pertoDeMim() {
     if (!navigator.geolocation) {
@@ -190,9 +233,14 @@ export default function CampoView() {
       </section>
 
       <section style={{ marginBottom: 16 }}>
-        <h2 style={{ fontSize: 16, margin: '8px 0' }}>Minha carteira</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, margin: '8px 0' }}>
+          <h2 style={{ fontSize: 16, margin: 0 }}>Minha carteira</h2>
+          {carteira.length > 0 && (
+            <button type="button" onClick={exportaCarteira} style={{ ...campo, fontSize: 14, cursor: 'pointer' }}>Exportar CSV</button>
+          )}
+        </div>
         {carteira.length === 0 && (
-          <p style={{ color: 'var(--mu)', margin: 0 }}>Na ficha de um município, toque em Favoritar para acompanhá-lo aqui.</p>
+          <p style={{ color: 'var(--mu)', margin: 0 }}>Na ficha de um município, favorite ou registre uma recomendação para acompanhá-lo aqui.</p>
         )}
         {carteira.map((m) => <Cartao key={m.id_municipio} m={m} km={kmPorId.get(m.id_municipio)} />)}
       </section>

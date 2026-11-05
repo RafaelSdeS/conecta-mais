@@ -11,10 +11,12 @@ import { api } from '../api/client'
 import type { FinancialResult } from '../api/client'
 import { useAppStore } from '../store/appStore'
 import { useFavorites } from '../hooks/useFavorites'
+import { textoRecomendacao, useRecomendacoes } from '../hooks/useRecomendacoes'
 import { useToast } from '../hooks/toastContext'
 import QuadrantBadge from './QuadrantBadge'
 import AiText from './AiText'
 import DecisaoCard from './DecisaoCard'
+import RegistroRecomendacao from './RegistroRecomendacao'
 import DadosDoMunicipio from './DadosDoMunicipio'
 import logo from '../assets/logo-texto.svg'
 import { textoCompartilhar, urlWhatsApp } from '../utils/kit'
@@ -68,6 +70,7 @@ export default function DrawerContent({ municipio: m }: Props) {
   const portfolio  = useAppStore((s) => s.portfolio)
   const financeiro = useAppStore((s) => s.financeiro)
   const [favs, toggleFav] = useFavorites()
+  const recomendacao = useRecomendacoes()[m.id_municipio]
   const { toast } = useToast()
 
   // ── Business case via API ────────────────────────────────────────────────────
@@ -139,6 +142,7 @@ export default function DrawerContent({ municipio: m }: Props) {
       explicacao: v.explicacao,
       motivos: motivos(m, fin),
       alerta: alertaFinanceiro(fin),
+      recomendacao: recomendacao && textoRecomendacao(recomendacao),
       link: `${window.location.origin}/?m=${m.id_municipio}`,
     })
     if (navigator.share) {
@@ -201,6 +205,8 @@ export default function DrawerContent({ municipio: m }: Props) {
         Compartilhar resumo
       </button>
 
+      <RegistroRecomendacao key={`rec-${m.id_municipio}`} id={m.id_municipio} />
+
       <AiText
         key={m.id_municipio}
         label="Explicar com IA"
@@ -208,6 +214,8 @@ export default function DrawerContent({ municipio: m }: Props) {
         run={() => api.postJustificativa(m.id_municipio).then((r) => r.texto)}
         onResult={(t) => setJustificativa(m.id_municipio, t)}
       />
+
+      <DadosDoMunicipio key={m.id_municipio} id={m.id_municipio} nome={m.nome} uf={m.uf} ubsTotal={m.ubs ?? 0} />
 
       <details open={ABRE_DETALHES} style={{ margin: '12px 0' }}>
       <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 14, padding: '12px 0' }}>
@@ -379,8 +387,6 @@ export default function DrawerContent({ municipio: m }: Props) {
       )}
 
       </details>
-
-      <DadosDoMunicipio key={m.id_municipio} id={m.id_municipio} nome={m.nome} uf={m.uf} ubsTotal={m.ubs ?? 0} />
     </div>
   )
 }
