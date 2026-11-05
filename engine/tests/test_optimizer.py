@@ -16,7 +16,7 @@ import pytest
 from conecta.data.loader import load_backhaul, load_municipios
 from conecta.financial.models import Alavancas, FinancialParams
 from conecta.geo.distances import add_backhaul_distances
-from conecta.optimizer.portfolio import optimize_portfolio
+from conecta.optimizer.portfolio import add_financials, optimize_portfolio
 from conecta.scores.calculator import calculate_scores
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -151,3 +151,29 @@ def test_solver_padrao_e_cbc_e_cplex_indisponivel_cai_no_cbc(df_com_scores, monk
     monkeypatch.setenv("CONECTA_SOLVER", "cplex")  # sem o CPLEX instalado neste ambiente
     r = optimize_portfolio(df_com_scores, PARAMS, Alavancas(backhaul_comprometido=True), budget=300.0)
     assert r.solver in {"CBC", "CPLEX"} and r.status == "Optimal"
+
+
+# ── Inclusão forçada ("o que mudaria para incluir") ───────────────────────────
+
+def test_incluir_forca_municipio_e_respeita_orcamento(df_com_scores):
+    fin = add_financials(df_com_scores, PARAMS, ALAVANCAS)
+    elegiveis = fin[fin["_payback"] <= 10]
+    budget = float(elegiveis["_capex"].median())
+    base = optimize_portfolio(df_com_scores, PARAMS, ALAVANCAS, budget=budget)
+    escolhidos = base.municipios["id_municipio"]
+    fora = elegiveis[(elegiveis["_capex"] <= budget) & ~elegiveis["id_municipio"].isin(escolhidos)]
+    assert not fora.empty, "o mock precisa de um elegível que caiba e não tenha sido escolhido"
+    alvo = str(fora.iloc[0]["id_municipio"])
+    forcado = optimize_portfolio(df_com_scores, PARAMS, ALAVANCAS, budget=budget, incluir=[alvo])
+    assert alvo in set(forcado.municipios["id_municipio"].astype(str))
+    assert forcado.capex_total <= budget + 1e-6
+
+
+def test_incluir_acima_do_orcamento_e_inviavel(df_com_scores):
+    fin = add_financials(df_com_scores, PARAMS, ALAVANCAS)
+    caro = fin[fin["_payback"] <= 10].sort_values("_capex").iloc[-1]
+    r = optimize_portfolio(
+        df_com_scores, PARAMS, ALAVANCAS,
+        budget=float(caro["_capex"]) / 2, incluir=[str(caro["id_municipio"])],
+    )
+    assert r.status == "Infeasible" and r.n_selecionados == 0

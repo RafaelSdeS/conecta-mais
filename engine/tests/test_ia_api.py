@@ -56,6 +56,18 @@ def test_justificativa_municipio_inexistente_e_erro_do_watsonx(api):
     assert r.status_code == 503 and "watsonx" in r.json()["detail"].lower()
 
 
+def test_justificativa_usa_o_cenario_da_tela(api):
+    fake = _use(_Fake("J."))
+    api.post("/ia/justificativa", json={"id_municipio": "4106902"})
+    api.post("/ia/justificativa", json={
+        "id_municipio": "4106902", "params": {"arpu_mensal": 150}, "no_portfolio": True,
+    })
+    assert len(fake.calls) == 2  # cenário diferente não reaproveita o cache
+    padrao, outro = (json.loads(c[0][1]["content"]) for c in fake.calls)
+    assert outro["payback_anos"] < padrao["payback_anos"]
+    assert outro["no_portfolio_do_cenario"] is True and "no_portfolio_do_cenario" not in padrao
+
+
 def test_narrativa_do_portfolio(api):
     fake = _use(_Fake("Narrativa."))
     r = api.post("/ia/portfolio-narrativa", json={"ids": ["3550308", "3304557"], "orcamento_mi": 50})

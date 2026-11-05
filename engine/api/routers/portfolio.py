@@ -31,6 +31,9 @@ class PortfolioRequest(BaseModel):
     alavancas: Alavancas = Alavancas()
     params: FinancialParams = FinancialParams()
     weights: ScoreWeights = ScoreWeights()
+    incluir: list[str] = Field(
+        default_factory=list, max_length=5, description="Códigos IBGE forçados no portfólio"
+    )
 
 
 def financeiro_cenario(request: Request, params: FinancialParams, alavancas: Alavancas) -> pd.DataFrame:
@@ -39,7 +42,7 @@ def financeiro_cenario(request: Request, params: FinancialParams, alavancas: Ala
     chave = (params.model_dump_json(), alavancas.model_dump_json())
     if chave not in cache:
         if len(cache) >= _MAX_CACHE:
-            cache.pop(next(iter(cache)))  # ponytail: descarta o mais antigo; LRU se o uso crescer
+            cache.pop(next(iter(cache)))  # descarta o mais antigo; LRU se o uso crescer
         cache[chave] = add_financials(request.app.state.municipios, params, alavancas)
     return cache[chave]
 
@@ -71,6 +74,7 @@ def post_portfolio(body: PortfolioRequest, request: Request):
         max_payback=body.max_payback,
         weights=body.weights,
         objetivo_modo=body.objetivo,
+        incluir=body.incluir,
     )
 
     # Efeito das alavancas no mesmo conjunto de municípios: com × sem.

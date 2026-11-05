@@ -13,6 +13,7 @@ Endpoints:
   POST /financial           → business case de um município
   POST /portfolio           → otimiza portfólio (PuLP/CBC)
   GET  /backtest            → resultado do backtest pré-calculado
+  POST/GET /decisoes        → registro de decisões do gestor (SQLite próprio)
   GET  /health              → healthcheck
 """
 
@@ -32,7 +33,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
-from api.routers import backtest, chat, dados, financial, ia, municipios, portfolio, scores
+from api.routers import backtest, chat, dados, decisoes, financial, ia, municipios, portfolio, scores
 
 logger = logging.getLogger("uvicorn.error")
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -60,7 +61,7 @@ async def lifespan(app: FastAPI):
         app.state.qualidade_dados = load_data_quality(db)
         app.state.bl_2021 = load_bl_2021(db)
     else:
-        fonte = "mock"  # ponytail: fallback demonstrativo só quando não há base real
+        fonte = "mock"  # fallback demonstrativo só quando não há base real
         logger.warning(
             "Base real não encontrada em %s: usando dados DEMONSTRATIVOS. "
             "Rode `python -m etl.run_etl` e reinicie a API.", db,
@@ -106,6 +107,7 @@ app.include_router(backtest.router)
 app.include_router(dados.router)
 app.include_router(chat.router)
 app.include_router(ia.router)
+app.include_router(decisoes.router)
 
 
 @app.get("/qualidade", tags=["infra"])

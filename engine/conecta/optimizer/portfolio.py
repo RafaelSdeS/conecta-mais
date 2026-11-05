@@ -65,7 +65,7 @@ def _escolhe_solver() -> tuple[pulp.LpSolver, str]:
         logger.warning("CONECTA_SOLVER=cplex, mas o CPLEX não está disponível: usando CBC.")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", DeprecationWarning)
-        return pulp.PULP_CBC_CMD(msg=0, timeLimit=30), "CBC"  # ponytail: 30 s; sem prova de otimalidade se estourar
+        return pulp.PULP_CBC_CMD(msg=0, timeLimit=30), "CBC"  # limite de 30 s; sem prova de otimalidade se estourar
 
 
 def add_financials(
@@ -104,6 +104,7 @@ def optimize_portfolio(
     max_payback: float = 10.0,
     weights: ScoreWeights | None = None,
     objetivo_modo: str = "equilibrado",
+    incluir: list[str] | None = None,
 ) -> PortfolioResult:
     """
     Seleciona o portfólio ótimo de municípios.
@@ -121,6 +122,8 @@ def optimize_portfolio(
         weights:       Pesos dos scores (usado para score_total).
         objetivo_modo: "retorno" (só VPL), "equilibrado" (usa lambda_) ou "alunos"
                        (maximiza alunos em escolas sem internet).
+        incluir:       Códigos IBGE forçados no portfólio (simula "o que mudaria para
+                       incluir"). Os que estão acima do teto de payback são ignorados.
 
     Returns:
         PortfolioResult com os municípios selecionados e métricas agregadas.
@@ -180,12 +183,21 @@ def optimize_portfolio(
     # Restrição de orçamento
     prob += pulp.lpSum(x[i] * float(candidatos.loc[i, "_capex"]) for i in idx) <= budget
 
+    # Inclusão forçada: se o CapEx dos forçados passa do orçamento, o solver devolve Infeasible.
+    if incluir:
+        forcados = candidatos.index[candidatos["id_municipio"].astype(str).isin(incluir)]
+        for i in forcados:
+            prob += x[i] == 1
+
     prob.solve(solver)
 
     status = pulp.LpStatus[prob.status]
 
     # ── 5. Extrair solução ────────────────────────────────────────────────────
-    selecionados_idx = [i for i in idx if pulp.value(x[i]) > 0.5]
+    # Inviável (ex.: inclusão forçada acima do orçamento): sem solução para extrair.
+    selecionados_idx = (
+        [] if status == "Infeasible" else [i for i in idx if (pulp.value(x[i]) or 0) > 0.5]
+    )
     selecionados = candidatos.loc[selecionados_idx].copy()
 
     if selecionados.empty:

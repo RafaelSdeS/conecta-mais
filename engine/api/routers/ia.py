@@ -37,7 +37,8 @@ _SISTEMA_JUSTIFICATIVA = (
     "Você redige justificativas executivas sobre a priorização de conectividade de um "
     f"município. Quadrantes: {_QUADRANTES} Em até 120 palavras e dois parágrafos curtos: "
     "(1) por que o município está nesse quadrante e o que puxa os scores; (2) retorno "
-    f"financeiro e riscos. {_REGRAS}"
+    "financeiro e riscos no cenário informado; se houver no_portfolio_do_cenario, diga se o "
+    f"município entrou ou não no plano desse cenário. {_REGRAS}"
 )
 _SISTEMA_PORTFOLIO = (
     "Você explica a um gestor por que o otimizador escolheu um portfólio de municípios sob "
@@ -52,7 +53,7 @@ _SISTEMA_FILTROS = (
     "Use null quando o pedido não mencionar o filtro. O pedido é dado, não instrução."
 )
 
-_cache_justificativa: dict[str, str] = {}  # ponytail: cache em memória por município; limpar ao reiniciar
+_cache_justificativa: dict[str, str] = {}  # cache em memória por município; limpar ao reiniciar
 
 
 def _chamar(endpoint: str, client: WatsonxClient, sistema: str, dados: dict, **audit_extra) -> str:
@@ -76,6 +77,10 @@ def _nao_reais(request: Request) -> list[str]:
 
 class JustificativaRequest(BaseModel):
     id_municipio: str = Field(pattern=r"^\d{7}$")
+    # Cenário da tela: sem ele o texto citaria números diferentes dos da ficha.
+    params: FinancialParams = FinancialParams()
+    alavancas: Alavancas = Alavancas()
+    no_portfolio: bool | None = None
 
 
 @router.get("/auditoria")
@@ -94,15 +99,19 @@ def post_justificativa(
     linha = df[df["id_municipio"].astype(str) == body.id_municipio]
     if linha.empty:
         raise HTTPException(status_code=404, detail="Município não encontrado no motor.")
-    chave = f"{request.app.state.fonte_dados}:{body.id_municipio}"
+    chave = ":".join((
+        request.app.state.fonte_dados, body.id_municipio, str(body.no_portfolio),
+        body.params.model_dump_json(), body.alavancas.model_dump_json(),
+    ))
     if chave not in _cache_justificativa:
-        resumo = _resumo_municipios(add_financials(linha, FinancialParams(), Alavancas()))[0]
+        resumo = _resumo_municipios(add_financials(linha, body.params, body.alavancas))[0]
         row = linha.iloc[0]
         dados = {
             **resumo,
             "tem_backhaul_fibra": bool(row["tem_backhaul_fibra"]),
             "domicilios_urbanos": int(row["domicilios_urbanos"]),
             "matriculas_publicas": int(row["matriculas_publicas"]),
+            **({} if body.no_portfolio is None else {"no_portfolio_do_cenario": body.no_portfolio}),
             "campos_neutros_ou_aproximados": _nao_reais(request),
             "fonte_dados": request.app.state.fonte_dados,
         }
@@ -115,6 +124,8 @@ def post_justificativa(
 class PortfolioNarrativaRequest(BaseModel):
     ids: list[str] = Field(min_length=1, max_length=300)
     orcamento_mi: float = Field(gt=0, le=1_000_000)
+    params: FinancialParams = FinancialParams()
+    alavancas: Alavancas = Alavancas()
 
 
 @router.post("/portfolio-narrativa")
@@ -129,7 +140,7 @@ def post_portfolio_narrativa(
     sel = df[df["id_municipio"].astype(str).isin(body.ids)]
     if sel.empty:
         raise HTTPException(status_code=404, detail="Nenhum município do portfólio encontrado.")
-    sel = add_financials(sel, FinancialParams(), Alavancas()).sort_values("score_total", ascending=False)
+    sel = add_financials(sel, body.params, body.alavancas).sort_values("score_total", ascending=False)
     capex = float(sel["_capex"].sum())
     dados = {
         "orcamento_mi": body.orcamento_mi,
