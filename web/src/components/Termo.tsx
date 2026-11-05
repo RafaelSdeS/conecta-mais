@@ -25,7 +25,7 @@ export default function Termo({ nome }: { nome: keyof typeof GLOSSARIO }) {
       >
         ?
       </button>
-      <span id={id} popover="auto" style={{ maxWidth: 300, padding: 12, borderRadius: 6, border: '1px solid var(--ln)', background: 'var(--pn)', color: 'var(--tx)', fontSize: 14, fontWeight: 400 }}>
+      <span id={id} popover="auto" style={{ margin: 'auto', maxWidth: 300, padding: 12, borderRadius: 6, border: '1px solid var(--ln)', background: 'var(--pn)', color: 'var(--tx)', fontSize: 14, fontWeight: 400 }}>
         {GLOSSARIO[nome]}
       </span>
     </>

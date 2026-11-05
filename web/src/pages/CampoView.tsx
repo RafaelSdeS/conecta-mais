@@ -79,6 +79,7 @@ export default function CampoView() {
   const filters    = useAppStore((s) => s.filters)
   const setFilters = useAppStore((s) => s.setFilters)
   const setView    = useAppStore((s) => s.setView)
+  const calculando = useAppStore((s) => s.portfolioLoading) || Object.keys(financeiro).length === 0
   const [favs]     = useFavorites()
   const recomendacoes = useRecomendacoes()
 
@@ -119,7 +120,7 @@ export default function CampoView() {
       return {
         municipio: m.nome,
         uf: m.uf,
-        veredito: veredito(m, fin).titulo,
+        veredito: fin || m.quadrante !== 'Q1' && m.quadrante !== 'Q3' ? veredito(m, fin).titulo : '',
         recomendacao: rec ? ROTULO_DECISAO[rec.decisao] : '',
         observacao: rec?.nota ?? '',
         data: rec ? new Date(rec.data).toLocaleDateString('pt-BR') : '',
@@ -209,13 +210,16 @@ export default function CampoView() {
           <h2 style={{ fontSize: 16, margin: 0 }}>
             {origem ? `Prioridades em até ${RAIO_KM} km` : `Prioridades em ${filters.uf || 'todo o Brasil'}`}
           </h2>
-          <select value={origem ? '' : filters.uf} onChange={(e) => escolheUf(e.target.value)} aria-label="Estado" style={campo}>
+          <select value={origem ? 'perto' : filters.uf} onChange={(e) => escolheUf(e.target.value)} aria-label="Região" style={campo}>
+            {origem && <option value="perto" disabled>Perto de mim</option>}
             <option value="">Todo o Brasil</option>
             {UFS.map((uf) => <option key={uf} value={uf}>{uf}</option>)}
           </select>
         </div>
-        {prioridades.length === 0 && <p style={{ color: 'var(--mu)' }}>Nenhum município priorizado nesta região.</p>}
-        {prioridades.map((m) => <Cartao key={m.id_municipio} m={m} km={kmPorId.get(m.id_municipio)} />)}
+        {/* Enquanto calcula, a lista esconderia quem depende do retorno e daria uma ordem errada. */}
+        {calculando && <p role="status" style={{ color: 'var(--mu)' }}>Calculando prioridades…</p>}
+        {!calculando && prioridades.length === 0 && <p style={{ color: 'var(--mu)' }}>Nenhum município priorizado nesta região.</p>}
+        {!calculando && prioridades.map((m) => <Cartao key={m.id_municipio} m={m} km={kmPorId.get(m.id_municipio)} />)}
       </section>
 
       <section style={{ marginBottom: 16 }}>
