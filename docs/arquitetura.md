@@ -56,7 +56,7 @@
 ### `conecta/optimizer/`
 - **`portfolio.py`** — `optimize_portfolio(df, params, alavancas, budget, lambda_, max_payback)`.
   - Formulação: `max Σ xᵢ·[λ·Îᵢ + (1−λ)·VPL̂ᵢ]` s.a. `Σ xᵢ·CapExᵢ ≤ budget`, `xᵢ ∈ {0,1}`.
-  - Solver: PuLP + CBC (open-source); `CONECTA_SOLVER=cplex` usa o IBM CPLEX, se estiver instalado e licenciado.
+  - Solver: PuLP + CBC (open-source), com limite de 3 s; `CONECTA_SOLVER=cplex` usa o IBM CPLEX, se estiver instalado e licenciado.
   - Pré-filtro de payback antes do solver (mais simples que big-M).
 
 ### `conecta/backtest/`
@@ -71,7 +71,7 @@
 ### `web/src/`
 - **`App.tsx`** — layout sidebar 208 px + main (idêntico ao mockup).
 - **`components/QuadrantBadge.tsx`** — badge colorido com as cores exatas do mockup.
-- **`pages/`** — `PanelView` (KPIs, mapa, quadrantes), `MunView` (tabela), `ChatView` (agente) e `SolutionView` (arquitetura, backtest e auditoria).
+- **`pages/`** — `CampoView` (entrada para o gestor em campo), `PanelView` (KPIs, mapa, quadrantes), `MunView` (tabela), `ChatView` (agente) e `SolutionView` (arquitetura, backtest e auditoria).
 - **`api/client.ts`** — helpers tipados `get`/`post` com todos os tipos de domínio.
 
 ## Fluxo de dados
@@ -111,3 +111,6 @@ SQLite do ETL (ou CSV demonstrativo)
 | Conferência dos números da IA | `conecta/agent/fidelidade.py` compara os números do texto do Granite com os dados entregues a ele e devolve alerta; compara valores, não significado |
 | Processo único | Com `web/dist`, a API entrega o frontend e aceita o prefixo `/api`, como o proxy do Vite |
 | Limite global de IA | 30 chamadas por minuto em `get_watsonx_client`, para proteger os créditos do watsonx; é por processo, não por IP |
+| Veredito no frontend | `utils/veredito.ts` é função pura sobre quadrante e payback, para reagir ao cenário sem nova chamada; os critérios são hipóteses (`docs/design-thinking.md`) |
+| Contatos fora do agente | Endereço e telefone ficam na tabela `escolas_visita` e em `/dados/escolas/visita`; as ferramentas do agente não acessam essa consulta |
+| Recomendações no aparelho | `localStorage`, sem login; passam para o servidor quando mais de uma pessoa precisar ver |

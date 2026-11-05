@@ -75,7 +75,9 @@ uvicorn api.main:app --host 0.0.0.0 --port 8000
 **IBM Granite:** copie `engine/.env.example` para `engine/.env` e preencha as credenciais do watsonx.ai.
 `/chat` e `/ia/*` aceitam até 30 chamadas por minuto no total, porque cada uma consome créditos.
 
-**Solver:** o portfólio usa CBC por padrão; `CONECTA_SOLVER=cplex` usa o IBM CPLEX, se estiver instalado e licenciado.
+**No celular:** localização e compartilhamento nativo exigem HTTPS; em HTTP, a busca pelo nome e o envio pelo WhatsApp continuam funcionando.
+
+**Solver:** o portfólio usa CBC por padrão, com limite de 3 s; `CONECTA_SOLVER=cplex` usa o IBM CPLEX, se estiver instalado e licenciado.
 
 ---
 
@@ -100,6 +102,7 @@ A CI roda os mesmos comandos em `.github/workflows/ci.yml`.
 
 | View | Descrição |
 |---|---|
+| **Campo** | Entrada do app para o gestor no celular: busca, "Perto de mim", prioridades da região e carteira; cada município abre o veredito e o kit da visita |
 | **Painel** | KPIs animados, mapa Leaflet com todos os municípios, quadrantes, histograma de payback e explicação do portfólio por IA |
 | **Municípios** | Tabela ordenável com busca, filtros, favoritos e portfólio |
 | **Agente** | Chat com o IBM Granite (watsonx.ai): ranking, portfólio, comparação e dúvidas de uso |
@@ -114,6 +117,7 @@ A CI roda os mesmos comandos em `.github/workflows/ci.yml`.
 ```
 web/src/
   pages/
+    CampoView.tsx       ← entrada para o gestor em campo: busca, proximidade, prioridades e carteira
     PanelView.tsx       ← painel principal: KPIs, mapa, quadrantes, histograma
     MunView.tsx         ← tabela de municípios com filtros completos
     ChatView.tsx        ← interface de chat com agente IA
@@ -160,6 +164,7 @@ Veja [`docs/arquitetura.md`](docs/arquitetura.md) para detalhes completos.
 | `GET` | `/health` | Healthcheck e fonte dos dados |
 | `GET` | `/dados/municipios`, `/dados/municipios/{codigo_ibge}` | Base integrada do ETL |
 | `GET` | `/dados/escolas`, `/dados/escolas/sem-internet` | Escolas do Censo Escolar |
+| `GET` | `/dados/escolas/visita` | Kit da visita: escolas sem internet para aprendizagem, com endereço e telefone |
 | `GET` | `/dados/indicadores/{codigo_ibge}` | Indicadores escolares do município |
 | `GET` | `/dados/provedores/{codigo_ibge}` | Provedores que atuam no município |
 | `GET` | `/dados/ubs` | Unidades Básicas de Saúde |
@@ -210,6 +215,9 @@ e rode o ETL de novo. A tabela `data_quality` do banco registra o estado de cada
 
 ## Limitações conhecidas
 
+- **Uso em campo ainda não validado:** as necessidades e o veredito são hipóteses, testadas sem usuários reais. Veja [`docs/design-thinking.md`](docs/design-thinking.md).
+- **Recomendações ficam no aparelho:** não há login nem compartilhamento entre usuários; a carteira é exportada em CSV. O app não funciona sem internet.
+- **`domicilios_urbanos`** é o total de domicílios ocupados, sem separar urbano e rural.
 - **Alavancas sem dados:** sem as listas oficiais, `score_A` é zero em todos os municípios, Q2a fica vazio e quem tem M baixo e I alto aparece em Q2b. O efeito das alavancas em payback e VPL funciona; a contagem de municípios que mudam de quadrante só aparece com as listas. Ao preenchê-las, reveja o ranking: uma alavanca binária pesa muito sobre o `score_total`.
 - **Backtest é validação parcial:** a fibra é de 2021, mas os demais indicadores são atuais, e o resultado fica pouco acima do acaso (lift 1,20 e AUC 0,61 no limiar de dobrar a fibra).
 - **Normalização min-max:** valores extremos, como os de São Paulo, comprimem os demais municípios, e os pesos declarados pesam menos do que parecem. Log nas séries com cauda longa foi avaliado e adiado: 31% dos municípios mudariam de quadrante, sem ganho claro no backtest.

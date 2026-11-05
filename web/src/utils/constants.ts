@@ -104,6 +104,7 @@ export const FLUXO: { titulo: string; itens: { nome: string; status: StatusEntre
     titulo: 'Interfaces e IA',
     itens: [
       { nome: 'Painel, mapa e ficha', status: 'entregue', desc: 'Filtros compartilhados, mapa por região, tabela, ficha executiva e PDF.' },
+      { nome: 'Tela Campo', status: 'parcial', desc: 'Veredito, kit da visita e recomendação no celular. Necessidades ainda não validadas com usuários; recomendações ficam no aparelho.' },
       { nome: 'Listas para secretarias', status: 'parcial', desc: 'Escolas sem internet, UBS e provedores por município, com CSV. Sem login nem contrato B2G.' },
       { nome: 'Módulo Saúde', status: 'parcial', desc: 'UBS por município (CNES) como indicador de demanda; não há dado de conectividade das UBS.' },
       { nome: 'Agente Granite (watsonx.ai)', status: 'entregue', desc: 'Chat com ferramentas de ranking, portfólio, comparação e provedores; justificativas e filtros em linguagem natural.' },

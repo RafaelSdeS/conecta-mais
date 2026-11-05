@@ -24,6 +24,7 @@ Interface e experiência do usuário.
 | Simulador de alavancas (mudança de quadrante depende das listas oficiais) | §8.1 — Módulo 2 | 🟡 Parcial |
 | Chat com justificativa (UI) | §8.1 — Módulo 3 | ✅ Concluído |
 | Ficha executiva por município | §8.1 — Módulo 4 | ✅ Concluído |
+| Tela Campo, veredito e kit da visita (necessidades ainda não validadas com usuários) | `docs/design-thinking.md` | 🟡 Parcial |
 
 ---
 

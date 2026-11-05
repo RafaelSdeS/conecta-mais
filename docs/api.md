@@ -102,6 +102,8 @@ Calcula o business case de um município com premissas e alavancas customizávei
 
 ## POST `/portfolio`
 
+O solver tem limite de 3 s. No Brasil inteiro ele costuma parar nesse limite, sem prova de otimalidade, mesmo com `status` igual a `Optimal`; na medição, o objetivo ficou a até 0,35% do resultado de 30 s.
+
 Seleciona o portfólio ótimo de municípios dado um orçamento (MILP binário).
 
 **Body:**
@@ -173,7 +175,7 @@ Backtest 2021→hoje. Com a base real, compara a fibra de dezembro de 2021 com o
   "descricao": "Fibra e banda larga fixa de pessoa física (Anatel)...",
   "precision": 0.6796,
   "recall": 0.2394,
-  "f1": 0.3541,
+  "f1": 0.354,
   "total_q1_q2a_2021": 1108,
   "total_cresceram": 3146,
   "acertados": 753,
@@ -260,6 +262,18 @@ Consulta os indicadores agregados disponíveis para o código IBGE de sete
 dígitos e as contagens de validação geográfica das escolas. Município
 inexistente retorna HTTP 404. Os indicadores refletem apenas colunas presentes
 no SQLite; a rota não calcula nem infere campos do motor de scores.
+
+### GET `/dados/escolas/visita`
+
+Kit da visita: escolas públicas ativas sem internet para aprendizagem (mesmo critério do veredito), da que tem mais alunos para a que tem menos.
+
+```json
+{ "total": 35, "total_retornado": 35, "escolas": [
+  { "codigo_inep": "29...", "escola": "...", "rede": "Municipal", "zona": "Rural", "alunos": 684, "endereco": "...", "telefone": "(75) ..." }
+] }
+```
+
+Parâmetros: `codigo_municipio` (obrigatório) e `limite` (até 100). O telefone publicado pelo INEP pode ser pessoal: esta consulta é só da tela, e o agente de IA usa `/escolas/sem-internet`, que não traz contato.
 
 ### GET `/dados/escolas/sem-internet`
 

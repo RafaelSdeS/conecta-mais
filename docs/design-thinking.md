@@ -94,7 +94,39 @@ Ao final, pergunte: o que travou você? Em que você não confiou? O que faltou 
 ## Playbacks
 
 ### Playback 0: revisão sem usuários
-Pendente.
+
+Teste automatizado no Chromium em tamanho de celular (390×844), com localização simulada e dados reais, mais revisão das telas. **Não valida as Hills:** mostra se o fluxo funciona, não se resolve o problema de quem está em campo, e o tempo de leitura não foi medido.
+
+O teste percorreu a busca, o veredito, o kit da visita, o compartilhamento, o registro da recomendação, a persistência depois de recarregar, a exportação da carteira, "Perto de mim", a falha de rede e as telas de análise.
+
+**O que a revisão encontrou e mudou:**
+
+| Achado | Mudança |
+|---|---|
+| A ficha de Salvador mostrava ~8,2 milhões de habitantes | `domicilios_urbanos` era população × 0,8; passou a usar domicílios ocupados do Censo 2022 |
+| As prioridades do Brasil inteiro passavam de 30 s, porque o solver gastava todo o limite tentando provar a solução ótima | Limite de 3 s, com objetivo a até 0,35% do resultado de 30 s; a lista agora aparece em cerca de 5 s |
+| Todos os cartões diziam "5,7 anos", o piso do modelo | Os cartões passam a mostrar o investimento |
+| Durante o cálculo, a lista mostrava só parte dos municípios, em ordem errada | A lista espera o cálculo terminar |
+| Marcadores de lista e seta de "Detalhes" invisíveis | Corrigidos |
+| A explicação dos termos abria colada no canto da tela | Abre centralizada |
+
+**Como os 5.570 municípios se distribuem, com as premissas padrão:**
+
+| Veredito | Municípios |
+|---|---|
+| Levar adiante | 296 |
+| Levar adiante pelo comercial | 373 |
+| Só com apoio | 2.489 |
+| Avaliar compra ou parceria | 1.227 |
+| Não priorizar agora | 1.185 |
+
+**Perguntas para o próximo Playback:**
+
+1. "Levar adiante" ao lado de VPL negativo faz sentido para quem decide, ou tira a confiança? Sem alavancas, nenhum município tem VPL positivo com as premissas padrão.
+2. "Só com apoio" cobre 45% dos municípios. É útil ou amplo demais?
+3. O limite de 6 anos de retorno é o que a operadora usaria?
+4. Os próximos passos são os que o gestor realmente seguiria?
+5. A falta de internet em campo bloqueia o uso? O MVP não funciona sem conexão.
 
 ### Playback 1: equipe no lugar dos usuários
 Pendente; a equipe aplica o roteiro acima e registra aqui tempos, travas e o que muda.

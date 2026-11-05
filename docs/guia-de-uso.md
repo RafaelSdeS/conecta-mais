@@ -4,14 +4,28 @@ Este guia explica como usar o painel e o assistente. Para fórmulas e premissas,
 
 ## Telas
 
-O menu lateral tem quatro telas:
+O menu tem cinco telas:
 
+- **Campo**: entrada do app, pensada para o celular. Busque o município pelo nome ou toque em **Perto de mim**, veja as prioridades da região e acompanhe sua carteira.
 - **Painel**: KPIs do portfólio, filtros, mapa dos municípios, botões de quadrante e histograma de payback.
 - **Municípios**: tabela com busca, filtros, ordenação, favoritos e seleção para o portfólio.
 - **Agente**: chat com o assistente Conecta+ (IBM Granite no watsonx.ai).
 - **Solução**: o que o Conecta+ faz hoje, com números da base real (por região), o fluxo da fonte ao agente com o estado de cada parte (entregue, parcial ou planejado), a composição dos scores, a qualidade de cada fonte de dados, o roadmap e os limites conhecidos. O ROI e os números de mercado são estimativas da proposta, e o backtest usa dados demonstrativos; ambos aparecem rotulados.
 
 Clicar em um município abre a **ficha executiva** com scores, quadrante, CapEx, payback e VPL.
+
+## Decidir em campo
+
+Ao abrir um município, a ficha começa pelo que importa para decidir:
+
+1. **Veredito:** *Levar adiante*, *Levar adiante pelo comercial*, *Só com apoio*, *Avaliar compra ou parceria* ou *Não priorizar agora*. Indica se vale levar adiante; não é aprovação de investimento.
+2. **Motivos e alerta:** os números que sustentam o veredito, o aviso de VPL negativo e o que os dados não cobrem.
+3. **Compartilhar resumo:** envia o veredito e o link da ficha pelo celular ou pelo WhatsApp.
+4. **Sua recomendação:** avançar, aguardar ou descartar, com o que você viu. Fica salva só neste aparelho; exporte em **Minha carteira**.
+5. **Kit da visita:** escolas por número de alunos, com telefone e mapa, provedores locais e UBS.
+6. **Detalhes:** scores, business case e tecnologia, recolhidos no celular. Toque no **?** para entender cada termo.
+
+Os critérios do veredito são hipóteses a validar com usuários: veja [`design-thinking.md`](design-thinking.md).
 
 ## Cenário (barra do topo)
 
