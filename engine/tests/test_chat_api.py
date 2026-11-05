@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections import deque
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from api.main import app
+from api.routers import chat as chat_router
 from api.routers.chat import get_watsonx_client
 from conecta.agent.orchestrator import MAX_TOOL_CALLS, MAX_TOOL_ROUNDS
 from conecta.agent.watsonx import (
@@ -817,4 +820,15 @@ def test_chat_aponta_numero_do_modelo_sem_fonte(client: TestClient):
     _install_fake(FakeWatsonxClient([_assistant("O CapEx é de R$ 987,6 milhões para os 500 alunos.")]))
     data = client.post("/chat", json={"message": "Quanto custa para 500 alunos?"}).json()
     assert data["numeros_nao_confirmados"] == ["987,6"]  # 500 veio da pergunta
+
+
+def test_limite_de_chamadas_de_ia_responde_429(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(chat_router, "_chamadas_ia", deque())
+    monkeypatch.setattr(chat_router, "LIMITE_IA_POR_MINUTO", 2)
+    monkeypatch.setattr(chat_router, "WatsonxClient", object)
+    chat_router.get_watsonx_client()
+    chat_router.get_watsonx_client()
+    with pytest.raises(HTTPException) as erro:
+        chat_router.get_watsonx_client()
+    assert erro.value.status_code == 429
 

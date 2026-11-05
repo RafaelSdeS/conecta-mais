@@ -31,11 +31,13 @@ import pandas as pd
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from api.routers import backtest, chat, dados, financial, ia, municipios, portfolio, scores
 
 logger = logging.getLogger("uvicorn.error")
 DATA_DIR = Path(__file__).parent.parent / "data"
+WEB_DIST = Path(__file__).parent.parent.parent / "web" / "dist"
 
 
 @asynccontextmanager
@@ -98,6 +100,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def tira_prefixo_api(request: Request, call_next):
+    """O frontend chama /api/...; em processo único não há o proxy do Vite para tirar o prefixo."""
+    caminho = request.scope["path"]
+    if caminho.startswith("/api/"):
+        request.scope["path"] = caminho[len("/api"):]
+    return await call_next(request)
+
+
 app.include_router(municipios.router)
 app.include_router(scores.router)
 app.include_router(financial.router)
@@ -117,3 +129,8 @@ def qualidade(request: Request):
 @app.get("/health", tags=["infra"])
 def health(request: Request):
     return {"status": "ok", "fonte_dados": request.app.state.fonte_dados}
+
+
+# Por último: as rotas da API têm prioridade sobre os arquivos do frontend.
+if WEB_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")

@@ -170,3 +170,8 @@ def test_financial_traz_comparacao_de_tecnologias(client):
     d = r.json()
     assert r.status_code == 200 and d["tecnologia_recomendada"] in {"FTTH", "FWA 5G", "Satélite"}
     assert len(d["tecnologias"]) == 3 and "regra" in d
+
+
+def test_prefixo_api_funciona_como_o_proxy_do_vite(client):
+    assert client.get("/api/health").json() == client.get("/health").json()
+

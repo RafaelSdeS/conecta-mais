@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import time
+from collections import deque
+from threading import Lock
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from conecta.agent import audit
 from conecta.agent.orchestrator import ChatOrchestrator
@@ -14,7 +16,21 @@ from conecta.agent.watsonx import WatsonxClient, WatsonxError
 router = APIRouter(tags=["chat"])
 
 
+LIMITE_IA_POR_MINUTO = 30
+_chamadas_ia: deque[float] = deque()
+_trava_ia = Lock()
+
+
 def get_watsonx_client() -> WatsonxClient:
+    """Ponto único de /chat e /ia/*: cada uso pode gastar créditos do watsonx."""
+    # ponytail: limite global por processo, para proteger os créditos; por IP se houver abuso real
+    agora = time.monotonic()
+    with _trava_ia:
+        while _chamadas_ia and agora - _chamadas_ia[0] > 60:
+            _chamadas_ia.popleft()
+        if len(_chamadas_ia) >= LIMITE_IA_POR_MINUTO:
+            raise HTTPException(status_code=429, detail="Muitas consultas à IA neste minuto. Aguarde e tente de novo.")
+        _chamadas_ia.append(agora)
     return WatsonxClient()
 
 

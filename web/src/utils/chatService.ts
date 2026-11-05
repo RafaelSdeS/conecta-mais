@@ -192,6 +192,9 @@ export function avisoNumeros(numeros: unknown): string {
 }
 
 function errorMessage(status: number, code: string | undefined): string {
+  if (status === 429) {
+    return 'Muitas consultas ao assistente neste minuto. Aguarde e tente de novo.'
+  }
   if (status === 503 && code === 'watsonx_not_configured') {
     return 'O chat não está configurado no backend. Contate o responsável pelo serviço.'
   }
