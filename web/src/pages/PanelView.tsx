@@ -11,12 +11,14 @@ import MapContainer      from '../components/MapContainer'
 import QuadrantButtons   from '../components/QuadrantButtons'
 import PaybackHistogram  from '../components/PaybackHistogram'
 import { fmtN0 } from '../utils/format'
+import { imprimir } from '../utils/imprimir'
 
 export default function PanelView() {
   const todos       = useAppStore((s) => s.municipios)
   const portfolio   = useAppStore((s) => s.portfolio)
   const financeiro  = useAppStore((s) => s.financeiro)
   const openDrawer  = useAppStore((s) => s.openDrawer)
+  const kpis        = useAppStore((s) => s.kpis)
 
   const municipios  = useFilteredMunicipios()
   const paraQuadrantes = useFilteredMunicipios('quadrante')
@@ -40,11 +42,25 @@ export default function PanelView() {
   return (
     <div>
       {/* Cabeçalho */}
-      <div style={{ marginBottom: 16 }}>
-        <h1>Expansão da conectividade: {municipios.length} de {todos.length} municípios</h1>
-        <p style={{ color: 'var(--mu)' }}>
-          Ajuste o cenário no topo e os filtros abaixo: mapa, quadrantes, histograma e portfólio respondem juntos.
-        </p>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1>Expansão da conectividade: {municipios.length} de {todos.length} municípios</h1>
+          <p style={{ color: 'var(--mu)' }}>
+            Ajuste o cenário no topo e os filtros abaixo: mapa, quadrantes, histograma e portfólio respondem juntos.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => imprimir('imprimindo-dossie')}
+          disabled={!kpis}
+          title="Cenário, plano, decisões registradas e limites dos dados do recorte, prontos para o comitê"
+          style={{
+            font: 'inherit', fontSize: 13, borderRadius: 4, padding: '8px 12px', cursor: kpis ? 'pointer' : 'not-allowed',
+            background: 'transparent', color: 'var(--tx)', border: '1px solid var(--ln)', opacity: kpis ? 1 : 0.6,
+          }}
+        >
+          Dossiê (PDF)
+        </button>
       </div>
 
       <FilterBar />

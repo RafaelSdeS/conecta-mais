@@ -18,6 +18,7 @@ import Header          from './components/Header'
 import Drawer          from './components/Drawer'
 import CommandPalette  from './components/CommandPalette'
 import Toast           from './components/Toast'
+import Dossie          from './components/Dossie'
 
 const VIEW_COMPONENTS: Record<ViewId, React.ComponentType> = {
   painel: PanelView,
@@ -56,8 +57,7 @@ function AppInner({
   const cmdOpen        = useAppStore((s) => s.cmdPaletteOpen)
   const setBudget      = useAppStore((s) => s.setBudget)
   const setAllLevers   = useAppStore((s) => s.setAllLevers)
-  const kpis           = useAppStore((s) => s.kpis)
-  const fonteDados     = useAppStore((s) => s.fonteDados)
+  const fonteDados    = useAppStore((s) => s.fonteDados)
   const apiOffline     = useAppStore((s) => s.apiOffline)
   const { toast }      = useToast()
 
@@ -90,9 +90,8 @@ function AppInner({
     if (qualidade.some((q) => q.campo === 'acordo_migracao' && q.tipo === 'neutro')) {
       useAppStore.getState().setLevers({ tcu: false })
     }
-    const viav = kpis?.municipiosViaveis ?? 0
-    toast(`Orçamento de R$ 80 mi e todas as alavancas ligadas — ${viav} municípios viáveis`)
-  }, [setBudget, setAllLevers, kpis, toast])
+    toast('Orçamento de R$ 80 mi e alavancas ligadas. Recalculando o portfólio…')
+  }, [setBudget, setAllLevers, toast])
 
   const CurrentPage = VIEW_COMPONENTS[currentView]
 
@@ -201,8 +200,8 @@ function AppInner({
               style={{ padding: '8px 24px', background: 'var(--q2b)', color: '#fff', fontSize: 13 }}
             >
               {apiOffline
-                ? 'Não foi possível conectar à API (porta 8000): exibindo municípios de demonstração da Bahia. Inicie o backend com `cd engine && .venv/bin/uvicorn api.main:app` e recarregue.'
-                : 'A API está usando os dados demonstrativos: o banco real não foi encontrado (confira CONECTA_SQLITE_PATH e rode o ETL). Os resultados não representam recomendações.'}
+                ? 'Sem conexão com o servidor do Conecta+. Estes são municípios de demonstração da Bahia e não valem como recomendação. Recarregue a página quando a conexão voltar.'
+                : 'O servidor está sem a base real e mostra dados de demonstração. Os resultados não valem como recomendação; avise o responsável técnico.'}
             </div>
           )}
           <main
@@ -223,6 +222,7 @@ function AppInner({
         onApplyAll={handleApplyAll}
       />
       <Toast />
+      <Dossie />
     </>
   )
 }

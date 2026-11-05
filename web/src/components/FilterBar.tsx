@@ -1,11 +1,11 @@
 /**
- * FilterBar — filtros únicos (busca, UF, região, Semiárido, quadrante, portfólio, favoritos).
+ * FilterBar — filtros únicos (busca, UF, região, Semiárido, quadrante, decisão, portfólio, favoritos).
  * Painel e Municípios usam a mesma barra; mapa, tabela e contagens leem o mesmo estado.
  * A UF, a região e o Semiárido também delimitam o portfólio calculado no backend.
  */
 
-import { useAppStore } from '../store/appStore'
-import { QUADRANT_NAMES, UFS } from '../utils/constants'
+import { useAppStore, type Filters } from '../store/appStore'
+import { DECISOES, QUADRANT_NAMES, UFS } from '../utils/constants'
 import { REGIOES } from '../utils/regioes'
 
 const inputStyle: React.CSSProperties = {
@@ -100,6 +100,17 @@ export default function FilterBar({ resumo }: Props) {
         {Object.entries(QUADRANT_NAMES).map(([q, nome]) => (
           <option key={q} value={q}>{q} · {nome}</option>
         ))}
+      </select>
+
+      <select
+        aria-label="Filtrar por decisão"
+        value={filters.decisao}
+        onChange={(e) => setFilters({ decisao: e.target.value as Filters['decisao'] })}
+        style={inputStyle}
+      >
+        <option value="">Todas as decisões</option>
+        {Object.entries(DECISOES).map(([d, { label }]) => <option key={d} value={d}>{label}s</option>)}
+        <option value="pendente">Sem decisão</option>
       </select>
 
       {check('semiarido', 'Semiárido', 'Municípios da delimitação oficial do Semiárido (IBGE/SUDENE 2022)')}

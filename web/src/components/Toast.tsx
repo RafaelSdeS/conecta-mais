@@ -25,7 +25,9 @@ export default function Toast() {
         fontSize: 13,
         zIndex: 70,
         pointerEvents: 'none',
-        whiteSpace: 'nowrap',
+        width: 'max-content',
+        maxWidth: 'min(560px, calc(100vw - 32px))',
+        textAlign: 'center',
         animation: 'toast-in .2s ease forwards',
       }}
     >

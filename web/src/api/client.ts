@@ -89,6 +89,21 @@ export interface ScoreWeights {
   w_A: number
 }
 
+/** Alavancas da tela (fust/tcu/enec) no formato da API. */
+export function alavancasDe(l: { fust: boolean; tcu: boolean; enec: boolean }): Alavancas {
+  return { backhaul_comprometido: l.tcu, fust_reembolsavel: l.fust, receita_escolar: l.enec }
+}
+
+/** Identifica premissas + alavancas: textos de IA gerados num cenário não valem em outro. */
+export function chaveCenario(params: FinancialParams, l: { fust: boolean; tcu: boolean; enec: boolean }): string {
+  return JSON.stringify([params, l.fust, l.tcu, l.enec])
+}
+
+/** Narrativa do portfólio vale para o mesmo portfólio, orçamento e cenário (painel e dossiê). */
+export function chaveNarrativa(ids: string[], budget: number, params: FinancialParams, l: { fust: boolean; tcu: boolean; enec: boolean }): string {
+  return JSON.stringify([ids, budget, chaveCenario(params, l)])
+}
+
 export interface Alavancas {
   backhaul_comprometido: boolean
   fust_reembolsavel: boolean
@@ -151,6 +166,41 @@ export interface PortfolioRequest {
   alavancas?: Alavancas
   params?: FinancialParams
   weights?: ScoreWeights
+  /** Força estes municípios no portfólio (simulação "o que mudaria para incluir"). */
+  incluir?: string[]
+}
+
+export type TipoDecisao = 'aprovar' | 'adiar' | 'descartar'
+
+/** Cenário da tela no momento da decisão; o servidor recalcula os números a partir dele. */
+export interface CenarioDecisao {
+  orcamento_mi: number
+  objetivo: Objetivo
+  escopo: { uf?: string; regiao?: string; semiarido?: boolean }
+  params: FinancialParams
+  alavancas: Alavancas
+}
+
+export interface NovaDecisao {
+  id_municipio: string
+  decisao: TipoDecisao
+  motivo: string
+  observacao_campo?: string
+  responsavel: string
+  cenario: CenarioDecisao
+  situacao_no_plano?: string
+  justificativa_ia?: string
+}
+
+export interface Decisao extends Omit<NovaDecisao, 'observacao_campo' | 'situacao_no_plano' | 'justificativa_ia'> {
+  id: number
+  criado_em: string
+  observacao_campo: string | null
+  situacao_no_plano: string | null
+  justificativa_ia: string | null
+  fonte_dados: string
+  /** Calculados pelo servidor com o cenário da decisão. */
+  numeros: { capex_mi: number; payback_anos: number | null; vpl_mi: number; quadrante: string; score_total: number }
 }
 
 export interface FinanceiroLinha {
@@ -274,11 +324,11 @@ export const api = {
 
   getHealth: () => get<{ status: string; fonte_dados: FonteDados }>('/health'),
 
-  postJustificativa: (id_municipio: string) =>
-    postIa<{ texto: string }>('/ia/justificativa', { id_municipio }),
+  postJustificativa: (id_municipio: string, params: FinancialParams, alavancas: Alavancas, no_portfolio: boolean) =>
+    postIa<{ texto: string }>('/ia/justificativa', { id_municipio, params, alavancas, no_portfolio }),
 
-  postPortfolioNarrativa: (ids: string[], orcamento_mi: number) =>
-    postIa<{ texto: string }>('/ia/portfolio-narrativa', { ids, orcamento_mi }),
+  postPortfolioNarrativa: (ids: string[], orcamento_mi: number, params: FinancialParams, alavancas: Alavancas) =>
+    postIa<{ texto: string }>('/ia/portfolio-narrativa', { ids, orcamento_mi, params, alavancas }),
 
   postFiltros: (texto: string) => postIa<FiltrosIA>('/ia/filtros', { texto }),
 
@@ -289,9 +339,6 @@ export const api = {
     return get<Municipio[]>(`/municipios${qs ? `?${qs}` : ''}`)
   },
 
-  postScores: (weights: ScoreWeights) =>
-    post<Municipio[]>('/scores', { weights }),
-
   postFinancial: (id_municipio: string, params: FinancialParams, alavancas: Alavancas) =>
     post<FinancialResult>('/financial', { id_municipio, params, alavancas }),
 
@@ -300,4 +347,10 @@ export const api = {
 
   getBacktest: () =>
     get<BacktestResult>('/backtest'),
+
+  postDecisao: (d: NovaDecisao) => postIa<Decisao>('/decisoes', d),
+
+  /** Com id: histórico do município (mais recente primeiro). Sem id: decisão vigente de cada município. */
+  getDecisoes: (id_municipio?: string) =>
+    get<Decisao[]>(`/decisoes${id_municipio ? `?id_municipio=${id_municipio}` : ''}`),
 }

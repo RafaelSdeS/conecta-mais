@@ -10,6 +10,7 @@ export function aplicaFiltros(
   portfolioIds: Set<string>,
   favs: Set<string>,
   ignorar?: keyof Filters,
+  decisoes: Record<string, { decisao: string }> = {},
 ): Municipio[] {
   const busca = f.search.trim().toLowerCase()
   return municipios.filter((m) => {
@@ -20,6 +21,10 @@ export function aplicaFiltros(
     if (ignorar !== 'quadrante' && f.quadrante && m.quadrante !== f.quadrante) return false
     if (ignorar !== 'portfolioOnly' && f.portfolioOnly && !portfolioIds.has(m.id_municipio)) return false
     if (ignorar !== 'favoritesOnly' && f.favoritesOnly && !favs.has(m.id_municipio)) return false
+    if (ignorar !== 'decisao' && f.decisao) {
+      const d = decisoes[m.id_municipio]?.decisao
+      if (f.decisao === 'pendente' ? d : d !== f.decisao) return false
+    }
     return true
   })
 }

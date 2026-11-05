@@ -176,7 +176,7 @@ p     { margin: 0; }
 }
 
 /* ── Print ────────────────────────────────────────────────────────────────── */
-.print-only { display: none; }
+.print-only, .print-dossie { display: none; }
 
 @page { margin: 14mm; }
 
@@ -187,7 +187,10 @@ p     { margin: 0; }
   /* Só a ficha: o botão "Imprimir / PDF" liga body.imprimindo-ficha. A ficha fica dentro de #root,
      então escondemos os irmãos dela (display:none não ocupa espaço, evita páginas em branco). */
   body.imprimindo-ficha #root > :not(.print-sheet) { display: none !important; }
-  body.imprimindo-ficha .print-sheet {
+  /* Dossiê do recorte: mesma ideia, com a folha .print-dossie (botão "Dossiê (PDF)" do Painel). */
+  body.imprimindo-dossie #root > :not(.print-dossie) { display: none !important; }
+  body.imprimindo-ficha .print-sheet,
+  body.imprimindo-dossie .print-dossie {
     position: static !important;
     display: block !important;
     transform: none !important;
@@ -200,13 +203,18 @@ p     { margin: 0; }
     background: #fff !important;
     color: #111 !important;
   }
-  body.imprimindo-ficha, body.imprimindo-ficha html { background: #fff !important; }
-  body.imprimindo-ficha .print-sheet * {
+  body.imprimindo-ficha, body.imprimindo-ficha html,
+  body.imprimindo-dossie, body.imprimindo-dossie html { background: #fff !important; }
+  body.imprimindo-ficha .print-sheet *,
+  body.imprimindo-dossie .print-dossie * {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
   body.imprimindo-ficha .print-sheet table,
   body.imprimindo-ficha .print-sheet dl,
-  body.imprimindo-ficha .print-sheet li { break-inside: avoid; }
-  body.imprimindo-ficha .print-sheet h3 { break-after: avoid; }
+  body.imprimindo-ficha .print-sheet li,
+  body.imprimindo-dossie .print-dossie tr,
+  body.imprimindo-dossie .print-dossie li { break-inside: avoid; }
+  body.imprimindo-ficha .print-sheet h3,
+  body.imprimindo-dossie .print-dossie h2 { break-after: avoid; }
 }

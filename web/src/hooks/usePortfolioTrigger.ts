@@ -4,8 +4,25 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { api } from '../api/client'
-import { useAppStore } from '../store/appStore'
+import { alavancasDe, api, type PortfolioRequest } from '../api/client'
+import { useAppStore, type AppState } from '../store/appStore'
+import { TETO_PAYBACK_ANOS } from '../utils/constants'
+
+type Cenario = Pick<AppState, 'budget' | 'objetivo' | 'params' | 'levers' | 'filters'>
+
+/** Pedido de portfólio do cenário da tela; a simulação de inclusão usa o mesmo pedido. */
+export function montaPedidoPortfolio({ budget, objetivo, params, levers, filters }: Cenario): PortfolioRequest {
+  return {
+    budget,
+    max_payback: TETO_PAYBACK_ANOS,
+    objetivo,
+    params,
+    ...(filters.uf ? { uf: filters.uf } : {}),
+    ...(filters.regiao ? { regiao: filters.regiao } : {}),
+    ...(filters.semiarido ? { semiarido: true } : {}),
+    alavancas: alavancasDe(levers),
+  }
+}
 
 export function usePortfolioTrigger() {
   const budget              = useAppStore((s) => s.budget)
@@ -31,20 +48,7 @@ export function usePortfolioTrigger() {
     timerRef.current = setTimeout(async () => {
       setPortfolioLoading(true)
       try {
-        const result = await api.postPortfolio({
-          budget,
-          max_payback: 10,
-          objetivo,
-          params,
-          ...(uf ? { uf } : {}),
-          ...(regiao ? { regiao } : {}),
-          ...(semiarido ? { semiarido } : {}),
-          alavancas: {
-            backhaul_comprometido: levers.tcu,
-            fust_reembolsavel:     levers.fust,
-            receita_escolar:       levers.enec,
-          },
-        })
+        const result = await api.postPortfolio(montaPedidoPortfolio(useAppStore.getState()))
         setPortfolioResult(result)
       } catch (e) {
         // API offline durante desenvolvimento — ignora silenciosamente

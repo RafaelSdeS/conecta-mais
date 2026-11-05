@@ -9,6 +9,7 @@
 import { create } from 'zustand'
 import type {
   CampoQualidade,
+  Decisao,
   FinancialParams,
   FinanceiroLinha,
   FonteDados,
@@ -26,7 +27,7 @@ export interface Levers {
   enec:  boolean
 }
 
-export type ColorBy = 'quadrante' | 'payback' | 'score' | 'alunos'
+export type ColorBy = 'quadrante' | 'payback' | 'score' | 'alunos' | 'decisao'
 
 export interface Layers {
   backhaul: boolean
@@ -42,6 +43,8 @@ export interface Filters {
   quadrante:      string
   portfolioOnly:  boolean
   favoritesOnly:  boolean
+  /** '' = todas; 'pendente' = sem decisão registrada. */
+  decisao:        '' | 'aprovar' | 'adiar' | 'descartar' | 'pendente'
 }
 
 export interface Sort {
@@ -56,7 +59,6 @@ export interface KPIs {
   escolasAtendidas:  number
   capexUsado:        number
   vplTotal:          number
-  municipiosViaveis: number
   /** Payback/VPL do mesmo portfólio sem alavancas (para mostrar o efeito delas). */
   semAlavancas:      { paybackMedio: number; vplTotal: number } | null
 }
@@ -65,11 +67,12 @@ export type Theme = 'light' | 'dark'
 
 const FILTROS_VAZIOS: Filters = {
   search: '', uf: '', regiao: '', semiarido: false, quadrante: '', portfolioOnly: false, favoritesOnly: false,
+  decisao: '',
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
-interface AppState {
+export interface AppState {
   // Inputs do cenário
   budget: number
   levers: Levers
@@ -89,8 +92,12 @@ interface AppState {
   portfolio: Municipio[]
   financeiro: Record<string, FinanceiroLinha>
   kpis: KPIs | null
-  /** Justificativas geradas pela IA por município (entram no PDF da ficha). */
+  /** Justificativas da IA por `${id}|${chaveCenario}` (entram no PDF da ficha e na decisão). */
   justificativas: Record<string, string>
+  /** Explicação do portfólio pela IA; `chave` identifica o portfólio e o cenário em que foi gerada. */
+  narrativa: { chave: string; texto: string } | null
+  /** Decisão vigente por município (a mais recente registrada no servidor). */
+  decisoes: Record<string, Decisao>
 
   // UI
   view: ViewId
@@ -123,6 +130,9 @@ interface AppState {
   setQualidade: (q: CampoQualidade[]) => void
   setPortfolioResult: (r: PortfolioResult) => void
   setJustificativa: (id: string, texto: string) => void
+  setNarrativa: (n: { chave: string; texto: string }) => void
+  setDecisoes: (lista: Decisao[]) => void
+  addDecisao: (d: Decisao) => void
   setView: (v: ViewId) => void
   openDrawer: (id: string) => void
   closeDrawer: () => void
@@ -153,6 +163,8 @@ export const useAppStore = create<AppState>((set) => ({
   financeiro: {},
   kpis: null,
   justificativas: {},
+  narrativa: null,
+  decisoes: {},
 
   view: 'painel',
   selectedId: null,
@@ -194,13 +206,15 @@ export const useAppStore = create<AppState>((set) => ({
         escolasAtendidas:  r.escolas_atendidas,
         capexUsado:        r.capex_total,
         vplTotal:          r.vpl_total,
-        municipiosViaveis: r.financeiro.filter((f) => f.payback !== null && f.payback <= 6).length,
         semAlavancas: r.efeito_alavancas
           ? { paybackMedio: r.efeito_alavancas.sem.payback_medio, vplTotal: r.efeito_alavancas.sem.vpl_total }
           : null,
       },
     }),
   setJustificativa: (id, texto) => set((s) => ({ justificativas: { ...s.justificativas, [id]: texto } })),
+  setNarrativa: (n) => set({ narrativa: n }),
+  setDecisoes: (lista) => set({ decisoes: Object.fromEntries(lista.map((d) => [d.id_municipio, d])) }),
+  addDecisao: (d) => set((s) => ({ decisoes: { ...s.decisoes, [d.id_municipio]: d } })),
 
   // UI
   setView: (v) => set({ view: v }),

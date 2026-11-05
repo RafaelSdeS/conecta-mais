@@ -14,10 +14,10 @@ import 'leaflet.markercluster'
 import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import { useAppStore, type ColorBy } from '../store/appStore'
-import { QUADRANT_HEX, QUADRANT_NAMES } from '../utils/constants'
+import { DECISOES, QUADRANT_HEX, QUADRANT_NAMES } from '../utils/constants'
 import { fmtAnos, fmtMi, fmtN0 } from '../utils/format'
 import RegionChips from './RegionChips'
-import type { FinanceiroLinha, Municipio } from '../api/client'
+import type { Decisao, FinanceiroLinha, Municipio } from '../api/client'
 
 const BRASIL: [number, number] = [-14.2, -51.9]
 
@@ -26,7 +26,13 @@ const COLOR_MODES: { value: ColorBy; label: string }[] = [
   { value: 'payback',   label: 'Payback' },
   { value: 'score',     label: 'Score total' },
   { value: 'alunos',    label: 'Alunos sem internet' },
+  { value: 'decisao',   label: 'Decisão' },
 ]
+
+// Leaflet precisa de cor literal (não aceita var(--x)); mesmas cores de DECISOES.
+const DECISAO_HEX: Record<string, string> = {
+  Aprovado: '#138a5b', Adiado: '#d9822b', Descartado: '#6b7280', Pendente: '#c9ced6',
+}
 
 /** Rampa verde (bom) → vermelho (ruim); t em [0,1], 0 = melhor. */
 const rampa = (t: number) => `hsl(${Math.round(140 * (1 - Math.min(1, Math.max(0, t))))}, 70%, 45%)`
@@ -37,9 +43,19 @@ interface Escala {
   min: string
   max: string
   titulo: string
+  /** Legenda categórica (quadrante, decisão) no lugar do gradiente. */
+  categorias?: [string, string][]
 }
 
-function criaEscala(colorBy: ColorBy, municipios: Municipio[], fin: Record<string, FinanceiroLinha>): Escala {
+function criaEscala(
+  colorBy: ColorBy, municipios: Municipio[], fin: Record<string, FinanceiroLinha>, decisoes: Record<string, Decisao>,
+): Escala {
+  if (colorBy === 'decisao') {
+    return {
+      titulo: 'Decisão', min: '', max: '', categorias: Object.entries(DECISAO_HEX),
+      cor: (m) => DECISAO_HEX[decisoes[m.id_municipio] ? DECISOES[decisoes[m.id_municipio].decisao].label : 'Pendente'],
+    }
+  }
   if (colorBy === 'payback') {
     return {
       titulo: 'Payback (anos)', min: '≤ 5,7 (melhor)', max: '≥ 12 (pior)',
@@ -64,7 +80,10 @@ function criaEscala(colorBy: ColorBy, municipios: Municipio[], fin: Record<strin
       cor: (m) => rampa(1 - Math.log10(Math.max(1, m.alunos_sem_internet ?? 0)) / hi),
     }
   }
-  return { titulo: 'Quadrante', min: '', max: '', cor: (m) => QUADRANT_HEX[m.quadrante] ?? '#8a94a3' }
+  return {
+    titulo: 'Quadrante', min: '', max: '', categorias: Object.entries(QUADRANT_HEX),
+    cor: (m) => QUADRANT_HEX[m.quadrante] ?? '#8a94a3',
+  }
 }
 
 interface Props {
@@ -80,6 +99,7 @@ export default function MapContainer({ municipios, portfolioIds, onMunicipioClic
   const setColorBy = useAppStore((s) => s.setColorBy)
   const filters    = useAppStore((s) => s.filters)
   const financeiro = useAppStore((s) => s.financeiro)
+  const decisoes   = useAppStore((s) => s.decisoes)
   const selectedId = useAppStore((s) => s.selectedId)
   const drawerOpen = useAppStore((s) => s.drawerOpen)
   const hoveredId  = useAppStore((s) => s.hoveredId)
@@ -95,7 +115,10 @@ export default function MapContainer({ municipios, portfolioIds, onMunicipioClic
   useEffect(() => { onClickRef.current = onMunicipioClick }, [onMunicipioClick])
 
   const cssVar = useCallback((n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), [])
-  const escala = useMemo(() => criaEscala(colorBy, municipios, financeiro), [colorBy, municipios, financeiro])
+  const escala = useMemo(
+    () => criaEscala(colorBy, municipios, financeiro, decisoes),
+    [colorBy, municipios, financeiro, decisoes],
+  )
 
   // ── Inicializa o mapa uma única vez ────────────────────────────────────────
   useEffect(() => {
@@ -285,8 +308,8 @@ export default function MapContainer({ municipios, portfolioIds, onMunicipioClic
       <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 12, color: 'var(--mu)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <b style={{ color: 'var(--tx)' }}>{escala.titulo}</b>
-          {colorBy === 'quadrante' ? (
-            Object.entries(QUADRANT_HEX).map(([q, hex]) => (
+          {escala.categorias ? (
+            escala.categorias.map(([q, hex]) => (
               <span key={q} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: hex, display: 'inline-block' }} />
                 {q}

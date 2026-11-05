@@ -24,12 +24,14 @@ export function useInitialData() {
   const openDrawer    = useAppStore((s) => s.openDrawer)
   const setFilters    = useAppStore((s) => s.setFilters)
   const setView       = useAppStore((s) => s.setView)
+  const setDecisoes   = useAppStore((s) => s.setDecisoes)
 
   useEffect(() => {
     setLoading(true)
     api.getQualidade()
       .then((q) => { setFonteDados(q.fonte_dados); setQualidade(q.campos) })
       .catch(() => {})  // sem a API, o erro de /municipios abaixo já avisa o usuário
+    api.getDecisoes().then(setDecisoes).catch(() => {})
     api.getMunicipios()
       .then((data) => {
         setMunicipios(data)

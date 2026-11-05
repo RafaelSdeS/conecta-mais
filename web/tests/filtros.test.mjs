@@ -41,3 +41,13 @@ test('ignorar permite contar quadrantes sem o próprio filtro de quadrante', () 
 test('contagem por região ignorando o próprio filtro de região', () => {
   assert.equal(ids({ regiao: 'Sul', uf: 'BA' }, new Set(), new Set(), 'regiao').length, 2)
 })
+
+test('filtro por decisão: vigente ou pendente', () => {
+  const vazio = { search: '', uf: '', regiao: '', semiarido: false, quadrante: '', portfolioOnly: false, favoritesOnly: false, decisao: '' }
+  const dec = { 2927408: { decisao: 'aprovar' }, 2910800: { decisao: 'descartar' } }
+  const ids = (decisao) => aplicaFiltros(base, { ...vazio, decisao }, new Set(), new Set(), undefined, dec).map((x) => x.id_municipio)
+  assert.deepEqual(ids('aprovar'), ['2927408'])
+  assert.equal(ids('pendente').length, base.length - 2)
+  assert.equal(ids('').length, base.length)
+})
+

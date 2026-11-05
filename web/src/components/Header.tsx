@@ -34,7 +34,6 @@ const LEVERS: { key: 'fust' | 'tcu' | 'enec'; label: string; title: string; camp
 export default function Header() {
   const budget         = useAppStore((s) => s.budget)
   const levers         = useAppStore((s) => s.levers)
-  const kpis           = useAppStore((s) => s.kpis)
   const filters        = useAppStore((s) => s.filters)
   const objetivo       = useAppStore((s) => s.objetivo)
   const setObjetivo    = useAppStore((s) => s.setObjetivo)
@@ -56,18 +55,19 @@ export default function Header() {
     filters.uf, filters.regiao, filters.semiarido ? 'Semiárido' : '',
   ].filter(Boolean).join(' · ') || 'Brasil'
 
+  // O aviso explica a alavanca/objetivo: o `title` não aparece em tela de toque.
+  // Os KPIs só mudam depois do recálculo no servidor, então o aviso não traz números.
   function handleLeverChange(key: 'fust' | 'tcu' | 'enec', checked: boolean) {
     setLevers({ [key]: checked })
     const lev = LEVERS.find((l) => l.key === key)!
-    const viav = kpis?.municipiosViaveis ?? 0
-    toast(`${lev.label} ${checked ? 'ligada' : 'desligada'} — ${viav} municípios viáveis`)
+    if (checked) toast(`${lev.label} ligada. ${lev.title}`, 6000)
+    else toast(`${lev.label} desligada. Recalculando o portfólio…`)
   }
 
   function handleToggleAll() {
     const nextOn = !allOn
     disponiveis.forEach((l) => setLevers({ [l.key]: nextOn }))
-    const viav = kpis?.municipiosViaveis ?? 0
-    toast(`Alavancas ${nextOn ? 'ligadas' : 'desligadas'} — ${viav} municípios viáveis`)
+    toast(`Alavancas ${nextOn ? 'ligadas' : 'desligadas'}. Recalculando o portfólio…`)
   }
 
   // Estilo base compartilhado por todos os botões do header
@@ -126,7 +126,10 @@ export default function Header() {
               role="radio"
               aria-checked={on}
               title={o.title}
-              onClick={() => setObjetivo(o.value)}
+              onClick={() => {
+                setObjetivo(o.value)
+                toast(`Objetivo ${o.label}. ${o.title}.`, 4000)
+              }}
               style={{
                 ...btnBase,
                 borderRadius: i === 0 ? '4px 0 0 4px' : i === OBJETIVOS.length - 1 ? '0 4px 4px 0' : 0,

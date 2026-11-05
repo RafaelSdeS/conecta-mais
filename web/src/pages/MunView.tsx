@@ -10,11 +10,12 @@ import { useFilteredMunicipios } from '../hooks/useFilteredMunicipios'
 import FilterBar from '../components/FilterBar'
 import QuadrantBadge from '../components/QuadrantBadge'
 import { fmtMi, fmtAnos, fmtN0 } from '../utils/format'
-import type { FinanceiroLinha, Municipio } from '../api/client'
+import { DECISOES } from '../utils/constants'
+import type { Decisao, FinanceiroLinha, Municipio } from '../api/client'
 
 // ── Colunas ───────────────────────────────────────────────────────────────────
 
-type SortKey = 'nome' | 'quadrante' | 'domicilios_urbanos' | 'alunos_sem_internet' | 'capex' | 'payback' | 'vpl' | 'portfolio'
+type SortKey = 'nome' | 'quadrante' | 'domicilios_urbanos' | 'alunos_sem_internet' | 'capex' | 'payback' | 'vpl' | 'portfolio' | 'decisao'
 
 const COLS: { key: SortKey; label: string; numeric?: boolean; title?: string }[] = [
   { key: 'nome',                label: 'Município' },
@@ -25,11 +26,12 @@ const COLS: { key: SortKey; label: string; numeric?: boolean; title?: string }[]
   { key: 'payback',             label: 'Payback', numeric: true },
   { key: 'vpl',                 label: 'VPL', numeric: true, title: 'Valor presente líquido no cenário atual (R$ mi)' },
   { key: 'portfolio',           label: 'Portfólio' },
+  { key: 'decisao',             label: 'Decisão', title: 'Decisão vigente registrada pelo gestor' },
 ]
 
 const SEM_FIN: FinanceiroLinha = { id_municipio: '', capex: NaN, payback: null, npv: NaN }
 
-function getSortValue(m: Municipio, key: SortKey, f: FinanceiroLinha, isSel: boolean): string | number {
+function getSortValue(m: Municipio, key: SortKey, f: FinanceiroLinha, isSel: boolean, d?: Decisao): string | number {
   switch (key) {
     case 'nome':                return m.nome
     case 'quadrante':           return m.quadrante
@@ -39,6 +41,7 @@ function getSortValue(m: Municipio, key: SortKey, f: FinanceiroLinha, isSel: boo
     case 'payback':             return f.payback ?? Infinity
     case 'vpl':                 return Number.isFinite(f.npv) ? f.npv : -Infinity
     case 'portfolio':           return isSel ? 0 : 1
+    case 'decisao':             return d ? DECISOES[d.decisao].label : '~'  // sem decisão vai para o fim
   }
 }
 
@@ -67,6 +70,7 @@ const tdStyle = (numeric?: boolean): React.CSSProperties => ({
 export default function MunView() {
   const portfolio   = useAppStore((s) => s.portfolio)
   const financeiro  = useAppStore((s) => s.financeiro)
+  const decisoes    = useAppStore((s) => s.decisoes)
   const openDrawer  = useAppStore((s) => s.openDrawer)
   const setHovered  = useAppStore((s) => s.setHovered)
   const filtrados   = useFilteredMunicipios()
@@ -80,12 +84,12 @@ export default function MunView() {
   const rows = useMemo(
     () =>
       [...filtrados].sort((a, b) => {
-        const va = getSortValue(a, sortKey, financeiro[a.id_municipio] ?? SEM_FIN, portfolioIds.has(a.id_municipio))
-        const vb = getSortValue(b, sortKey, financeiro[b.id_municipio] ?? SEM_FIN, portfolioIds.has(b.id_municipio))
+        const va = getSortValue(a, sortKey, financeiro[a.id_municipio] ?? SEM_FIN, portfolioIds.has(a.id_municipio), decisoes[a.id_municipio])
+        const vb = getSortValue(b, sortKey, financeiro[b.id_municipio] ?? SEM_FIN, portfolioIds.has(b.id_municipio), decisoes[b.id_municipio])
         if (typeof va === 'string') return va.localeCompare(vb as string) * sortDir
         return ((va as number) - (vb as number)) * sortDir
       }),
-    [filtrados, financeiro, portfolioIds, sortKey, sortDir],
+    [filtrados, financeiro, portfolioIds, decisoes, sortKey, sortDir],
   )
 
   function toggleSort(key: SortKey) {
@@ -143,6 +147,7 @@ export default function MunView() {
                   const isSel = portfolioIds.has(m.id_municipio)
                   const isFav = favs.has(m.id_municipio)
                   const pay   = f?.payback ?? null
+                  const dec   = decisoes[m.id_municipio]
 
                   return (
                     <tr
@@ -174,6 +179,12 @@ export default function MunView() {
                       </td>
                       <td style={{ ...tdStyle(), color: isSel ? 'var(--ok)' : 'var(--mu)', fontWeight: isSel ? 600 : 400 }}>
                         {isSel ? 'Selecionado' : '—'}
+                      </td>
+                      <td
+                        style={{ ...tdStyle(), color: dec ? DECISOES[dec.decisao].cor : 'var(--mu)', fontWeight: dec ? 600 : 400 }}
+                        title={dec ? `${dec.responsavel}, ${new Date(dec.criado_em).toLocaleDateString('pt-BR')}: ${dec.motivo}` : undefined}
+                      >
+                        {dec ? DECISOES[dec.decisao].label : 'Pendente'}
                       </td>
                     </tr>
                   )

@@ -15,10 +15,11 @@ export function useFilteredMunicipios(ignorar?: keyof Filters): Municipio[] {
   const municipios = useAppStore((s) => s.municipios)
   const filters    = useAppStore((s) => s.filters)
   const portfolio  = useAppStore((s) => s.portfolio)
+  const decisoes   = useAppStore((s) => s.decisoes)
   const [favs]     = useFavorites()
 
   return useMemo(
-    () => aplicaFiltros(municipios, filters, new Set(portfolio.map((m) => m.id_municipio)), favs, ignorar),
-    [municipios, filters, portfolio, favs, ignorar],
+    () => aplicaFiltros(municipios, filters, new Set(portfolio.map((m) => m.id_municipio)), favs, ignorar, decisoes),
+    [municipios, filters, portfolio, favs, ignorar, decisoes],
   )
 }

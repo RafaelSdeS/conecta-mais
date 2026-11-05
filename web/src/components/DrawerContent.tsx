@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { api } from '../api/client'
+import { alavancasDe, api, chaveCenario } from '../api/client'
 import type { FinancialResult } from '../api/client'
 import { useAppStore } from '../store/appStore'
 import { useFavorites } from '../hooks/useFavorites'
@@ -15,9 +15,11 @@ import { useToast } from '../hooks/toastContext'
 import QuadrantBadge from './QuadrantBadge'
 import AiText from './AiText'
 import DadosDoMunicipio from './DadosDoMunicipio'
+import SituacaoNoPlano from './SituacaoNoPlano'
+import DecisaoMunicipio from './DecisaoMunicipio'
+import { situacaoNoPlano } from '../utils/plano'
 import logo from '../assets/logo-texto.svg'
-import { fmtMi, fmtAnos, fmtN0 } from '../utils/format'
-import { getTechRecommendation } from '../utils/calculation'
+import { descreveCenario, fmtMi, fmtAnos, fmtN0 } from '../utils/format'
 import type { Municipio } from '../api/client'
 
 interface Props {
@@ -56,9 +58,21 @@ export default function DrawerContent({ municipio: m }: Props) {
   const budget     = useAppStore((s) => s.budget)
   const fonteDados  = useAppStore((s) => s.fonteDados)
   const qualidade   = useAppStore((s) => s.qualidade)
-  const justificativa = useAppStore((s) => s.justificativas[m.id_municipio])
-  const setJustificativa = useAppStore((s) => s.setJustificativa)
   const portfolio  = useAppStore((s) => s.portfolio)
+  const financeiro = useAppStore((s) => s.financeiro)
+  const kpis       = useAppStore((s) => s.kpis)
+  const isSel      = portfolio.some((p) => p.id_municipio === m.id_municipio)
+  // Sem portfólio calculado (API fora do ar) não há como dizer por que entrou ou não.
+  const situacao   = kpis
+    ? situacaoNoPlano(m.id_municipio, {
+        portfolioIds: new Set(portfolio.map((p) => p.id_municipio)),
+        financeiro, budget, capexUsado: kpis.capexUsado, objetivo,
+      })
+    : null
+  // Texto da IA depende do cenário e de o município estar ou não no plano.
+  const chaveJust  = `${m.id_municipio}|${isSel}|${chaveCenario(params, levers)}`
+  const justificativa = useAppStore((s) => s.justificativas[chaveJust])
+  const setJustificativa = useAppStore((s) => s.setJustificativa)
   const [favs, toggleFav] = useFavorites()
   const { toast } = useToast()
 
@@ -70,8 +84,6 @@ export default function DrawerContent({ municipio: m }: Props) {
 
   const [bcErro, setBcErro] = useState(false)
   const [tec, setTec] = useState<FinancialResult | null>(null)
-  const dist    = m.dist_backhaul_km ?? 50
-  const homes   = m.domicilios_urbanos ?? 5000
   const tcuMun  = m.acordo_migracao ?? false
   const schools = m.escolas_sem_internet_aprendizagem ?? 0
 
@@ -84,11 +96,7 @@ export default function DrawerContent({ municipio: m }: Props) {
     setSensitivity([])
 
     const alavancasSem = { backhaul_comprometido: false, fust_reembolsavel: false, receita_escolar: false }
-    const alavancasCom = {
-      backhaul_comprometido: levers.tcu && tcuMun,
-      fust_reembolsavel:     levers.fust,
-      receita_escolar:       levers.enec,
-    }
+    const alavancasCom = alavancasDe({ ...levers, tcu: levers.tcu && tcuMun })
 
     Promise.all([
       api.postFinancial(m.id_municipio, params, alavancasSem),
@@ -108,13 +116,9 @@ export default function DrawerContent({ municipio: m }: Props) {
   const base    = bcBase
   const withLev = bcWith
 
-  const alavancasAtivas = [levers.tcu && 'TCU', levers.fust && 'FUST', levers.enec && 'ENEC'].filter(Boolean).join(', ') || 'nenhuma'
   const camposLimitados = qualidade.filter((q) => q.tipo !== 'real').map((q) => `${q.campo} (${q.tipo})`)
 
-  const tech       = getTechRecommendation(dist, homes)
-  const professors = Math.round((m.escolas_sem_internet_aprendizagem ?? 2) * 3.7)
-  const isFav      = favs.has(m.id_municipio)
-  const isSel      = portfolio.some((p) => p.id_municipio === m.id_municipio)
+  const isFav     = favs.has(m.id_municipio)
 
   function handleFav() {
     toggleFav(m.id_municipio)
@@ -138,7 +142,7 @@ export default function DrawerContent({ municipio: m }: Props) {
           Ficha executiva · gerada em {new Date().toLocaleString('pt-BR')} · dados {fonteDados === 'mock' ? 'DEMONSTRATIVOS' : 'reais (IBGE, INEP, Anatel)'}
         </p>
         <p style={{ margin: '2px 0 0', fontSize: 11 }}>
-          Cenário: orçamento R$ {budget} mi · objetivo {objetivo} · alavancas: {alavancasAtivas} · ARPU R$ {params.arpu_mensal} · adesão {(params.adesao_pct * 100).toFixed(0)}% · WACC {(params.wacc * 100).toFixed(1)}%
+          Cenário: {descreveCenario({ budget, objetivo, levers, params })}
         </p>
         {camposLimitados.length > 0 && (
           <p style={{ margin: '2px 0 0', fontSize: 11 }}>
@@ -166,19 +170,29 @@ export default function DrawerContent({ municipio: m }: Props) {
 
       <QuadrantBadge quadrante={m.quadrante} showLabel />
 
-      <AiText
+      {situacao && <SituacaoNoPlano m={m} situacao={situacao} />}
+
+      <DecisaoMunicipio
         key={m.id_municipio}
+        m={m}
+        status={situacao?.status}
+        situacaoTexto={situacao?.texto}
+        justificativa={justificativa}
+      />
+
+      <AiText
+        key={chaveJust}
         label="Justificativa IA"
         initial={justificativa}
-        run={() => api.postJustificativa(m.id_municipio).then((r) => r.texto)}
-        onResult={(t) => setJustificativa(m.id_municipio, t)}
+        run={() => api.postJustificativa(m.id_municipio, params, alavancasDe(levers), isSel).then((r) => r.texto)}
+        onResult={(t) => setJustificativa(chaveJust, t)}
       />
 
       {/* Diagnóstico */}
       <h3>Diagnóstico</h3>
       <dl style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '4px 12px', margin: 0, fontSize: 13 }}>
-        <dt style={{ color: 'var(--mu)' }}>População</dt>
-        <dd style={{ margin: 0 }}>{fmtN0(homes * 3.4 / 0.8)} hab. · {fmtN0(homes)} domicílios urbanos</dd>
+        <dt style={{ color: 'var(--mu)' }}>Domicílios urbanos</dt>
+        <dd style={{ margin: 0 }}>{m.domicilios_urbanos != null ? fmtN0(m.domicilios_urbanos) : 'sem dado'}</dd>
 
         <dt style={{ color: 'var(--mu)' }}>Escolas públicas</dt>
         <dd style={{ margin: 0 }}>
@@ -187,7 +201,10 @@ export default function DrawerContent({ municipio: m }: Props) {
         </dd>
 
         <dt style={{ color: 'var(--mu)' }}>PoP de fibra</dt>
-        <dd style={{ margin: 0 }}>{dist.toFixed(1)} km{m.tem_backhaul_fibra ? ' (município com backhaul de fibra)' : ''}</dd>
+        <dd style={{ margin: 0 }}>
+          {m.dist_backhaul_km != null ? `${m.dist_backhaul_km.toFixed(1)} km` : 'sem dado'}
+          {m.tem_backhaul_fibra ? ' (município com backhaul de fibra)' : ''}
+        </dd>
 
         <dt style={{ color: 'var(--mu)' }}>Base móvel Vivo</dt>
         <dd style={{ margin: 0 }}>
@@ -211,21 +228,17 @@ export default function DrawerContent({ municipio: m }: Props) {
       {/* Plano de ação */}
       <h3>Plano de ação</h3>
       <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-        <li><b>Tecnologia:</b> {tec?.tecnologia_recomendada ?? tech}</li>
+        <li><b>Tecnologia:</b> {tec?.tecnologia_recomendada ?? '—'}</li>
         <li>
           <b>Financiamento:</b>{' '}
           {levers.fust ? 'FUST/BNDES (TR + 1,25% a.a.)' : 'WACC privado'}
           {tcuMun && levers.tcu ? ' e backhaul TCU' : ''}
         </li>
-        <li>
-          <b>Fundação Telefônica:</b> Escolas Conectadas, formação de ~{professors} professores da rede municipal
-        </li>
-        <li>
-          <b>Portfólio:</b>{' '}
-          <span style={{ color: isSel ? 'var(--ok)' : 'var(--mu)', fontWeight: isSel ? 600 : 400 }}>
-            {isSel ? 'Selecionado' : 'Fora do orçamento atual'}
-          </span>
-        </li>
+        {schools > 0 && (
+          <li>
+            <b>Fundação Telefônica:</b> Escolas Conectadas, formação docente nas {schools} escolas sem internet para aprendizagem
+          </li>
+        )}
       </ul>
 
       {/* Business case */}

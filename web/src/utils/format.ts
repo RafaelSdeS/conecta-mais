@@ -23,3 +23,15 @@ export function fmtPct(v: number | null | undefined): string {
   if (v == null) return '—'
   return (v * 100).toFixed(1) + '%'
 }
+
+/** Cenário em uma linha (cabeçalho impresso da ficha e do dossiê). */
+export function descreveCenario(c: {
+  budget: number
+  objetivo: string
+  levers: { fust: boolean; tcu: boolean; enec: boolean }
+  params: { arpu_mensal: number; adesao_pct: number; wacc: number }
+}): string {
+  const alavancas = [c.levers.tcu && 'TCU', c.levers.fust && 'FUST', c.levers.enec && 'ENEC'].filter(Boolean).join(', ') || 'nenhuma'
+  return `orçamento R$ ${c.budget} mi · objetivo ${c.objetivo} · alavancas: ${alavancas} · `
+    + `ARPU R$ ${c.params.arpu_mensal} · adesão ${(c.params.adesao_pct * 100).toFixed(0)}% · WACC ${(c.params.wacc * 100).toFixed(1)}%`
+}

@@ -6,6 +6,7 @@
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '../store/appStore'
 import DrawerContent from './DrawerContent'
+import { imprimir } from '../utils/imprimir'
 
 export default function Drawer() {
   const drawerOpen = useAppStore((s) => s.drawerOpen)
@@ -31,12 +32,7 @@ export default function Drawer() {
     return () => window.removeEventListener('keydown', handler)
   }, [drawerOpen, closeDrawer])
 
-  // Marca o body para o CSS de impressão mostrar só a ficha; desfaz quando a janela de impressão fecha.
-  function imprimirFicha() {
-    document.body.classList.add('imprimindo-ficha')
-    window.addEventListener('afterprint', () => document.body.classList.remove('imprimindo-ficha'), { once: true })
-    window.print()
-  }
+  const imprimirFicha = () => imprimir('imprimindo-ficha')
 
   return (
     <>

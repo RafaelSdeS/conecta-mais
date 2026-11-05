@@ -1,6 +1,6 @@
 /** Constantes e dados estáticos usados em toda a aplicação. */
 
-import type { FinancialParams, Objetivo } from '../api/client'
+import type { FinancialParams, Objetivo, TipoDecisao } from '../api/client'
 
 /** Premissas padrão do motor (mesmos valores de FinancialParams no backend; proposta §4.3). */
 export const DEFAULT_PARAMS: FinancialParams = {
@@ -15,6 +15,16 @@ export const DEFAULT_PARAMS: FinancialParams = {
   anos_projeto: 10,
   aliquota_imposto: 0.34,
   arpu_escolar_mensal: 1200,
+}
+
+/** Payback máximo aceito no portfólio (anos); acima disso o município nem entra no otimizador. */
+export const TETO_PAYBACK_ANOS = 10
+
+/** Rótulo e cor de cada decisão do gestor (ficha, tabela, filtro e dossiê). */
+export const DECISOES: Record<TipoDecisao, { label: string; cor: string }> = {
+  aprovar:   { label: 'Aprovado',   cor: 'var(--ok)' },
+  adiar:     { label: 'Adiado',     cor: 'var(--q2b)' },
+  descartar: { label: 'Descartado', cor: 'var(--mu)' },
 }
 
 export const UFS = [
@@ -96,13 +106,14 @@ export const FLUXO: { titulo: string; itens: { nome: string; status: StatusEntre
   {
     titulo: 'API',
     itens: [
-      { nome: 'FastAPI', status: 'entregue', desc: '/municipios, /portfolio, /financial, /qualidade, /chat, /ia e /dados; OpenAPI em /docs.' },
+      { nome: 'FastAPI', status: 'entregue', desc: '/municipios, /portfolio, /financial, /qualidade, /decisoes, /chat, /ia e /dados; OpenAPI em /docs.' },
     ],
   },
   {
     titulo: 'Interfaces e IA',
     itens: [
-      { nome: 'Painel, mapa e ficha', status: 'entregue', desc: 'Filtros compartilhados, mapa por região, tabela, ficha executiva e PDF.' },
+      { nome: 'Painel, mapa e ficha', status: 'entregue', desc: 'Filtros compartilhados, mapa por região, tabela, ficha executiva com a situação no plano e PDF.' },
+      { nome: 'Registro de decisões', status: 'entregue', desc: 'Aprovar, adiar ou descartar com motivo, observação de campo e cenário; histórico no servidor e dossiê do recorte em PDF. Sem login: o responsável é informado pelo gestor.' },
       { nome: 'Listas para secretarias', status: 'parcial', desc: 'Escolas sem internet, UBS e provedores por município, com CSV. Sem login nem contrato B2G.' },
       { nome: 'Módulo Saúde', status: 'parcial', desc: 'UBS por município (CNES) como indicador de demanda; não há dado de conectividade das UBS.' },
       { nome: 'Agente Granite (watsonx.ai)', status: 'entregue', desc: 'Chat com ferramentas de ranking, portfólio, comparação e provedores; justificativas e filtros em linguagem natural.' },
@@ -194,6 +205,7 @@ export const ROADMAP: { titulo: string; status: StatusEntrega | 'proximo'; itens
       'Scores M·I·C·A, quadrantes e business case com alavancas e premissas editáveis',
       'Portfólio por orçamento, escopo e objetivo (CBC; CPLEX opcional)',
       'Painel com mapa por região, ficha, PDF e listas CSV para secretarias',
+      'Situação no plano por município, simulação de inclusão, registro de decisões e dossiê do recorte',
       'Backtest com histórico real da Anatel',
       'Agente Granite com RAG sobre textos oficiais e painel de auditoria',
     ],
@@ -206,6 +218,7 @@ export const ROADMAP: { titulo: string; status: StatusEntrega | 'proximo'; itens
       'Construir × comprar com preço, qualidade da rede e análise jurídica',
       'Módulo Saúde com a conectividade de cada UBS',
       'Listas para secretarias com login e contrato B2G',
+      'Registro de decisões com login, alçada por gestor e uso sem conexão em campo',
     ],
   },
   {
@@ -237,6 +250,7 @@ export const RISCOS: string[] = [
   'Os custos de FWA e satélite são ilustrativos: a recomendação de tecnologia segue a regra da proposta, não uma otimização de custos.',
   'Censo Escolar 2024 sem latitude/longitude das escolas: a análise é por município, não por escola.',
   'Backhaul só como presença por município, sem traçado da rede.',
+  'Registro de decisões sem autenticação: o nome do responsável é declarado e não verificado; exige conexão com o servidor.',
 ]
 
 export const ROI_ROWS: { label: string; value: string; highlight?: boolean }[] = [

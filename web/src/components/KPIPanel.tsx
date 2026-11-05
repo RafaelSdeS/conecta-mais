@@ -5,7 +5,7 @@
 import { useAppStore } from '../store/appStore'
 import KPICard from './KPICard'
 import AiText from './AiText'
-import { api } from '../api/client'
+import { alavancasDe, api, chaveNarrativa } from '../api/client'
 import { fmtMi, fmtAnos, fmtN0 } from '../utils/format'
 
 export default function KPIPanel() {
@@ -13,6 +13,13 @@ export default function KPIPanel() {
   const budget    = useAppStore((s) => s.budget)
   const total     = useAppStore((s) => Object.keys(s.financeiro).length)
   const portfolio = useAppStore((s) => s.portfolio)
+  const params    = useAppStore((s) => s.params)
+  const levers    = useAppStore((s) => s.levers)
+  const narrativa = useAppStore((s) => s.narrativa)
+  const setNarrativa = useAppStore((s) => s.setNarrativa)
+  const ids       = portfolio.map((m) => m.id_municipio)
+  // O texto só vale para o mesmo portfólio no mesmo cenário (também usado no dossiê).
+  const chave     = chaveNarrativa(ids, budget, params, levers)
 
   const pay    = kpis?.paybackMedio     ?? 0
   const count  = kpis?.countPortfolio   ?? 0
@@ -65,13 +72,16 @@ export default function KPIPanel() {
         />
       </div>
       <AiText
+        key={chave}
         label="Explicar portfólio (IA)"
         disabled={portfolio.length === 0}
+        initial={narrativa?.chave === chave ? narrativa.texto : undefined}
         run={() =>
           api
-            .postPortfolioNarrativa(portfolio.map((m) => m.id_municipio), budget)
+            .postPortfolioNarrativa(ids, budget, params, alavancasDe(levers))
             .then((r) => r.texto)
         }
+        onResult={(texto) => setNarrativa({ chave, texto })}
       />
     </>
   )
