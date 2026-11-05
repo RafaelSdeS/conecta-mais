@@ -9,7 +9,7 @@ export function fmtMi(v: number | null | undefined): string {
 /** X,X anos */
 export function fmtAnos(v: number | null | undefined): string {
   if (v == null || !isFinite(v)) return '∞'
-  return v.toFixed(1) + ' anos'
+  return v.toFixed(1).replace('.', ',') + ' anos'
 }
 
 /** Número inteiro com separador de milhar */

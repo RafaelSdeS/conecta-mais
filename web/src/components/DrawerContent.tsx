@@ -1,6 +1,6 @@
 /**
  * DrawerContent — conteúdo da ficha executiva de um município.
- * Renderiza diagnóstico, plano de ação e business case comparativo.
+ * Abre com o veredito (DecisaoCard); diagnóstico, plano de ação e business case ficam nos detalhes.
  *
  * Business case: chama POST /financial com e sem alavancas, usando as premissas do cenário.
  * Se a API estiver offline, mostra o aviso em vez de números aproximados.
@@ -14,6 +14,7 @@ import { useFavorites } from '../hooks/useFavorites'
 import { useToast } from '../hooks/toastContext'
 import QuadrantBadge from './QuadrantBadge'
 import AiText from './AiText'
+import DecisaoCard from './DecisaoCard'
 import DadosDoMunicipio from './DadosDoMunicipio'
 import logo from '../assets/logo-texto.svg'
 import { fmtMi, fmtAnos, fmtN0 } from '../utils/format'
@@ -34,6 +35,9 @@ const btnGhost: React.CSSProperties = {
   color: 'var(--tx)',
   border: '1px solid var(--ln)',
 }
+
+// No celular os detalhes começam recolhidos; no computador, abertos para quem analisa.
+const ABRE_DETALHES = window.matchMedia('(min-width: 901px)').matches
 
 // Converte FinancialResult da API para o formato da tabela local
 interface BCRow { capex: number; back: number; b2c: number; ebitda: number; pay: number; npv: number }
@@ -60,6 +64,7 @@ export default function DrawerContent({ municipio: m }: Props) {
   const justificativa = useAppStore((s) => s.justificativas[m.id_municipio])
   const setJustificativa = useAppStore((s) => s.setJustificativa)
   const portfolio  = useAppStore((s) => s.portfolio)
+  const financeiro = useAppStore((s) => s.financeiro)
   const [favs, toggleFav] = useFavorites()
   const { toast } = useToast()
 
@@ -114,6 +119,7 @@ export default function DrawerContent({ municipio: m }: Props) {
 
   const professors = Math.round(schools * 3.7)
   const pos        = posicao(todos, m)
+  const fin        = financeiro[m.id_municipio] ?? (withLev ? { capex: withLev.capex, payback: withLev.pay, npv: withLev.npv } : undefined)
   const isFav      = favs.has(m.id_municipio)
   const isSel      = portfolio.some((p) => p.id_municipio === m.id_municipio)
 
@@ -165,15 +171,22 @@ export default function DrawerContent({ municipio: m }: Props) {
         </button>
       </div>
 
-      <QuadrantBadge quadrante={m.quadrante} showLabel />
+      <DecisaoCard m={m} fin={fin} />
 
       <AiText
         key={m.id_municipio}
-        label="Justificativa IA"
+        label="Explicar com IA"
         initial={justificativa}
         run={() => api.postJustificativa(m.id_municipio).then((r) => r.texto)}
         onResult={(t) => setJustificativa(m.id_municipio, t)}
       />
+
+      <details open={ABRE_DETALHES} style={{ margin: '12px 0' }}>
+      <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 14, minHeight: 44, display: 'flex', alignItems: 'center' }}>
+        Detalhes: scores, business case e tecnologia
+      </summary>
+
+      <QuadrantBadge quadrante={m.quadrante} showLabel />
 
       {/* Diagnóstico */}
       <h3>Diagnóstico</h3>
@@ -336,6 +349,8 @@ export default function DrawerContent({ municipio: m }: Props) {
           </div>
         </>
       )}
+
+      </details>
 
       <DadosDoMunicipio key={m.id_municipio} id={m.id_municipio} nome={m.nome} ubsTotal={m.ubs ?? 0} />
     </div>

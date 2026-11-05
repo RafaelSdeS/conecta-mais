@@ -31,6 +31,13 @@ export default function Drawer() {
     return () => window.removeEventListener('keydown', handler)
   }, [drawerOpen, closeDrawer])
 
+  // O PDF sai completo mesmo com os detalhes recolhidos, inclusive com Ctrl+P.
+  useEffect(() => {
+    const abreDetalhes = () => document.querySelectorAll<HTMLDetailsElement>('.print-sheet details').forEach((d) => { d.open = true })
+    window.addEventListener('beforeprint', abreDetalhes)
+    return () => window.removeEventListener('beforeprint', abreDetalhes)
+  }, [])
+
   // Marca o body para o CSS de impressão mostrar só a ficha; desfaz quando a janela de impressão fecha.
   function imprimirFicha() {
     document.body.classList.add('imprimindo-ficha')
