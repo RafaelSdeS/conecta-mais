@@ -127,6 +127,7 @@ O teste percorreu a busca, o veredito, o kit da visita, o compartilhamento, o re
 3. O limite de 6 anos de retorno é o que a operadora usaria?
 4. Os próximos passos são os que o gestor realmente seguiria?
 5. A falta de internet em campo bloqueia o uso? O MVP não funciona sem conexão.
+6. O que "impacto alto" deveria exigir? Dos 2.785 municípios de impacto alto, 480 não têm nenhuma escola sem internet para aprendizagem: a pontuação deles vem principalmente do perfil rural e da vulnerabilidade social, que é uma média do estado. O cartão explica isso, mas o modelo não mudou.
 
 ### Playback 1: equipe no lugar dos usuários
 Pendente; a equipe aplica o roteiro acima e registra aqui tempos, travas e o que muda.

@@ -126,10 +126,11 @@ export function motivos(m: Municipio, fin?: FinanceiroVeredito): string[] {
   const lista = [`${fmtN0(domicilios)} domicílios, cerca de ${(semFibra * 100).toFixed(0)}% sem fibra`]
 
   const escolas = m.escolas_sem_internet_aprendizagem ?? 0
+  const impactoAlto = m.quadrante === 'Q1' || m.quadrante === 'Q2a' || m.quadrante === 'Q2b'
   lista.push(
     escolas > 0
       ? `${fmtN0(m.alunos_sem_internet)} alunos em ${fmtN0(escolas)} escolas sem internet para aprendizagem`
-      : 'Nenhuma escola sem internet para aprendizagem no Censo Escolar',
+      : `Nenhuma escola sem internet para aprendizagem no Censo Escolar${impactoAlto ? '; o impacto calculado vem de fatores como zona rural e vulnerabilidade social' : ''}`,
   )
 
   const fibra = m.tem_backhaul_fibra ? 'já tem fibra de transporte' : `fibra de transporte a ${(m.dist_backhaul_km ?? 0).toFixed(0)} km`

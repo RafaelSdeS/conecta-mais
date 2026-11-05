@@ -92,3 +92,9 @@ test('priorizar não lista quem ainda está calculando', () => {
   assert.deepEqual(priorizar([m('Q1', { id_municipio: 'a', score_total: 1 })], {}), [])
 })
 
+test('impacto alto sem escola afetada explica de onde vem o impacto, sem se contradizer', () => {
+  const semEscola = { escolas_sem_internet_aprendizagem: 0 }
+  assert.match(motivos(m('Q2b', semEscola), bom)[1], /impacto calculado vem de fatores como zona rural/)
+  assert.doesNotMatch(motivos(m('Q4', semEscola), bom)[1], /impacto calculado/)
+})
+
