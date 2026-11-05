@@ -56,16 +56,21 @@ def num_escolas_b2g(row) -> int:
     return int(row.get("escolas_sem_internet_aprendizagem", 0) or 0)
 
 
+# ponytail: sem prova de otimalidade quando estoura. Medido no Brasil inteiro: 2 s fica a até 0,35% do objetivo de 30 s,
+# bem menos que a incerteza das premissas, e 30 s travava a tela a cada mudança de cenário. Aumentar se a decisão pedir.
+LIMITE_SOLVER_S = 3
+
+
 def _escolhe_solver() -> tuple[pulp.LpSolver, str]:
     """CBC por padrão. CONECTA_SOLVER=cplex usa o IBM CPLEX se estiver instalado e licenciado."""
     if os.getenv("CONECTA_SOLVER", "").strip().lower() == "cplex":
-        cplex = pulp.CPLEX_CMD(msg=0, timeLimit=30)
+        cplex = pulp.CPLEX_CMD(msg=0, timeLimit=LIMITE_SOLVER_S)
         if cplex.available():
             return cplex, "CPLEX"
         logger.warning("CONECTA_SOLVER=cplex, mas o CPLEX não está disponível: usando CBC.")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", DeprecationWarning)
-        return pulp.PULP_CBC_CMD(msg=0, timeLimit=30), "CBC"  # ponytail: 30 s; sem prova de otimalidade se estourar
+        return pulp.PULP_CBC_CMD(msg=0, timeLimit=LIMITE_SOLVER_S), "CBC"
 
 
 def add_financials(
