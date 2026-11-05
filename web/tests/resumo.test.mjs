@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { carregaTs } from './carregaTs.mjs'
 
-const { resumoGeral, resumoPorRegiao } = await carregaTs('utils/regioes.ts', 'utils/resumo.ts')
+const { migramParaQ2a, posicao, resumoGeral, resumoPorRegiao } = await carregaTs('utils/regioes.ts', 'utils/resumo.ts')
 
 const m = (id, extra = {}) => ({
   id_municipio: id, quadrante: 'Q4', total_escolas: 10, escolas_sem_internet_aprendizagem: 2,
@@ -28,4 +28,22 @@ test('por região: cobre as 5 regiões e a soma bate com o geral', () => {
   assert.deepEqual(regioes.map((r) => r.regiao), ['Norte', 'Nordeste', 'Sudeste', 'Sul', 'Centro-Oeste'])
   assert.equal(regioes.find((r) => r.regiao === 'Nordeste').resumo.municipios, 2)
   assert.equal(regioes.reduce((s, r) => s + r.resumo.alunosSemInternet, 0), resumoGeral(base).alunosSemInternet)
+})
+
+test('posição conta quem tem score maior, na UF e no Brasil', () => {
+  const lista = [
+    { uf: 'BA', score_total: 50 }, { uf: 'BA', score_total: 30 }, { uf: 'SP', score_total: 70 }, { uf: 'BA', score_total: 30 },
+  ]
+  assert.deepEqual(posicao(lista, lista[1]), { uf: 2, totalUf: 3, brasil: 3, totalBrasil: 4 })
+})
+
+test('migram para Q2a só com a alavanca do município ligada', () => {
+  const lista = [
+    { quadrante: 'Q2a', fust_elegivel: true, acordo_migracao: false },
+    { quadrante: 'Q2a', fust_elegivel: false, acordo_migracao: true },
+    { quadrante: 'Q2b', fust_elegivel: true, acordo_migracao: true },
+  ]
+  assert.equal(migramParaQ2a(lista, { fust: true, tcu: false }), 1)
+  assert.equal(migramParaQ2a(lista, { fust: true, tcu: true }), 2)
+  assert.equal(migramParaQ2a(lista, { fust: false, tcu: false }), 0)
 })

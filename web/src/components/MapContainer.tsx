@@ -26,6 +26,7 @@ const COLOR_MODES: { value: ColorBy; label: string }[] = [
   { value: 'payback',   label: 'Payback' },
   { value: 'score',     label: 'Score total' },
   { value: 'alunos',    label: 'Alunos sem internet' },
+  { value: 'share',     label: 'Share móvel Vivo' },
 ]
 
 /** Rampa verde (bom) → vermelho (ruim); t em [0,1], 0 = melhor. */
@@ -53,15 +54,21 @@ function criaEscala(colorBy: ColorBy, municipios: Municipio[], fin: Record<strin
     const v = municipios.map((m) => m.score_total ?? 0)
     const lo = Math.min(...v), hi = Math.max(...v)
     return {
-      titulo: 'Score total', min: `${lo.toFixed(0)} (baixo)`, max: `${hi.toFixed(0)} (alto)`,
+      titulo: 'Score total', min: `${hi.toFixed(0)} (alto)`, max: `${lo.toFixed(0)} (baixo)`,
       cor: (m) => rampa(1 - ((m.score_total ?? 0) - lo) / ((hi - lo) || 1)),
     }
   }
   if (colorBy === 'alunos') {
     const hi = Math.log10(Math.max(10, ...municipios.map((m) => m.alunos_sem_internet ?? 0)))
     return {
-      titulo: 'Alunos em escolas sem internet (escala log)', min: 'poucos', max: `${fmtN0(10 ** hi)}`,
+      titulo: 'Alunos em escolas sem internet (escala log)', min: `${fmtN0(10 ** hi)}`, max: 'poucos',
       cor: (m) => rampa(1 - Math.log10(Math.max(1, m.alunos_sem_internet ?? 0)) / hi),
+    }
+  }
+  if (colorBy === 'share') {
+    return {
+      titulo: 'Share móvel da Vivo', min: '100%', max: '0%',
+      cor: (m) => rampa(1 - (m.market_share_vivo_movel ?? 0)),
     }
   }
   return { titulo: 'Quadrante', min: '', max: '', cor: (m) => QUADRANT_HEX[m.quadrante] ?? '#8a94a3' }

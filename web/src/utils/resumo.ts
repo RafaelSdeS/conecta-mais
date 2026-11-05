@@ -47,3 +47,16 @@ export function resumoPorRegiao(
   })
   return REGIOES.map((regiao) => ({ regiao, resumo: porRegiao.get(regiao)! }))
 }
+
+/** Posição do município por score total, na UF e no Brasil. */
+export function posicao(municipios: Municipio[], m: Municipio) {
+  const lugar = (lista: Municipio[]) => 1 + lista.filter((x) => x.score_total > m.score_total).length
+  const daUf = municipios.filter((x) => x.uf === m.uf)
+  return { uf: lugar(daUf), totalUf: daUf.length, brasil: lugar(municipios), totalBrasil: municipios.length }
+}
+
+/** Quantos saem de Q2b para Q2a por causa de uma alavanca ligada (0 enquanto não há listas oficiais). */
+export function migramParaQ2a(municipios: Municipio[], levers: { fust: boolean; tcu: boolean }) {
+  return municipios.filter((m) =>
+    m.quadrante === 'Q2a' && ((levers.fust && m.fust_elegivel) || (levers.tcu && m.acordo_migracao))).length
+}

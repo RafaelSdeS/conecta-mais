@@ -26,7 +26,7 @@ export interface Levers {
   enec:  boolean
 }
 
-export type ColorBy = 'quadrante' | 'payback' | 'score' | 'alunos'
+export type ColorBy = 'quadrante' | 'payback' | 'score' | 'alunos' | 'share'
 
 export interface Layers {
   backhaul: boolean

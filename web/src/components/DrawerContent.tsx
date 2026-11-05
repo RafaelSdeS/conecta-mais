@@ -17,6 +17,7 @@ import AiText from './AiText'
 import DadosDoMunicipio from './DadosDoMunicipio'
 import logo from '../assets/logo-texto.svg'
 import { fmtMi, fmtAnos, fmtN0 } from '../utils/format'
+import { posicao } from '../utils/resumo'
 import { getTechRecommendation } from '../utils/calculation'
 import type { Municipio } from '../api/client'
 
@@ -51,6 +52,7 @@ function apiResultToRow(r: FinancialResult): BCRow {
 
 export default function DrawerContent({ municipio: m }: Props) {
   const levers     = useAppStore((s) => s.levers)
+  const todos      = useAppStore((s) => s.municipios)
   const params     = useAppStore((s) => s.params)
   const objetivo    = useAppStore((s) => s.objetivo)
   const budget     = useAppStore((s) => s.budget)
@@ -112,7 +114,8 @@ export default function DrawerContent({ municipio: m }: Props) {
   const camposLimitados = qualidade.filter((q) => q.tipo !== 'real').map((q) => `${q.campo} (${q.tipo})`)
 
   const tech       = getTechRecommendation(dist, homes)
-  const professors = Math.round((m.escolas_sem_internet_aprendizagem ?? 2) * 3.7)
+  const professors = Math.round(schools * 3.7)
+  const pos        = posicao(todos, m)
   const isFav      = favs.has(m.id_municipio)
   const isSel      = portfolio.some((p) => p.id_municipio === m.id_municipio)
 
@@ -177,8 +180,13 @@ export default function DrawerContent({ municipio: m }: Props) {
       {/* Diagnóstico */}
       <h3>Diagnóstico</h3>
       <dl style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '4px 12px', margin: 0, fontSize: 13 }}>
+        <dt style={{ color: 'var(--mu)' }}>Posição (score)</dt>
+        <dd style={{ margin: 0 }}>
+          {fmtN0(pos.uf)}º de {fmtN0(pos.totalUf)} em {m.uf} · {fmtN0(pos.brasil)}º de {fmtN0(pos.totalBrasil)} no Brasil
+        </dd>
+
         <dt style={{ color: 'var(--mu)' }}>População</dt>
-        <dd style={{ margin: 0 }}>{fmtN0(homes * 3.4 / 0.8)} hab. · {fmtN0(homes)} domicílios urbanos</dd>
+        <dd style={{ margin: 0 }}>~{fmtN0(homes * 3.4 / 0.8)} hab. (estimativa) · {fmtN0(homes)} domicílios urbanos</dd>
 
         <dt style={{ color: 'var(--mu)' }}>Escolas públicas</dt>
         <dd style={{ margin: 0 }}>
@@ -218,7 +226,7 @@ export default function DrawerContent({ municipio: m }: Props) {
           {tcuMun && levers.tcu ? ' e backhaul TCU' : ''}
         </li>
         <li>
-          <b>Fundação Telefônica:</b> Escolas Conectadas, formação de ~{professors} professores da rede municipal
+          <b>Fundação Telefônica:</b> Escolas Conectadas, formação de ~{professors} professores da rede municipal (estimativa)
         </li>
         <li>
           <b>Portfólio:</b>{' '}

@@ -11,6 +11,7 @@ import MapContainer      from '../components/MapContainer'
 import QuadrantButtons   from '../components/QuadrantButtons'
 import PaybackHistogram  from '../components/PaybackHistogram'
 import { fmtN0 } from '../utils/format'
+import { migramParaQ2a } from '../utils/resumo'
 
 export default function PanelView() {
   const todos       = useAppStore((s) => s.municipios)
@@ -19,6 +20,8 @@ export default function PanelView() {
   const openDrawer  = useAppStore((s) => s.openDrawer)
 
   const municipios  = useFilteredMunicipios()
+  const levers      = useAppStore((s) => s.levers)
+  const migram      = migramParaQ2a(municipios, levers)
   const paraQuadrantes = useFilteredMunicipios('quadrante')
 
   const portfolioIds = useMemo(
@@ -112,6 +115,18 @@ export default function PanelView() {
               <span>Alunos em escolas sem internet (recorte)</span>
               <b>{fmtN0(alunos)}</b>
             </div>
+            {migram > 0 && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '7px 0',
+                borderTop: '1px solid var(--ln)',
+                fontSize: 13,
+              }}>
+                <span>Mudam de Q2b para Q2a com as alavancas ligadas</span>
+                <b>{fmtN0(migram)}</b>
+              </div>
+            )}
           </div>
 
           {/* Histograma */}
