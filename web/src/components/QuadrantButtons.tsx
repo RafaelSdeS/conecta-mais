@@ -16,6 +16,11 @@ interface Props {
 export default function QuadrantButtons({ municipios }: Props) {
   const filters    = useAppStore((s) => s.filters)
   const setFilters = useAppStore((s) => s.setFilters)
+  const qualidade  = useAppStore((s) => s.qualidade)
+
+  // Sem as listas oficiais não há como separar Q2a de Q2b.
+  const semAlavancas = ['acordo_migracao', 'fust_elegivel', 'eace_escolas'].every((campo) =>
+    qualidade.some((q) => q.campo === campo && q.tipo === 'neutro'))
 
   // Conta municípios por quadrante
   const counts = QUADRANTS.reduce<Record<string, number>>((acc, q) => {
@@ -90,6 +95,12 @@ export default function QuadrantButtons({ municipios }: Props) {
           </button>
         )
       })}
+      {semAlavancas && (
+        <p role="note" style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--mu)' }}>
+          Sem as listas de Acordo TCU, FUST e EACE, não dá para separar Q2a de Q2b:
+          quem tem M baixo e I alto aparece em Q2b.
+        </p>
+      )}
     </div>
   )
 }

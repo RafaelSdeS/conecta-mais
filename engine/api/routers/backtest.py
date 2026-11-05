@@ -25,6 +25,10 @@ _DESCRICAO_REAL = (
     "atual), então é um backtest parcial: indicadores atuais podem antecipar parte do crescimento."
 )
 _DESCRICAO_MOCK = "Dados demonstrativos (49 municípios): não há base histórica real carregada."
+_AVISO_SEM_ALAVANCAS = (
+    " Sem dados de alavanca, Q2a fica vazio e a predição positiva se resume a Q1: compare pelo lift, "
+    "porque o recall fica limitado ao tamanho de Q1."
+)
 
 
 def _real(request: Request):
@@ -43,6 +47,8 @@ def _calcula(request: Request) -> dict:
         d21, d25, backhaul = _real(request)
         fonte, descricao, limiar = "real", _DESCRICAO_REAL, LIMIAR_PRINCIPAL_REAL
         limiares = LIMIARES_REAL
+        if (d25["score_A"] == 0).all():
+            descricao += _AVISO_SEM_ALAVANCAS
     else:
         d21 = load_municipios(DATA_DIR / "mock_backtest_2021.csv")
         d25 = load_municipios(DATA_DIR / "mock_municipios.csv")

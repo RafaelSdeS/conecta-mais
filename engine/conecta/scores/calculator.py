@@ -149,7 +149,9 @@ def _score_A(df: pd.DataFrame) -> pd.Series:
     """
     acordo = df["acordo_migracao"].astype(float) * 50.0   # peso 50 pts
     fust   = df["fust_elegivel"].astype(float) * 30.0     # peso 30 pts
-    eace   = _minmax(df["eace_escolas"]) * 0.20           # peso 20 pts (normalizado)
+    # Fração do maior valor, não _minmax: série toda zerada (sem dados) daria 50 e criaria alavanca do nada.
+    maximo = df["eace_escolas"].max()
+    eace   = df["eace_escolas"] / maximo * 20.0 if maximo > 0 else 0.0  # peso 20 pts
 
     raw = (acordo + fust + eace).clip(0, 100)
     return raw.rename("score_A")

@@ -188,3 +188,12 @@ def test_pesos_alteram_score_total(df):
     out1 = calculate_scores(df, ScoreWeights(w_M=0.7, w_I=0.1, w_C=0.1, w_A=0.1))
     out2 = calculate_scores(df, ScoreWeights(w_M=0.1, w_I=0.7, w_C=0.1, w_A=0.1))
     assert not out1["score_total"].equals(out2["score_total"])
+
+
+def test_sem_dados_de_alavanca_score_A_zero_e_q2a_vazio(df):
+    """Alavancas neutras (ETL sem as listas oficiais) não podem virar alavanca: M baixo + I alto é Q2b."""
+    neutro = df.assign(acordo_migracao=False, fust_elegivel=False, eace_escolas=0)
+    out = calculate_scores(neutro)
+    assert (out["score_A"] == 0).all()
+    assert "Q2a" not in set(out["quadrante"])
+    assert "Q2b" in set(out["quadrante"])

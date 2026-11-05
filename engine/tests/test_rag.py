@@ -94,8 +94,8 @@ def test_catalogo_indexa_documentos_do_projeto_e_codigo_sem_normas_oficiais(
         for source in DOCUMENT_SOURCES
     )
     assert len(OFFICIAL_REGULATORY_SOURCES) == 4
-    assert "41,33" not in derived_reference
-    assert "41.33" not in derived_reference
+    assert "41,36" not in derived_reference
+    assert "41.36" not in derived_reference
 
 
 def test_recupera_significados_canonicos_das_quatro_dimensoes(tmp_path: Path):
@@ -168,7 +168,7 @@ def test_sintese_deterministica_usa_definicoes_pesos_e_formulas_do_codigo():
     assert all(f"{name}=0.25" in answer for name in ("w_M", "w_I", "w_C", "w_A"))
     assert 'df["acordo_migracao"].astype(float) * 50.0' in answer
     assert 'df["fust_elegivel"].astype(float) * 30.0' in answer
-    assert '_minmax(df["eace_escolas"]) * 0.20' in answer
+    assert 'df["eace_escolas"] / maximo * 20.0' in answer
     assert "raw = (acordo + fust + eace).clip(0, 100)" in answer
     assert 'df["dist_backhaul_km"]' in answer
     assert 'df["domicilios_urbanos"] / df["area_km2"].clip(lower=0.01)' in answer
@@ -201,7 +201,7 @@ def test_busca_de_scores_prioriza_trechos_com_formula_completa(tmp_path: Path):
     assert passage_a["section"] == "_score_A"
     assert 'df["acordo_migracao"].astype(float) * 50.0' in passage_a["content"]
     assert 'df["fust_elegivel"].astype(float) * 30.0' in passage_a["content"]
-    assert '_minmax(df["eace_escolas"]) * 0.20' in passage_a["content"]
+    assert 'df["eace_escolas"] / maximo * 20.0' in passage_a["content"]
     assert "raw = (acordo + fust + eace).clip(0, 100)" in passage_a["content"]
     assert passage_c["source_path"].endswith("scores/calculator.py")
     assert passage_c["section"] == "_score_C"
@@ -386,7 +386,7 @@ def test_orquestracao_combina_score_e_rag_e_impede_siglas_incorretas(
     assert "df[\"fust_elegivel\"].astype(float) * 30.0" in response.response
     assert "raw = (acordo + fust + eace).clip(0, 100)" in response.response
     assert "score = 100.0 - custo_proxy.clip(0, 100)" in response.response
-    assert "41,33" in response.response
+    assert "41,36" in response.response
     assert "dados demonstrativos" in response.response
     assert "Fonte interna, não oficial" in response.response
     assert "engine_mock" in {source.id for source in response.data_sources}

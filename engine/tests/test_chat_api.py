@@ -447,7 +447,7 @@ def test_score_porto_alegre_por_codigo_ibge_finaliza_com_valor_demonstrativo(
 
     assert data["response"] == (
         "No motor demonstrativo (engine_mock), o score total de Porto Alegre (RS) "
-        "é 41,33. O resultado usa dados demonstrativos."
+        "é 41,36. O resultado usa dados demonstrativos."
     )
     assert data["error"] is None
     assert data["data_sources"][0]["id"] == "engine_mock"
@@ -483,7 +483,7 @@ def test_score_por_nome_com_uf_no_texto_encontra_csv_e_acento_normalizado(
     )
     assert result["ok"] is True
     assert result["data"]["id_municipio"] == "4314902"
-    assert result["data"]["score_total"] == pytest.approx(41.3275569600206)
+    assert result["data"]["score_total"] == pytest.approx(41.361889044914484)
     assert data["data_sources"][0]["id"] == "engine_mock"
     assert data["has_demo_data"] is True
 

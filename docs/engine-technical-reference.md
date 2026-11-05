@@ -84,7 +84,7 @@ uma estimativa financeira de CapEx.
 score_A = limitar(
   50 × acordo_migracao
   + 30 × fust_elegivel
-  + 20 × min-max(eace_escolas),
+  + 20 × eace_escolas ÷ máximo(eace_escolas),
   0, 100
 )
 ```
@@ -107,7 +107,8 @@ score_total = w_M × score_M + w_I × score_I + w_C × score_C + w_A × score_A
 
 Os limites são as medianas de `score_M` e `score_I` no recorte corrente; valores
 iguais à mediana contam como altos. A separação entre Q2a e Q2b usa
-`score_A > 0`.
+`score_A > 0`. Sem dados de alavanca (campos neutros no ETL), `score_A` é zero em
+todos os municípios, Q2a fica vazio e os de Mercado baixo e Impacto alto aparecem em Q2b.
 
 - **Q1:** Mercado alto e Impacto alto.
 - **Q2a:** Mercado baixo, Impacto alto e Alavancas positivas.
