@@ -189,7 +189,8 @@ A base tem 5.570 municípios. Boa Esperança do Norte (MT), criado em 2023, fica
 
 | Campo | Fonte | Estado |
 |---|---|---|
-| `domicilios_urbanos`, `renda_media`, `area_km2`, `lat`/`lon` | IBGE (Censo 2022) | real |
+| `renda_media`, `area_km2`, `lat`/`lon` | IBGE (Censo 2022) | real |
+| `domicilios_urbanos` | IBGE (Censo 2022): hoje é população × 0,8, não domicílios | incorreto |
 | `acessos_fibra`, `acessos_total_bl`, `market_share_vivo_movel`, `hhi`, `ppp_share` | Anatel — dados abertos de acessos | real |
 | `tem_backhaul_fibra` | Anatel — backhaul (Base dos Dados) | real |
 | `matriculas_*`, `alunos_maior_turno_est`, `escolas_sem_internet_aprendizagem`, `alunos_sem_internet` | INEP — Censo Escolar 2024 | real |
@@ -209,6 +210,7 @@ e rode o ETL de novo. A tabela `data_quality` do banco registra o estado de cada
 
 ## Limitações conhecidas
 
+- **`domicilios_urbanos` superestimado:** o ETL usa a tabela SIDRA 4709 (população residente) × 0,8, que soma 162 milhões, contra 72,5 milhões de domicílios ocupados no Censo 2022 (tabela 4712). Isso infla CapEx e receita e distorce a penetração de fibra, a densidade e o payback.
 - **Alavancas sem dados:** sem as listas oficiais, `score_A` é zero em todos os municípios, Q2a fica vazio e quem tem M baixo e I alto aparece em Q2b. O efeito das alavancas em payback e VPL funciona; a contagem de municípios que mudam de quadrante só aparece com as listas. Ao preenchê-las, reveja o ranking: uma alavanca binária pesa muito sobre o `score_total`.
 - **Backtest é validação parcial:** a fibra é de 2021, mas os demais indicadores são atuais, e o resultado fica pouco acima do acaso (lift 1,14 e AUC 0,54 no limiar de dobrar a fibra).
 - **Normalização min-max:** valores extremos, como os de São Paulo, comprimem os demais municípios, e os pesos declarados pesam menos do que parecem. Log nas séries com cauda longa foi avaliado e adiado: 31% dos municípios mudariam de quadrante, sem ganho claro no backtest.
