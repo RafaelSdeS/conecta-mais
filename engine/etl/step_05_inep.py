@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 CACHE_ESCOLAS = RAW_DIR / "inep_escolas.parquet"
 CACHE_MUNICIPIOS = RAW_DIR / "inep_municipios_agg.parquet"
+CACHE_VISITA = RAW_DIR / "inep_escolas_visita.parquet"
 INEP_URL = "https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_2024.zip"
 INEP_ZIP = RAW_DIR / "censo_escolar_2024.zip"
 ESCOLA_CSV_PATH = "microdados_censo_escolar_2024_defeso/dados/microdados_ed_basica_2024.csv"
@@ -60,7 +61,7 @@ def _download_zip() -> bytes:
     return r.content
 
 
-def _load_raw() -> pd.DataFrame:
+def _load_raw(colunas: list[str] = COLS_USADAS) -> pd.DataFrame:
     """Lê o CSV de escolas do ZIP, filtra públicas ativas."""
     content = _download_zip()
     z = zipfile.ZipFile(io.BytesIO(content))
@@ -71,8 +72,8 @@ def _load_raw() -> pd.DataFrame:
         sep=";",
         encoding="latin-1",
         low_memory=False,
-        usecols=COLS_USADAS,
-        dtype={"CO_ENTIDADE": str, "CO_MUNICIPIO": str},
+        usecols=colunas,
+        dtype={c: str for c in ("CO_ENTIDADE", "CO_MUNICIPIO", "NU_ENDERECO", "CO_CEP", "NU_DDD", "NU_TELEFONE")},
     )
     logger.info("Total de registros brutos: %d", len(df))
 
@@ -85,6 +86,56 @@ def _load_raw() -> pd.DataFrame:
     logger.info("Ativas: %d", len(df))
 
     return df
+
+
+COLS_VISITA = [
+    "CO_ENTIDADE", "CO_MUNICIPIO", "NO_ENTIDADE", "TP_DEPENDENCIA", "TP_SITUACAO_FUNCIONAMENTO",
+    "TP_LOCALIZACAO", "IN_INTERNET_APRENDIZAGEM", "QT_MAT_BAS",
+    "DS_ENDERECO", "NU_ENDERECO", "NO_BAIRRO", "CO_CEP", "NU_DDD", "NU_TELEFONE",
+]
+_REDE = {1: "Federal", 2: "Estadual", 3: "Municipal"}
+_ZONA = {1: "Urbana", 2: "Rural"}
+
+
+def _endereco(linha: pd.Series) -> str:
+    rua = ", ".join(str(v).strip() for v in (linha["DS_ENDERECO"], linha["NU_ENDERECO"]) if pd.notna(v) and str(v).strip())
+    cep = str(linha["CO_CEP"]) if pd.notna(linha["CO_CEP"]) else ""
+    partes = [rua, str(linha["NO_BAIRRO"]).strip() if pd.notna(linha["NO_BAIRRO"]) else "",
+              f"CEP {cep[:5]}-{cep[5:]}" if len(cep) == 8 else ""]
+    return " - ".join(p for p in partes if p)
+
+
+def _telefone(ddd: object, numero: object) -> str | None:
+    if pd.isna(ddd) or pd.isna(numero) or not str(numero).strip():
+        return None
+    n = str(numero).strip()
+    return f"({str(ddd).strip()}) {n[:-4]}-{n[-4:]}"
+
+
+def escolas_visita() -> pd.DataFrame:
+    """
+    Escolas públicas ativas sem internet para aprendizagem (mesmo critério do veredito),
+    com o que a visita de campo precisa: rede, zona, alunos, endereço e telefone.
+    """
+    if CACHE_VISITA.exists():
+        logger.info("Cache: inep_escolas_visita.parquet")
+        return pd.read_parquet(CACHE_VISITA)
+
+    df = _load_raw(COLS_VISITA)
+    df = df[df["IN_INTERNET_APRENDIZAGEM"] == 0]
+    visita = pd.DataFrame({
+        "codigo_inep": df["CO_ENTIDADE"],
+        "id_municipio": df["CO_MUNICIPIO"].str.zfill(7),
+        "escola": df["NO_ENTIDADE"],
+        "rede": df["TP_DEPENDENCIA"].map(_REDE),
+        "zona": df["TP_LOCALIZACAO"].map(_ZONA),
+        "alunos": pd.to_numeric(df["QT_MAT_BAS"], errors="coerce").fillna(0).astype(int),
+        "endereco": df.apply(_endereco, axis=1),
+        "telefone": [_telefone(d, n) for d, n in zip(df["NU_DDD"], df["NU_TELEFONE"])],
+    })
+    visita.to_parquet(CACHE_VISITA, index=False)
+    logger.info("Escolas para visita: %d", len(visita))
+    return visita
 
 
 def run() -> tuple[pd.DataFrame, pd.DataFrame]:

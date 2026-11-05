@@ -121,6 +121,23 @@ class SQLiteDataRepository:
             ).fetchall()
         return total, [dict(row) for row in rows]
 
+    def list_escolas_visita(self, codigo_municipio: str, limite: int) -> tuple[int, list[dict]]:
+        """
+        Escolas sem internet para aprendizagem, por número de alunos, com endereço e telefone.
+
+        Só a tela de visita usa este método: o telefone pode ser pessoal e não deve ir para o modelo de IA.
+        """
+        with self._connection() as connection:
+            total = connection.execute(
+                "SELECT COUNT(*) FROM escolas_visita WHERE id_municipio = ?", (codigo_municipio,)
+            ).fetchone()[0]
+            rows = connection.execute(
+                "SELECT codigo_inep, escola, rede, zona, alunos, endereco, telefone FROM escolas_visita "
+                "WHERE id_municipio = ? ORDER BY alunos DESC, escola LIMIT ?",
+                (codigo_municipio, limite),
+            ).fetchall()
+        return total, [dict(row) for row in rows]
+
     def list_ubs(self, codigo_municipio: str, limite: int, offset: int) -> tuple[int, list[dict]]:
         """UBS habilitadas do município (tabela ubs, vinda do CNES)."""
         with self._connection() as connection:

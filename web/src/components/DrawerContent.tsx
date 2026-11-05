@@ -17,6 +17,8 @@ import AiText from './AiText'
 import DecisaoCard from './DecisaoCard'
 import DadosDoMunicipio from './DadosDoMunicipio'
 import logo from '../assets/logo-texto.svg'
+import { textoCompartilhar, urlWhatsApp } from '../utils/kit'
+import { alertaFinanceiro, motivos, veredito } from '../utils/veredito'
 import { fmtMi, fmtAnos, fmtN0 } from '../utils/format'
 import { posicao } from '../utils/resumo'
 import type { Municipio } from '../api/client'
@@ -128,6 +130,28 @@ export default function DrawerContent({ municipio: m }: Props) {
     toast(isFav ? 'Município removido dos favoritos' : 'Município adicionado aos favoritos')
   }
 
+  async function compartilhar() {
+    const v = veredito(m, fin)
+    const texto = textoCompartilhar({
+      nome: m.nome,
+      uf: m.uf,
+      veredito: v.titulo,
+      explicacao: v.explicacao,
+      motivos: motivos(m, fin),
+      alerta: alertaFinanceiro(fin),
+      link: `${window.location.origin}/?m=${m.id_municipio}`,
+    })
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Conecta+: ${m.nome}/${m.uf}`, text: texto })
+        return
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return // a pessoa desistiu de compartilhar
+      }
+    }
+    window.open(urlWhatsApp(texto), '_blank', 'noopener')
+  }
+
   const BC_ROWS: { label: string; key: keyof BCRow }[] = [
     { label: 'CapEx total',      key: 'capex'  },
     { label: 'Backhaul',         key: 'back'   },
@@ -172,6 +196,10 @@ export default function DrawerContent({ municipio: m }: Props) {
       </div>
 
       <DecisaoCard m={m} fin={fin} />
+
+      <button type="button" className="no-print" onClick={compartilhar} style={{ ...btnGhost, fontSize: 14, minHeight: 44, width: '100%', fontWeight: 600 }}>
+        Compartilhar resumo
+      </button>
 
       <AiText
         key={m.id_municipio}
@@ -352,7 +380,7 @@ export default function DrawerContent({ municipio: m }: Props) {
 
       </details>
 
-      <DadosDoMunicipio key={m.id_municipio} id={m.id_municipio} nome={m.nome} ubsTotal={m.ubs ?? 0} />
+      <DadosDoMunicipio key={m.id_municipio} id={m.id_municipio} nome={m.nome} uf={m.uf} ubsTotal={m.ubs ?? 0} />
     </div>
   )
 }

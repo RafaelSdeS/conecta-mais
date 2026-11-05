@@ -43,6 +43,14 @@ def sqlite_path(tmp_path: Path) -> Path:
                 latitude REAL,
                 longitude REAL
             );
+            CREATE TABLE escolas_visita (
+                codigo_inep TEXT, id_municipio TEXT, escola TEXT, rede TEXT, zona TEXT,
+                alunos INTEGER, endereco TEXT, telefone TEXT
+            );
+            INSERT INTO escolas_visita VALUES
+                ('1', '3550308', 'Pequena', 'Municipal', 'Rural', 10, 'Rua A, 1', NULL),
+                ('2', '3550308', 'Grande', 'Estadual', 'Urbana', 900, 'Rua B, 2', '(11) 3333-4444'),
+                ('3', '3304557', 'Outra', 'Municipal', 'Urbana', 50, 'Rua C, 3', NULL);
             CREATE TABLE validacao_localizacao (
                 CO_ENTIDADE TEXT PRIMARY KEY,
                 status_localizacao TEXT
@@ -216,3 +224,19 @@ def test_rotas_existentes_do_engine_continuam_disponiveis(client: TestClient):
     ).status_code == 200
     assert client.post("/portfolio", json={"budget": 50.0}).status_code == 200
     assert client.get("/backtest").status_code == 200
+
+
+def test_kit_de_visita_lista_por_alunos_com_contato(client: TestClient):
+    data = client.get("/dados/escolas/visita?codigo_municipio=3550308").json()
+    assert data["total"] == 2
+    assert [e["escola"] for e in data["escolas"]] == ["Grande", "Pequena"]
+    assert data["escolas"][0]["telefone"] == "(11) 3333-4444"
+
+
+def test_telefone_nao_chega_ao_agente(client: TestClient):
+    from conecta.agent import tools
+
+    assert "list_escolas_visita" not in Path(tools.__file__).read_text(encoding="utf-8")
+    escola = client.get("/dados/escolas/sem-internet?codigo_municipio=3550308").json()["escolas"][0]
+    assert "telefone" not in escola and "endereco" not in escola
+

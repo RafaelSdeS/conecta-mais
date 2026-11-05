@@ -71,3 +71,11 @@ def test_domicilios_vem_da_tabela_de_domicilios_e_nao_da_populacao():
     assert dom["domicilios_total"].sum() == 72_456_368  # total de domicílios ocupados no Censo 2022
     assert dom.set_index("id_municipio").loc["2927408", "domicilios_total"] == 958_575  # Salvador
 
+
+def test_kit_de_visita_usa_o_mesmo_criterio_do_veredito():
+    raw = Path(__file__).parent.parent / "data" / "raw"
+    visita = pd.read_parquet(raw / "inep_escolas_visita.parquet")
+    agregado = pd.read_parquet(raw / "inep_municipios_agg.parquet")
+    assert len(visita) == agregado["escolas_sem_internet_aprendizagem"].sum()
+    assert visita["alunos"].sum() == agregado["alunos_sem_internet"].sum()
+

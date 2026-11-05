@@ -94,6 +94,18 @@ def listar_escolas_sem_internet(
     }
 
 
+@router.get("/escolas/visita")
+def listar_escolas_visita(
+    response: Response,
+    codigo_municipio: str = Query(..., pattern=r"^\d{7}$"),
+    limite: int = Query(default=100, ge=1, le=100),
+):
+    """Escolas sem internet para aprendizagem do município, por número de alunos, com endereço e telefone."""
+    _set_source(response)
+    total, escolas = _query(lambda: _repository().list_escolas_visita(codigo_municipio, limite))
+    return {"fonte_dados": FONTE_DADOS, "total": total, "total_retornado": len(escolas), "escolas": escolas}
+
+
 @router.get("/ubs")
 def listar_ubs(
     response: Response,

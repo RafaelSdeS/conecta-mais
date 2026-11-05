@@ -209,7 +209,16 @@ export interface MercadoMunicipio {
 
 export interface UbsLinha { codigo_cnes: string; nome: string; lat: number | null; lon: number | null }
 
-export interface EscolaSemInternet { codigo_inep: string; escola: string; municipio: string; uf: string }
+
+export interface EscolaVisita {
+  codigo_inep: string
+  escola: string
+  rede: string | null
+  zona: string | null
+  alunos: number
+  endereco: string
+  telefone: string | null
+}
 
 export interface Auditoria {
   total: number
@@ -271,10 +280,8 @@ export const api = {
 
   getUbs: (id: string) => get<{ total: number; ubs: UbsLinha[] }>(`/dados/ubs?codigo_municipio=${id}&limite=100`),
 
-  getEscolasSemInternet: (id: string) =>
-    get<{ total_sem_internet: number; escolas: EscolaSemInternet[] }>(
-      `/dados/escolas/sem-internet?codigo_municipio=${id}&limite=100`,
-    ),
+  getEscolasVisita: (id: string) =>
+    get<{ total: number; escolas: EscolaVisita[] }>(`/dados/escolas/visita?codigo_municipio=${id}&limite=100`),
 
   getAuditoria: () => get<Auditoria>('/ia/auditoria?limite=10'),
 

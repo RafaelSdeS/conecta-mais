@@ -12,6 +12,7 @@ Pydantic (Municipio) e grava o SQLite final com as tabelas:
   - bl_2021 (banda larga fixa de dezembro de 2021 por município, base do backtest)
   - provedores (provedores de banda larga fixa por município, base do "construir × comprar")
   - ubs (Unidades Básicas de Saúde do CNES, uma linha por UBS)
+  - escolas_visita (escolas sem internet para aprendizagem, com endereço e telefone, para a visita de campo)
 
 Uso:
   python -m etl.run_etl [--output engine/data/conecta_mais.db]
@@ -46,6 +47,7 @@ def _run_all_steps() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     from etl.step_02_ivs import run as step2
     from etl.step_03_backhaul import run as step3
     from etl.step_04_anatel_bl import run as step4
+    from etl.step_05_inep import escolas_visita
     from etl.step_05_inep import run as step5
     from etl.step_06_nicbr import run as step6
     from etl.step_07_elevation import run as step7
@@ -182,7 +184,7 @@ def _run_all_steps() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     df["fust_elegivel"] = df["fust_elegivel"].astype(bool)
 
     logger.info("DataFrame final: %d municípios, %d colunas", len(df), len(df.columns))
-    extras = {"bl_2021": df_bl_2021, "provedores": df_prov, "ubs": df_ubs}
+    extras = {"bl_2021": df_bl_2021, "provedores": df_prov, "ubs": df_ubs, "escolas_visita": escolas_visita()}
     return df, df_escolas, df_inep_mun, extras
 
 
