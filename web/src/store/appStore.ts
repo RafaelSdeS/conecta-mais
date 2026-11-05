@@ -154,7 +154,7 @@ export const useAppStore = create<AppState>((set) => ({
   kpis: null,
   justificativas: {},
 
-  view: 'painel',
+  view: 'campo',
   selectedId: null,
   hoveredId: null,
   drawerOpen: false,

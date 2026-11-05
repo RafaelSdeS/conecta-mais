@@ -9,6 +9,7 @@
 import { useEffect } from 'react'
 import { api } from '../api/client'
 import { useAppStore } from '../store/appStore'
+import { ufSalva } from '../utils/filtros'
 import { generateMockMunicipios } from '../utils/mockData'
 import { VIEWS, type ViewId } from '../utils/constants'
 
@@ -37,7 +38,7 @@ export function useInitialData() {
         const q = new URLSearchParams(window.location.search)
         // Filtros por URL: ?uf=BA&regiao=Nordeste&semiarido=1&quadrante=Q1
         setFilters({
-          uf: q.get('uf')?.toUpperCase() ?? '',
+          uf: q.get('uf')?.toUpperCase() ?? ufSalva(),
           regiao: q.get('regiao') ?? '',
           semiarido: q.get('semiarido') === '1',
           quadrante: q.get('quadrante') ?? '',

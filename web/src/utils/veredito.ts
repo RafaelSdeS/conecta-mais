@@ -12,6 +12,13 @@ export const PAYBACK_MAX_ANOS = 6
 export type NivelVeredito = 'avancar' | 'condicao' | 'nao' | 'pendente'
 export type FinanceiroVeredito = Pick<FinanceiroLinha, 'capex' | 'payback' | 'npv'>
 
+export const COR_VEREDITO: Record<NivelVeredito, string> = {
+  avancar: 'var(--q1)',
+  condicao: 'var(--q2b)',
+  nao: 'var(--q4)',
+  pendente: 'var(--ln)',
+}
+
 export interface Veredito {
   titulo: string
   nivel: NivelVeredito
@@ -98,6 +105,18 @@ export function veredito(m: Municipio, fin?: FinanceiroVeredito): Veredito {
         ],
         ordem: 3,
       }
+}
+
+/** Municípios que valem atenção, do mais ao menos prioritário; deixa de fora quem não deve ser priorizado agora. */
+export function priorizar(
+  municipios: Municipio[],
+  financeiro: Record<string, FinanceiroVeredito | undefined>,
+): Municipio[] {
+  return municipios
+    .map((m) => ({ m, ordem: veredito(m, financeiro[m.id_municipio]).ordem }))
+    .filter(({ ordem }) => ordem < 4)
+    .sort((a, b) => a.ordem - b.ordem || b.m.score_total - a.m.score_total)
+    .map(({ m }) => m)
 }
 
 /** Até 3 motivos com os números que sustentam o veredito. */

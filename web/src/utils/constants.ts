@@ -53,6 +53,7 @@ export const QUADRANT_HEX: Record<string, string> = {
 }
 
 export const VIEWS = [
+  { id: 'campo',     label: 'Campo' },
   { id: 'painel',    label: 'Painel' },
   { id: 'mun',       label: 'Municípios' },
   { id: 'chat',      label: 'Agente' },

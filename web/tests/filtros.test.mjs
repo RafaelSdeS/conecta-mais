@@ -41,3 +41,10 @@ test('ignorar permite contar quadrantes sem o próprio filtro de quadrante', () 
 test('contagem por região ignorando o próprio filtro de região', () => {
   assert.equal(ids({ regiao: 'Sul', uf: 'BA' }, new Set(), new Set(), 'regiao').length, 2)
 })
+
+test('busca ignora acentos e maiúsculas', () => {
+  const lista = [{ nome: 'São José do Rio Preto', id_municipio: '3549805' }, { nome: 'Salvador', id_municipio: '2927408' }]
+  const so = aplicaFiltros(lista, { ...vazio, search: 'SAO JOSE' }, new Set(), new Set())
+  assert.deepEqual(so.map((m) => m.nome), ['São José do Rio Preto'])
+})
+

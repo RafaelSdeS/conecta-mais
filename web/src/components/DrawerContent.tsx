@@ -182,7 +182,7 @@ export default function DrawerContent({ municipio: m }: Props) {
       />
 
       <details open={ABRE_DETALHES} style={{ margin: '12px 0' }}>
-      <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 14, minHeight: 44, display: 'flex', alignItems: 'center' }}>
+      <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 14, padding: '12px 0' }}>
         Detalhes: scores, business case e tecnologia
       </summary>
 
@@ -229,7 +229,7 @@ export default function DrawerContent({ municipio: m }: Props) {
 
       {/* Plano de ação */}
       <h3>Plano de ação</h3>
-      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, listStyle: 'disc' }}>
         <li><b>Tecnologia:</b> {tec?.tecnologia_recomendada ?? '—'}</li>
         <li>
           <b>Financiamento:</b>{' '}

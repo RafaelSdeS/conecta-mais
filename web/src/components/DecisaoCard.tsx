@@ -4,16 +4,7 @@
 
 import type { Municipio } from '../api/client'
 import { useAppStore } from '../store/appStore'
-import {
-  alertaFinanceiro, limitesDados, motivos, veredito, type FinanceiroVeredito, type NivelVeredito,
-} from '../utils/veredito'
-
-const COR: Record<NivelVeredito, string> = {
-  avancar: 'var(--q1)',
-  condicao: 'var(--q2b)',
-  nao: 'var(--q4)',
-  pendente: 'var(--ln)',
-}
+import { alertaFinanceiro, COR_VEREDITO, limitesDados, motivos, veredito, type FinanceiroVeredito } from '../utils/veredito'
 
 export default function DecisaoCard({ m, fin }: { m: Municipio; fin?: FinanceiroVeredito }) {
   const qualidade = useAppStore((s) => s.qualidade)
@@ -26,7 +17,7 @@ export default function DecisaoCard({ m, fin }: { m: Municipio; fin?: Financeiro
       aria-label="Recomendação do Conecta+"
       style={{
         border: '1px solid var(--ln)',
-        borderLeft: `6px solid ${COR[v.nivel]}`,
+        borderLeft: `6px solid ${COR_VEREDITO[v.nivel]}`,
         borderRadius: 6,
         padding: 14,
         margin: '10px 0 12px',
@@ -36,7 +27,7 @@ export default function DecisaoCard({ m, fin }: { m: Municipio; fin?: Financeiro
       <div style={{ fontSize: 22, fontWeight: 700, lineHeight: 1.2 }}>{v.titulo}</div>
       {v.explicacao && <p style={{ margin: '6px 0 0', fontSize: 14 }}>{v.explicacao}</p>}
 
-      <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 14 }}>
+      <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 14, listStyle: 'disc' }}>
         {motivos(m, fin).map((motivo) => <li key={motivo}>{motivo}</li>)}
       </ul>
 
@@ -49,7 +40,7 @@ export default function DecisaoCard({ m, fin }: { m: Municipio; fin?: Financeiro
       {v.proximosPassos.length > 0 && (
         <>
           <div style={{ fontSize: 13, fontWeight: 600, marginTop: 12 }}>Próximos passos</div>
-          <ol style={{ margin: '4px 0 0', paddingLeft: 20, fontSize: 14 }}>
+          <ol style={{ margin: '4px 0 0', paddingLeft: 20, fontSize: 14, listStyle: 'decimal' }}>
             {v.proximosPassos.map((passo) => <li key={passo}>{passo}</li>)}
           </ol>
         </>

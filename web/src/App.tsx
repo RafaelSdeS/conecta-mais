@@ -9,6 +9,7 @@ import { useInitialData }      from './hooks/useInitialData'
 import logoTexto       from './assets/logo-texto.svg'
 import logoTextoBranca from './assets/logo-texto-branca.svg'
 
+import CampoView    from './pages/CampoView'
 import PanelView    from './pages/PanelView'
 import MunView      from './pages/MunView'
 import ChatView     from './pages/ChatView'
@@ -20,6 +21,7 @@ import CommandPalette  from './components/CommandPalette'
 import Toast           from './components/Toast'
 
 const VIEW_COMPONENTS: Record<ViewId, React.ComponentType> = {
+  campo:  CampoView,
   painel: PanelView,
   mun:    MunView,
   chat:   ChatView,
@@ -132,7 +134,7 @@ function AppInner({
                 height: 'auto',
               }}
             />
-            <span style={{ display: 'block', marginTop: 6, fontSize: 12, color: 'var(--mu)' }}>
+            <span className="marca-subtitulo" style={{ display: 'block', marginTop: 6, fontSize: 12, color: 'var(--mu)' }}>
               Expansão de conectividade
             </span>
           </div>
@@ -167,7 +169,7 @@ function AppInner({
           </nav>
 
           {/* Theme toggle + nota */}
-          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="tema-toggle" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               title={`Alternar para tema ${theme === 'dark' ? 'claro' : 'escuro'}`}
@@ -194,7 +196,7 @@ function AppInner({
 
         {/* ── Área principal ───────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100svh' }}>
-          <Header />
+          {currentView !== 'campo' && <Header />}
           {fonteDados === 'mock' && (
             <div
               role="status"

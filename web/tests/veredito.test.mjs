@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { carregaTs } from './carregaTs.mjs'
 
-const { alertaFinanceiro, limitesDados, motivos, veredito } = await carregaTs('utils/format.ts', 'utils/veredito.ts')
+const { alertaFinanceiro, limitesDados, motivos, priorizar, veredito } = await carregaTs('utils/format.ts', 'utils/veredito.ts')
 
 const m = (quadrante, extra = {}) => ({
   quadrante, domicilios_urbanos: 1000, acessos_fibra: 250, alunos_sem_internet: 120,
@@ -75,3 +75,20 @@ test('limites dos dados saem em linguagem simples', () => {
   assert.equal(texto, 'Sem dados de: elegibilidade ao FUST. Aproximados: vulnerabilidade social (média do estado).')
   assert.equal(limitesDados([]), null)
 })
+
+test('priorizar ordena por veredito e score e deixa de fora quem não é prioridade', () => {
+  const lista = [
+    m('Q4', { id_municipio: 'a', score_total: 90 }),
+    m('Q2b', { id_municipio: 'b', score_total: 80 }),
+    m('Q1', { id_municipio: 'c', score_total: 40 }),
+    m('Q1', { id_municipio: 'd', score_total: 50 }),
+    m('Q3', { id_municipio: 'e', score_total: 99 }),
+  ]
+  const fin = { c: bom, d: bom, e: bom }
+  assert.deepEqual(priorizar(lista, fin).map((x) => x.id_municipio), ['d', 'c', 'e', 'b'])
+})
+
+test('priorizar não lista quem ainda está calculando', () => {
+  assert.deepEqual(priorizar([m('Q1', { id_municipio: 'a', score_total: 1 })], {}), [])
+})
+
