@@ -14,6 +14,7 @@ import { useFavorites } from '../hooks/useFavorites'
 import { textoRecomendacao, useRecomendacoes } from '../hooks/useRecomendacoes'
 import { useToast } from '../hooks/toastContext'
 import QuadrantBadge from './QuadrantBadge'
+import Termo from './Termo'
 import AiText from './AiText'
 import DecisaoCard from './DecisaoCard'
 import RegistroRecomendacao from './RegistroRecomendacao'
@@ -69,6 +70,8 @@ export default function DrawerContent({ municipio: m }: Props) {
   const setJustificativa = useAppStore((s) => s.setJustificativa)
   const portfolio  = useAppStore((s) => s.portfolio)
   const financeiro = useAppStore((s) => s.financeiro)
+  const setView    = useAppStore((s) => s.setView)
+  const closeDrawer = useAppStore((s) => s.closeDrawer)
   const [favs, toggleFav] = useFavorites()
   const recomendacao = useRecomendacoes()[m.id_municipio]
   const { toast } = useToast()
@@ -156,12 +159,12 @@ export default function DrawerContent({ municipio: m }: Props) {
     window.open(urlWhatsApp(texto), '_blank', 'noopener')
   }
 
-  const BC_ROWS: { label: string; key: keyof BCRow }[] = [
-    { label: 'CapEx total',      key: 'capex'  },
-    { label: 'Backhaul',         key: 'back'   },
+  const BC_ROWS: { label: React.ReactNode; key: keyof BCRow }[] = [
+    { label: <>Investimento: <Termo nome="CapEx" /></>, key: 'capex' },
+    { label: <>Fibra de transporte: <Termo nome="Backhaul" /></>, key: 'back' },
     { label: 'Receita/ano',      key: 'b2c'    },
-    { label: 'EBITDA/ano',       key: 'ebitda' },
-    { label: 'VPL',              key: 'npv'    },
+    { label: 'Resultado/ano (EBITDA)', key: 'ebitda' },
+    { label: <>Valor presente: <Termo nome="VPL" /></>, key: 'npv' },
   ]
 
   return (
@@ -207,6 +210,15 @@ export default function DrawerContent({ municipio: m }: Props) {
 
       <RegistroRecomendacao key={`rec-${m.id_municipio}`} id={m.id_municipio} />
 
+      <button
+        type="button"
+        className="no-print"
+        onClick={() => { setView('chat'); closeDrawer() }}
+        style={{ ...btnGhost, minHeight: 44, marginRight: 8 }}
+      >
+        Perguntar ao agente
+      </button>
+
       <AiText
         key={m.id_municipio}
         label="Explicar com IA"
@@ -233,7 +245,7 @@ export default function DrawerContent({ municipio: m }: Props) {
         </dd>
 
         <dt style={{ color: 'var(--mu)' }}>População</dt>
-        <dd style={{ margin: 0 }}>~{fmtN0(homes * 2.79)} hab. (estimativa) · {fmtN0(homes)} domicílios urbanos</dd>
+        <dd style={{ margin: 0 }}>~{fmtN0(homes * 2.79)} hab. (estimativa) · {fmtN0(homes)} domicílios</dd>
 
         <dt style={{ color: 'var(--mu)' }}>Escolas públicas</dt>
         <dd style={{ margin: 0 }}>
@@ -241,8 +253,8 @@ export default function DrawerContent({ municipio: m }: Props) {
           {schools > 0 ? ` · ${fmtN0(m.alunos_sem_internet)} alunos em ${schools} escolas sem internet` : ''}
         </dd>
 
-        <dt style={{ color: 'var(--mu)' }}>PoP de fibra</dt>
-        <dd style={{ margin: 0 }}>{dist.toFixed(1)} km{m.tem_backhaul_fibra ? ' (município com backhaul de fibra)' : ''}</dd>
+        <dt style={{ color: 'var(--mu)' }}>Fibra mais próxima</dt>
+        <dd style={{ margin: 0 }}>{dist.toFixed(1)} km{m.tem_backhaul_fibra ? ' (o município já tem fibra de transporte)' : ''}</dd>
 
         <dt style={{ color: 'var(--mu)' }}>Base móvel Vivo</dt>
         <dd style={{ margin: 0 }}>
@@ -253,7 +265,7 @@ export default function DrawerContent({ municipio: m }: Props) {
 
         <dt style={{ color: 'var(--mu)' }}>Scores</dt>
         <dd style={{ margin: 0 }}>
-          M {m.score_M?.toFixed(0) ?? '—'} · I {m.score_I?.toFixed(0) ?? '—'} · C {m.score_C?.toFixed(0) ?? '—'} · A {m.score_A?.toFixed(0) ?? '—'}
+          Mercado {m.score_M?.toFixed(0) ?? '—'} · Impacto {m.score_I?.toFixed(0) ?? '—'} · Custo {m.score_C?.toFixed(0) ?? '—'} · Alavancas {m.score_A?.toFixed(0) ?? '—'}
         </dd>
 
         <dt style={{ color: 'var(--mu)' }}>Acordo TCU</dt>
@@ -310,7 +322,7 @@ export default function DrawerContent({ municipio: m }: Props) {
               </tr>
             ))}
             <tr>
-              <td style={{ padding: '5px 8px', fontWeight: 600 }}>Payback</td>
+              <td style={{ padding: '5px 8px', fontWeight: 600 }}>Retorno: <Termo nome="Payback" /></td>
               <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 600 }}>{base ? fmtAnos(base.pay) : '—'}</td>
               <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 600, color: withLev && withLev.pay <= 6 ? 'var(--ok)' : 'var(--tx)' }}>
                 {withLev ? fmtAnos(withLev.pay) : '—'}

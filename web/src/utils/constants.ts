@@ -258,10 +258,10 @@ export const MERCADO_KPIS: { label: string; value: string; detail: string }[] = 
 
 /** Sugestões do chat: cada uma exercita uma ferramenta do agente e tem resposta com os dados da base. */
 export const CHAT_CHIPS = [
-  'Quais municípios do semiárido têm mais alunos sem internet por real investido?',
-  'Onde investir R$ 100 milhões no Nordeste para conectar o maior número de alunos?',
+  'Quais municípios da Bahia têm mais alunos sem internet e payback de até 6 anos?',
   'Compare Salvador (BA) e Feira de Santana (BA): qual compensa mais investir?',
-  'Existe algum município do semiárido com payback abaixo de 6 anos?',
-  'Qual a diferença entre os quadrantes Q1 e Q2a?',
-  'Quais campos do motor ainda não têm dado real?',
+  'Que provedores atuam em Monte Santo (BA)? Vale construir ou comprar?',
+  'Por que Monte Santo (BA) depende de apoio para ser viável?',
+  'Onde investir R$ 100 milhões no Nordeste para conectar o maior número de alunos?',
+  'Quais dados do motor ainda não são reais?',
 ]

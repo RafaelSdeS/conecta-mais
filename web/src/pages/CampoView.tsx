@@ -79,8 +79,6 @@ export default function CampoView() {
   const filters    = useAppStore((s) => s.filters)
   const setFilters = useAppStore((s) => s.setFilters)
   const setView    = useAppStore((s) => s.setView)
-  const loading    = useAppStore((s) => s.loading)
-  const error      = useAppStore((s) => s.error)
   const [favs]     = useFavorites()
   const recomendacoes = useRecomendacoes()
 
@@ -170,18 +168,6 @@ export default function CampoView() {
     setOrigem(null)
     setFilters({ uf })
     salvaUf(uf)
-  }
-
-  if (loading && municipios.length === 0) {
-    return <p role="status">Carregando municípios…</p>
-  }
-  if (error && municipios.length === 0) {
-    return (
-      <div role="alert">
-        <p>Não foi possível carregar os municípios. Verifique a conexão.</p>
-        <button type="button" style={{ ...campo, cursor: 'pointer' }} onClick={() => window.location.reload()}>Tentar de novo</button>
-      </div>
-    )
   }
 
   return (

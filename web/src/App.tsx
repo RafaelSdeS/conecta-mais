@@ -17,6 +17,7 @@ import SolutionView from './pages/SolutionView'
 
 import Header          from './components/Header'
 import Drawer          from './components/Drawer'
+import EstadoCarga     from './components/EstadoCarga'
 import CommandPalette  from './components/CommandPalette'
 import Toast           from './components/Toast'
 
@@ -63,6 +64,8 @@ function AppInner({
   const apiOffline     = useAppStore((s) => s.apiOffline)
   const { toast }      = useToast()
 
+  const municipios     = useAppStore((s) => s.municipios)
+  const erroCarga      = useAppStore((s) => s.error)
   const currentView    = useAppStore((s) => s.view)
   const setCurrentView = useAppStore((s) => s.setView)
 
@@ -213,7 +216,9 @@ function AppInner({
             style={{ padding: 24, flex: 1 }}
             aria-label={`Vista: ${VIEWS.find((v) => v.id === currentView)?.label}`}
           >
-            <CurrentPage />
+            {municipios.length === 0 && currentView !== 'chat' && currentView !== 'sol'
+              ? <EstadoCarga erro={erroCarga} />
+              : <CurrentPage />}
           </main>
         </div>
       </div>

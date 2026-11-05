@@ -34,6 +34,7 @@ const INITIAL_MESSAGE: Message = {
 }
 
 export default function ChatView() {
+  const contexto = useAppStore((s) => s.municipios.find((m) => m.id_municipio === s.selectedId))
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
   const [history, setHistory] = useState<ChatHistoryMessage[]>([])
   const [input, setInput]       = useState('')
@@ -163,6 +164,11 @@ export default function ChatView() {
           ))}
           <div ref={bottomRef} />
         </div>
+
+        <p style={{ fontSize: 12, color: 'var(--mu)', margin: '0 0 8px' }}>
+          {contexto && `As perguntas consideram ${contexto.nome}/${contexto.uf}. `}
+          A resposta pode levar cerca de 20 segundos.
+        </p>
 
         {/* Chips de sugestão */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
