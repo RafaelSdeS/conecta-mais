@@ -60,9 +60,22 @@ cd web
 npm run dev
 ```
 
-Acesse `http://localhost:5173`.  
-Sem o backend, o frontend (em localhost) carrega dados demonstrativos e mostra um aviso na tela.  
+Acesse `http://localhost:5173`.
+Sem o backend, o frontend (em localhost) carrega dados demonstrativos e mostra um aviso na tela.
 A documentação interativa da API fica em `http://localhost:8000/docs`.
+
+**Processo único (demonstração):** com o frontend compilado, a API entrega páginas e dados na mesma porta.
+
+```bash
+cd web && npm ci && npm run build
+cd ../engine && python -m etl.run_etl
+uvicorn api.main:app --host 0.0.0.0 --port 8000
+```
+
+**IBM Granite:** copie `engine/.env.example` para `engine/.env` e preencha as credenciais do watsonx.ai.
+`/chat` e `/ia/*` aceitam até 30 chamadas por minuto no total, porque cada uma consome créditos.
+
+**Solver:** o portfólio usa CBC por padrão; `CONECTA_SOLVER=cplex` usa o IBM CPLEX, se estiver instalado e licenciado.
 
 ---
 
@@ -70,8 +83,16 @@ A documentação interativa da API fica em `http://localhost:8000/docs`.
 
 ```bash
 cd engine
+ruff check .
 python -m pytest
+
+cd ../web
+npm run lint
+npm test
+npm run build
 ```
+
+A CI roda os mesmos comandos em `.github/workflows/ci.yml`.
 
 ---
 
@@ -108,12 +129,16 @@ web/src/
 engine/
   api/              ← FastAPI (routers por domínio)
   conecta/
+    agent/          ← agente Granite: orquestrador, ferramentas, auditoria e fidelidade dos números
+    rag/            ← índice e busca na documentação e nas fontes oficiais
+    mercado/        ← análise de provedores por município
     data/           ← schema Pydantic + loader CSV/Parquet
     scores/         ← cálculo de M, I, C, A e quadrantes
     geo/            ← distâncias ao backhaul (haversine)
     financial/      ← CapEx, payback, VPL, sensibilidade
     optimizer/      ← portfólio MILP (PuLP + CBC)
-    backtest/       ← backtest 2021→2025
+    backtest/       ← backtest 2021→hoje
+  etl/              ← pipeline de dados (steps 1 a 12 e run_etl.py)
   data/             ← SQLite do ETL (base real) e CSVs demonstrativos de fallback
   tests/            ← pytest
 ```
@@ -130,8 +155,18 @@ Veja [`docs/arquitetura.md`](docs/arquitetura.md) para detalhes completos.
 | `POST` | `/scores` | Recalcula scores com pesos customizados |
 | `POST` | `/financial` | Business case de um município (CapEx, payback, VPL) |
 | `POST` | `/portfolio` | Portfólio ótimo sob restrição de orçamento (MILP) |
-| `GET` | `/backtest` | Resultado do backtest 2021→2025 (precision, recall, F1) |
-| `GET` | `/health` | Healthcheck |
+| `GET` | `/backtest` | Backtest 2021→hoje (lift, AUC, precision, recall) |
+| `GET` | `/qualidade` | Estado de cada campo: real, aproximado ou neutro |
+| `GET` | `/health` | Healthcheck e fonte dos dados |
+| `GET` | `/dados/municipios`, `/dados/municipios/{codigo_ibge}` | Base integrada do ETL |
+| `GET` | `/dados/escolas`, `/dados/escolas/sem-internet` | Escolas do Censo Escolar |
+| `GET` | `/dados/indicadores/{codigo_ibge}` | Indicadores escolares do município |
+| `GET` | `/dados/provedores/{codigo_ibge}` | Provedores que atuam no município |
+| `GET` | `/dados/ubs` | Unidades Básicas de Saúde |
+| `POST` | `/chat` | Agente com IBM Granite e ferramentas do motor |
+| `POST` | `/ia/justificativa`, `/ia/portfolio-narrativa` | Textos do Granite sobre números do motor |
+| `POST` | `/ia/filtros` | Converte um pedido em linguagem natural em filtros |
+| `GET` | `/ia/auditoria` | Resumo do registro das chamadas de IA |
 
 Veja [`docs/api.md`](docs/api.md) para exemplos de request/response.
 
@@ -148,17 +183,20 @@ cd engine
 python -m etl.run_etl
 ```
 
-O ETL grava num arquivo temporário e troca no final, então uma API em execução (`--reload`) nunca encontra o banco ausente. Se a API subir sem o banco, o log avisa que está usando dados demonstrativos; depois de rodar o ETL, reinicie a API.
+O ETL também gera o índice de documentos do agente. Ele grava num arquivo temporário e troca no final, então uma API em execução (`--reload`) nunca encontra o banco ausente. Se a API subir sem o banco, o log avisa que está usando dados demonstrativos; depois de rodar o ETL, reinicie a API.
+
+A base tem 5.570 municípios. Boa Esperança do Norte (MT), criado em 2023, fica de fora porque o IBGE ainda não publica a área dele.
 
 | Campo | Fonte | Estado |
 |---|---|---|
-| `domicilios_urbanos`, `acessos_fibra`, `acessos_total_bl`, `area_km2`, `lat`/`lon` | IBGE e Anatel (densidade) | real |
+| `domicilios_urbanos`, `renda_media`, `area_km2`, `lat`/`lon` | IBGE (Censo 2022) | real |
+| `acessos_fibra`, `acessos_total_bl`, `market_share_vivo_movel`, `hhi`, `ppp_share` | Anatel — dados abertos de acessos | real |
 | `tem_backhaul_fibra` | Anatel — backhaul (Base dos Dados) | real |
 | `matriculas_*`, `alunos_maior_turno_est`, `escolas_sem_internet_aprendizagem`, `alunos_sem_internet` | INEP — Censo Escolar 2024 | real |
 | `semiarido` | IBGE/SUDENE — delimitação do Semiárido 2022 | real |
-| `renda_media`, `ivs` | média/IVS por UF (IBGE, IPEA) | aproximado |
+| `ubs` | CNES — dados abertos do SUS | real |
+| `ivs` | IVS por UF (IPEA) | aproximado |
 | `elevacao_media_m` | SRTM 90m no centroide (OpenTopoData) | aproximado |
-| `market_share_vivo_movel`, `hhi`, `ppp_share` | microdados Anatel por prestadora | neutro |
 | `velocidade_medida_mbps` | NIC.br / Medidor Educação Conectada | neutro |
 | `acordo_migracao`, `fust_elegivel`, `eace_escolas` | Acordo TCU, editais FUST, EACE | neutro |
 
@@ -166,3 +204,11 @@ Campos neutros têm o mesmo valor em todos os municípios e não diferenciam o r
 coloque os CSVs descritos nos steps 6 e 8 em `engine/data/raw/` (`nicbr_velocidade.csv`, `acordo_migracao.csv`,
 `fust_municipios.csv`, `eace_municipios.csv`), apague o cache do step correspondente (`.parquet` na mesma pasta)
 e rode o ETL de novo. A tabela `data_quality` do banco registra o estado de cada campo.
+
+---
+
+## Limitações conhecidas
+
+- **Alavancas sem dados:** sem as listas oficiais, `score_A` é zero em todos os municípios, Q2a fica vazio e quem tem M baixo e I alto aparece em Q2b. O efeito das alavancas em payback e VPL funciona; a contagem de municípios que mudam de quadrante só aparece com as listas. Ao preenchê-las, reveja o ranking: uma alavanca binária pesa muito sobre o `score_total`.
+- **Backtest é validação parcial:** a fibra é de 2021, mas os demais indicadores são atuais, e o resultado fica pouco acima do acaso (lift 1,14 e AUC 0,54 no limiar de dobrar a fibra).
+- **Normalização min-max:** valores extremos, como os de São Paulo, comprimem os demais municípios, e os pesos declarados pesam menos do que parecem. Log nas séries com cauda longa foi avaliado e adiado: 31% dos municípios mudariam de quadrante, sem ganho claro no backtest.

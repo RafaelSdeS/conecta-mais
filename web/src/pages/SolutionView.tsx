@@ -1,7 +1,7 @@
 /**
  * SolutionView — a solução como ela é hoje: números da base real, panorama por região, fluxo dos
  * dados até o agente Granite (com status), composição dos scores, qualidade das fontes e roadmap.
- * ROI e mercado vêm da proposta e o backtest é demonstrativo; ambos estão rotulados como tal.
+ * ROI e mercado vêm da proposta e o backtest é uma validação parcial; ambos estão rotulados como tal.
  */
 
 import { useEffect, useMemo, useState } from 'react'

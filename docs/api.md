@@ -163,33 +163,37 @@ pedido. O resultado de premissas e alavancas é memoizado no servidor.
 
 ## GET `/backtest`
 
-Retorna o resultado do backtest 2021→2025.
+Backtest 2021→hoje. Com a base real, compara a fibra de dezembro de 2021 com o último mês publicado; sem ela, usa os CSVs demonstrativos (`"fonte": "demonstrativo"`, 49 municípios).
 
 **Response:**
 ```json
 {
   "status": "ok",
-  "precision": 0.72,
-  "recall": 0.65,
-  "f1": 0.68,
-  "total_q1_q2a_2021": 25,
-  "total_cresceram": 28,
-  "acertados": 18,
-  "threshold_crescimento": 1.2
+  "fonte": "real",
+  "descricao": "Fibra e banda larga fixa de pessoa física (Anatel)...",
+  "precision": 0.6424,
+  "recall": 0.2107,
+  "f1": 0.3174,
+  "total_q1_q2a_2021": 1032,
+  "total_cresceram": 3146,
+  "acertados": 663,
+  "threshold_crescimento": 2.0,
+  "taxa_base": 0.5648,
+  "lift": 1.14,
+  "auc": 0.5391,
+  "limiares": [{ "limiar": 1.2, "precision": 0.84, "recall": 0.19, "f1": 0.3, "cresceram": 4694, "taxa_base": 0.84, "lift": 1.0, "auc": 0.522 }]
 }
 ```
 
 | Métrica | Interpretação |
 |---|---|
-| `precision` | Dos municípios Q1/Q2a em 2021, quantos realmente cresceram em fibra até 2025 |
-| `recall` | Dos municípios que cresceram, quantos estavam em Q1/Q2a |
-| `threshold_crescimento` | Crescimento mínimo considerado (1.2 = +20% de acessos de fibra) |
+| `lift` | `precision` ÷ `taxa_base`; 1,0 = o modelo não supera o acaso |
+| `auc` | Chance de um município que cresceu ter `score_total` maior que um que não cresceu; 0,5 = acaso |
+| `precision` | Dos municípios Q1/Q2a em 2021, quantos realmente cresceram em fibra |
+| `recall` | Dos municípios que cresceram, quantos estavam em Q1/Q2a; limitado ao tamanho de Q1 enquanto Q2a estiver vazio |
+| `threshold_crescimento` | Multiplicador da fibra de 2021 considerado crescimento (2,0 = dobrou) |
 
----
-
-## GET `/backtest` — rótulo da fonte
-
-A resposta inclui `"fonte": "demonstrativo"`: o backtest roda sobre CSVs demonstrativos (49 municípios), porque não há histórico de 2021 em fonte aberta.
+É uma validação parcial: os demais indicadores são atuais e podem antecipar parte do crescimento.
 
 ---
 
@@ -369,6 +373,7 @@ tratado como credencial rejeitada.
   ],
   "has_demo_data": false,
   "references": [],
+  "numeros_nao_confirmados": [],
   "error": null
 }
 ```
@@ -420,6 +425,7 @@ nunca como instruções.
 
 Usam o IBM Granite sem ferramentas, sobre números já calculados pelo motor.
 Erros do watsonx.ai retornam o status e a mensagem pública em `detail`.
+`/chat` e `/ia/*` compartilham um limite de 30 chamadas por minuto; acima dele, a API responde 429.
 
 ### POST `/ia/justificativa`
 
@@ -427,8 +433,11 @@ Erros do watsonx.ai retornam o status e a mensagem pública em `detail`.
 { "id_municipio": "2927408" }
 ```
 
-Resposta: `{ "texto": "...", "fonte_dados": "real" }`. O texto é cacheado por município
-enquanto a API estiver no ar.
+Resposta: `{ "texto": "...", "numeros_nao_confirmados": [], "fonte_dados": "real" }`. O texto é cacheado
+por município enquanto a API estiver no ar.
+
+`numeros_nao_confirmados` traz os números do texto que não foram localizados nos dados entregues ao modelo,
+considerando arredondamento e escala. É um alerta para revisão: compara valores, não o significado deles.
 
 ### POST `/ia/portfolio-narrativa`
 
@@ -437,7 +446,7 @@ enquanto a API estiver no ar.
 ```
 
 Explica o portfólio (composição, CapEx, payback e trade-off impacto × retorno).
-Os números são recalculados no servidor a partir dos ids.
+Os números são recalculados no servidor a partir dos ids. A resposta também traz `numeros_nao_confirmados`.
 
 ### POST `/ia/filtros`
 
@@ -452,4 +461,5 @@ Se o modelo não devolver um JSON válido, a API responde 422 e nada é aplicado
 
 Cada chamada de `/chat` e `/ia/*` acrescenta uma linha JSON (data, endpoint, modelo,
 latência, ferramentas, fontes) em `engine/data/auditoria_ia.jsonl`, ou no caminho de
-`CONECTA_AUDIT_LOG`. O texto das perguntas não é gravado.
+`CONECTA_AUDIT_LOG`, com a quantidade de números não confirmados. O texto das perguntas não é gravado.
+`GET /ia/auditoria` resume esse registro, e a aba Solução o exibe.

@@ -56,28 +56,28 @@
 ### `conecta/optimizer/`
 - **`portfolio.py`** — `optimize_portfolio(df, params, alavancas, budget, lambda_, max_payback)`.
   - Formulação: `max Σ xᵢ·[λ·Îᵢ + (1−λ)·VPL̂ᵢ]` s.a. `Σ xᵢ·CapExᵢ ≤ budget`, `xᵢ ∈ {0,1}`.
-  - Solver: PuLP + CBC (open-source). Adequado para qualquer estado (< 5.570 variáveis binárias).
+  - Solver: PuLP + CBC (open-source); `CONECTA_SOLVER=cplex` usa o IBM CPLEX, se estiver instalado e licenciado.
   - Pré-filtro de payback antes do solver (mais simples que big-M).
 
 ### `conecta/backtest/`
 - **`runner.py`** — `run_backtest(data_2021, data_2025, backhaul)`.
   - Calcula scores com dados de 2021; predição positiva = Q1 ou Q2a.
-  - Crescimento real: `acessos_fibra_2025 > acessos_fibra_2021 × 1.2`.
-  - Retorna precision, recall, F1 e DataFrame de detalhes por município.
+  - Crescimento real: fibra atual acima da de 2021 × limiar (`threshold_crescimento`; a API usa 2,0 na base real).
+  - Retorna lift, AUC, precision, recall, F1 e DataFrame de detalhes por município.
+  - É validação parcial: só a fibra é de 2021; os demais indicadores são atuais.
 
 ## Frontend
 
 ### `web/src/`
 - **`App.tsx`** — layout sidebar 208 px + main (idêntico ao mockup).
 - **`components/QuadrantBadge.tsx`** — badge colorido com as cores exatas do mockup.
-- **`pages/ScoreMap.tsx`** — tabela de municípios com filtros UF/quadrante/busca e ordenação.
-- **`pages/Simulator.tsx`** — formulário de alavancas + premissas; exibe business case e portfólio.
+- **`pages/`** — `PanelView` (KPIs, mapa, quadrantes), `MunView` (tabela), `ChatView` (agente) e `SolutionView` (arquitetura, backtest e auditoria).
 - **`api/client.ts`** — helpers tipados `get`/`post` com todos os tipos de domínio.
 
 ## Fluxo de dados
 
 ```
-CSV / GeoParquet
+SQLite do ETL (ou CSV demonstrativo)
        │
        ▼
   loader.py  ──► schema Pydantic (validação)
@@ -99,7 +99,7 @@ CSV / GeoParquet
 
 | Decisão | Motivo |
 |---|---|
-| Normalização min-max por recorte | Scores relativos ao conjunto analisado; escala nacional quando Joel entregar os 5.570 municípios |
+| Normalização min-max nacional | Simples e igual em qualquer recorte. Valores extremos comprimem os demais; log foi avaliado e adiado (31% dos municípios mudariam de quadrante, sem ganho claro no backtest) |
 | Payback simples sem rampa | Consistente com tabela §4.3 da proposta; VPL usa rampa |
 | Pré-filtro de payback antes do MILP | Elimina municípios inviáveis antes do solver, mais simples que big-M |
 | PuLP `< 4.0` | API quebrou na v4; pino no `pyproject.toml` |
@@ -108,3 +108,6 @@ CSV / GeoParquet
 | Base real com fallback demonstrativo | `api/main.py` carrega `municipios_engine` e `backhaul` do SQLite do ETL; sem eles, usa os CSVs mock e `/health` informa `fonte_dados` |
 | `data_quality` no SQLite | O ETL classifica cada campo como real, aproximado ou neutro; agente e telas avisam sobre os limites |
 | IA em duas camadas | Chat com tool calling (ranking, portfólio, comparação) e `/ia/*` para textos de uma rodada; ambos redigidos pelo Granite sobre números do motor |
+| Conferência dos números da IA | `conecta/agent/fidelidade.py` compara os números do texto do Granite com os dados entregues a ele e devolve alerta; compara valores, não significado |
+| Processo único | Com `web/dist`, a API entrega o frontend e aceita o prefixo `/api`, como o proxy do Vite |
+| Limite global de IA | 30 chamadas por minuto em `get_watsonx_client`, para proteger os créditos do watsonx; é por processo, não por IP |

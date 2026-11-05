@@ -7,13 +7,7 @@ Lifespan:
   - Calcula distâncias ao backhaul e scores (pesos padrão).
   - Guarda tudo em app.state para os routers reutilizarem sem I/O repetido.
 
-Endpoints:
-  GET  /municipios          → lista com scores, filtros por uf e quadrante
-  POST /scores              → recalcula scores com pesos customizados
-  POST /financial           → business case de um município
-  POST /portfolio           → otimiza portfólio (PuLP/CBC)
-  GET  /backtest            → resultado do backtest pré-calculado
-  GET  /health              → healthcheck
+Com web/dist presente, entrega também o frontend (processo único). As rotas estão em /docs.
 """
 
 from __future__ import annotations

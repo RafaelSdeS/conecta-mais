@@ -64,6 +64,8 @@ Os scores M (Mercado), I (Impacto educacional), C (Custo) e A (Alavancas) vão d
 | Q3 | M alto e I baixo | Comercial / M&A |
 | Q4 | M baixo e I baixo | Monitorar |
 
+Enquanto não houver as listas oficiais de alavancas, Q2a fica vazio e quem tem M baixo e I alto aparece em Q2b; o painel avisa sobre isso.
+
 ## Assistente (aba Agente)
 
 Exemplos de perguntas que ele responde com dados do motor:
