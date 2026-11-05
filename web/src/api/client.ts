@@ -280,8 +280,6 @@ export const api = {
 
   getQualidade: () => get<{ fonte_dados: FonteDados; campos: CampoQualidade[] }>('/qualidade'),
 
-  getHealth: () => get<{ status: string; fonte_dados: FonteDados }>('/health'),
-
   postJustificativa: (id_municipio: string) =>
     postIa<TextoIa>('/ia/justificativa', { id_municipio }).then(comAviso),
 
@@ -297,8 +295,6 @@ export const api = {
     return get<Municipio[]>(`/municipios${qs ? `?${qs}` : ''}`)
   },
 
-  postScores: (weights: ScoreWeights) =>
-    post<Municipio[]>('/scores', { weights }),
 
   postFinancial: (id_municipio: string, params: FinancialParams, alavancas: Alavancas) =>
     post<FinancialResult>('/financial', { id_municipio, params, alavancas }),

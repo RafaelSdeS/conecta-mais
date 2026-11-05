@@ -15,7 +15,7 @@ import pandas as pd
 import pytest
 
 from conecta.data.loader import load_municipios
-from conecta.scores.calculator import calculate_scores, _deficit_banda
+from conecta.scores.calculator import _deficit_banda, calculate_scores
 from conecta.scores.models import ScoreWeights
 
 DATA_DIR = Path(__file__).parent.parent / "data"

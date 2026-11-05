@@ -21,9 +21,11 @@ FWA_MAX_DOMICILIOS = 15_000
 def recomendar_tecnologia(domicilios_urbanos: int, dist_backhaul_km: float) -> tuple[str, str]:
     """Tecnologia recomendada e a regra que a escolheu."""
     if dist_backhaul_km > ISOLADO_KM and domicilios_urbanos < SATELITE_MAX_DOMICILIOS:
-        return "Satélite", f"isolado (> {ISOLADO_KM:.0f} km do backhaul) e poucos domicílios (< {SATELITE_MAX_DOMICILIOS:,})".replace(",", ".")
+        regra = f"isolado (> {ISOLADO_KM:.0f} km do backhaul) e poucos domicílios (< {SATELITE_MAX_DOMICILIOS:,})"
+        return "Satélite", regra.replace(",", ".")
     if dist_backhaul_km > ISOLADO_KM and domicilios_urbanos < FWA_MAX_DOMICILIOS:
-        return "FWA 5G", f"afastado do backhaul (> {ISOLADO_KM:.0f} km) e porte médio-baixo (< {FWA_MAX_DOMICILIOS:,} domicílios)".replace(",", ".")
+        regra = f"afastado do backhaul (> {ISOLADO_KM:.0f} km) e porte médio-baixo (< {FWA_MAX_DOMICILIOS:,} domicílios)"
+        return "FWA 5G", regra.replace(",", ".")
     return "FTTH", "área com escala ou próxima do backhaul: fibra até o domicílio"
 
 
@@ -66,5 +68,8 @@ def comparar_tecnologias(
         "tecnologias": linhas,
         "tecnologia_recomendada": recomendada,
         "regra": regra,
-        "aviso": "Custos de FWA e satélite são premissas ilustrativas, sem fonte pública; a recomendação segue a regra da proposta.",
+        "aviso": (
+            "Custos de FWA e satélite são premissas ilustrativas, sem fonte pública; "
+            "a recomendação segue a regra da proposta."
+        ),
     }

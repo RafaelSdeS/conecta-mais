@@ -6,7 +6,6 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from api.utils import df_to_records
-
 from conecta.scores.calculator import calculate_scores
 from conecta.scores.models import ScoreWeights
 

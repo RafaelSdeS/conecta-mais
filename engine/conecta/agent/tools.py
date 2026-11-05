@@ -20,6 +20,7 @@ from pydantic import (
     model_validator,
 )
 
+from conecta.data.escopo import Regiao, filtrar_escopo
 from conecta.data.sqlite_repository import (
     SQLiteDataRepository,
     SQLiteDataUnavailable,
@@ -28,7 +29,6 @@ from conecta.financial.calculator import business_case
 from conecta.financial.models import Alavancas, FinancialParams
 from conecta.financial.tecnologia import comparar_tecnologias
 from conecta.mercado.analise import analisar_mercado
-from conecta.data.escopo import Regiao, filtrar_escopo
 from conecta.optimizer.portfolio import add_financials, num_escolas_b2g, optimize_portfolio
 from conecta.rag.retriever import RAGIndexUnavailable, search_documents
 

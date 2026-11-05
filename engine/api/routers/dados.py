@@ -7,11 +7,11 @@ from typing import TypeVar
 
 from fastapi import APIRouter, HTTPException, Path, Query, Request, Response
 
-from conecta.mercado.analise import analisar_mercado
 from conecta.data.sqlite_repository import (
     SQLiteDataRepository,
     SQLiteDataUnavailable,
 )
+from conecta.mercado.analise import analisar_mercado
 
 router = APIRouter(prefix="/dados", tags=["dados integrados"])
 FONTE_DADOS = "sqlite_integrado"

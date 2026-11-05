@@ -15,7 +15,7 @@ import logging
 
 import pandas as pd
 
-from etl.utils import RAW_DIR, get_json, normalize_ibge
+from etl.utils import RAW_DIR
 
 logger = logging.getLogger(__name__)
 

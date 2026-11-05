@@ -18,7 +18,6 @@ import DadosDoMunicipio from './DadosDoMunicipio'
 import logo from '../assets/logo-texto.svg'
 import { fmtMi, fmtAnos, fmtN0 } from '../utils/format'
 import { posicao } from '../utils/resumo'
-import { getTechRecommendation } from '../utils/calculation'
 import type { Municipio } from '../api/client'
 
 interface Props {
@@ -113,7 +112,6 @@ export default function DrawerContent({ municipio: m }: Props) {
   const alavancasAtivas = [levers.tcu && 'TCU', levers.fust && 'FUST', levers.enec && 'ENEC'].filter(Boolean).join(', ') || 'nenhuma'
   const camposLimitados = qualidade.filter((q) => q.tipo !== 'real').map((q) => `${q.campo} (${q.tipo})`)
 
-  const tech       = getTechRecommendation(dist, homes)
   const professors = Math.round(schools * 3.7)
   const pos        = posicao(todos, m)
   const isFav      = favs.has(m.id_municipio)
@@ -219,7 +217,7 @@ export default function DrawerContent({ municipio: m }: Props) {
       {/* Plano de ação */}
       <h3>Plano de ação</h3>
       <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
-        <li><b>Tecnologia:</b> {tec?.tecnologia_recomendada ?? tech}</li>
+        <li><b>Tecnologia:</b> {tec?.tecnologia_recomendada ?? '—'}</li>
         <li>
           <b>Financiamento:</b>{' '}
           {levers.fust ? 'FUST/BNDES (TR + 1,25% a.a.)' : 'WACC privado'}

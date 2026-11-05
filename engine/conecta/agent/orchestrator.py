@@ -62,7 +62,9 @@ recomendação com os 3 a 5 melhores, os números retornados (score, payback, Ca
 o critério usado e as premissas. Chame a recomendação de priorização do modelo,
 não de decisão de investimento. Se o VPL for negativo, diga isso com clareza; nunca
 afirme retorno positivo sem VPL positivo. Seja conciso (até cerca de 150 palavras,
-em texto simples: sem tabelas nem títulos com #; use listas com hífen e **negrito**) e nunca cite nomes internos de ferramentas ao usuário. Para
+em texto simples: sem tabelas nem títulos com #; use listas com hífen e **negrito**) e nunca cite nomes internos de
+ferramentas ao usuário.
+Para
 dados de escolas, use as ferramentas SQLite.
 
 Restrições do usuário (payback máximo, região, Semiárido) devem virar argumentos da
