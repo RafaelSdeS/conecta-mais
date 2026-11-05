@@ -2,7 +2,8 @@
 
 Sistema de apoio à decisão para expansão de conectividade da Vivo, desenvolvido para o **Desafio IBM SkillsBuild & Fundação Telefônica Vivo**.
 
-> Veja [`TEAM.md`](TEAM.md) para a divisão de trabalho entre Rafael, Joel e Chris.
+> Veja [`TEAM.md`](TEAM.md) para a divisão de trabalho entre Rafael, Joel e Chris e
+> [`docs/design-thinking.md`](docs/design-thinking.md) para persona, Hills e premissas a validar.
 
 ---
 
@@ -79,12 +80,12 @@ python -m pytest
 
 | View | Descrição |
 |---|---|
-| **Painel** | KPIs animados, mapa Leaflet com todos os municípios, quadrantes, histograma de payback e explicação do portfólio por IA |
-| **Municípios** | Tabela ordenável com busca, filtros, favoritos e portfólio |
+| **Painel** | KPIs animados, mapa Leaflet com todos os municípios (cor por quadrante, payback, score, alunos ou decisão), quadrantes, histograma de payback, explicação do portfólio por IA e dossiê do recorte em PDF |
+| **Municípios** | Tabela ordenável com busca, filtros (inclusive por decisão), favoritos, portfólio e decisão vigente |
 | **Agente** | Chat com o IBM Granite (watsonx.ai): ranking, portfólio, comparação e dúvidas de uso |
 | **Solução** | Arquitetura IBM watsonx, ROI estimado e fases de entrega |
 
-**Atalhos:** `Ctrl+K` abre a paleta de comandos. Clique em qualquer município para abrir a ficha executiva.
+**Atalhos:** `Ctrl+K` abre a paleta de comandos. Clique em qualquer município para abrir a ficha executiva: situação no plano (por que entrou ou ficou fora e o que mudaria), registro de decisão do gestor, diagnóstico e business case.
 
 ---
 
@@ -129,7 +130,9 @@ Veja [`docs/arquitetura.md`](docs/arquitetura.md) para detalhes completos.
 | `GET` | `/municipios` | Lista com scores calculados; filtros `?uf=` e `?quadrante=` |
 | `POST` | `/scores` | Recalcula scores com pesos customizados |
 | `POST` | `/financial` | Business case de um município (CapEx, payback, VPL) |
-| `POST` | `/portfolio` | Portfólio ótimo sob restrição de orçamento (MILP) |
+| `POST` | `/portfolio` | Portfólio ótimo sob restrição de orçamento (MILP); `incluir` simula forçar municípios |
+| `POST` | `/decisoes` | Registra a decisão do gestor (aprovar, adiar, descartar) com motivo e cenário |
+| `GET` | `/decisoes` | Decisão vigente por município ou histórico de um município |
 | `GET` | `/backtest` | Resultado do backtest 2021→2025 (precision, recall, F1) |
 | `GET` | `/health` | Healthcheck |
 

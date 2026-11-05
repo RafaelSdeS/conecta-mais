@@ -129,6 +129,7 @@ Seleciona o portfólio ótimo de municípios dado um orçamento (MILP binário).
 | `regiao` | nenhum | `Norte`, `Nordeste`, `Sudeste`, `Sul` ou `Centro-Oeste` |
 | `objetivo` | `equilibrado` | `retorno` (só VPL), `equilibrado` (usa `lambda_`) ou `alunos` (maximiza alunos em escolas sem internet) |
 | `params` | padrão | Premissas financeiras (ARPU, adesão, margem, WACC, custos) |
+| `incluir` | `[]` | Até 5 códigos IBGE forçados no portfólio. Usado pela ficha em "O que mudaria para incluir?": o painel compara o resultado com o portfólio atual. Se o CapEx forçado passar do orçamento, `status` vem `Infeasible` e o portfólio vem vazio |
 
 Regras das alavancas: `fust_reembolsavel` troca o WACC pelo `wacc_fust` no VPL (não altera o payback
 simples); `receita_escolar` soma a receita B2G das escolas sem internet para aprendizagem;
@@ -416,6 +417,54 @@ nunca como instruções.
 
 ---
 
+## Decisões do gestor (`/decisoes`)
+
+Registro de decisões por município. Só inclusão: nada é apagado e a decisão mais recente é a
+vigente. Fica num SQLite próprio, `engine/data/decisoes.db` (ou `CONECTA_DECISOES_PATH`), separado
+da base do ETL. Não há login no MVP: `responsavel` é informado pelo gestor.
+
+### POST `/decisoes`
+
+```json
+{
+  "id_municipio": "2927408",
+  "decisao": "aprovar",
+  "motivo": "Prefeitura cede postes; demanda confirmada com a secretaria.",
+  "observacao_campo": "Visita em 04/11: obra de backhaul já iniciada.",
+  "responsavel": "Gestora Regional Nordeste",
+  "cenario": {
+    "orcamento_mi": 80,
+    "objetivo": "equilibrado",
+    "escopo": { "uf": "BA", "semiarido": true },
+    "params": {},
+    "alavancas": { "fust_reembolsavel": true }
+  },
+  "situacao_no_plano": "Ficou fora: custa R$ 12,40 mi e sobram R$ 3,10 mi no orçamento.",
+  "justificativa_ia": "..."
+}
+```
+
+| Campo | Regra |
+|---|---|
+| `decisao` | `aprovar`, `adiar` ou `descartar` |
+| `motivo` | obrigatório, 10 a 2.000 caracteres (espaços nas pontas não contam) |
+| `observacao_campo` | opcional, até 2.000 caracteres |
+| `responsavel` | obrigatório, 2 a 100 caracteres |
+| `cenario` | orçamento, objetivo, escopo, premissas e alavancas da tela |
+| `situacao_no_plano`, `justificativa_ia` | opcionais, textos da ficha no momento da decisão |
+
+Resposta `201` com o registro salvo, incluindo `id`, `criado_em` (UTC), `fonte_dados` e `numeros`
+(`capex_mi`, `payback_anos`, `vpl_mi`, `quadrante`, `score_total`). Os números são **recalculados
+no servidor** com o cenário enviado; valores numéricos vindos do cliente são ignorados.
+Município inexistente → `404`; campos inválidos → `422`.
+
+### GET `/decisoes`
+
+Sem parâmetros: a decisão vigente de cada município. Com `?id_municipio=2927408`: o histórico
+do município, da mais recente para a mais antiga.
+
+---
+
 ## Endpoints de IA (`/ia`)
 
 Usam o IBM Granite sem ferramentas, sobre números já calculados pelo motor.
@@ -424,20 +473,27 @@ Erros do watsonx.ai retornam o status e a mensagem pública em `detail`.
 ### POST `/ia/justificativa`
 
 ```json
-{ "id_municipio": "2927408" }
+{
+  "id_municipio": "2927408",
+  "params": { "arpu_mensal": 95 },
+  "alavancas": { "fust_reembolsavel": true },
+  "no_portfolio": false
+}
 ```
 
-Resposta: `{ "texto": "...", "fonte_dados": "real" }`. O texto é cacheado por município
-enquanto a API estiver no ar.
+Resposta: `{ "texto": "...", "fonte_dados": "real" }`. `params` e `alavancas` são opcionais (padrão
+do motor) e devem ser os da tela, para o texto citar os mesmos números da ficha. `no_portfolio`
+informa se o município está no plano do cenário. O texto é cacheado por município, cenário e
+`no_portfolio` enquanto a API estiver no ar.
 
 ### POST `/ia/portfolio-narrativa`
 
 ```json
-{ "ids": ["2922607", "2916708"], "orcamento_mi": 100 }
+{ "ids": ["2922607", "2916708"], "orcamento_mi": 100, "params": {}, "alavancas": {} }
 ```
 
 Explica o portfólio (composição, CapEx, payback e trade-off impacto × retorno).
-Os números são recalculados no servidor a partir dos ids.
+Os números são recalculados no servidor a partir dos ids, com `params` e `alavancas` do cenário.
 
 ### POST `/ia/filtros`
 

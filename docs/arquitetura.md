@@ -70,8 +70,9 @@
 ### `web/src/`
 - **`App.tsx`** — layout sidebar 208 px + main (idêntico ao mockup).
 - **`components/QuadrantBadge.tsx`** — badge colorido com as cores exatas do mockup.
-- **`pages/ScoreMap.tsx`** — tabela de municípios com filtros UF/quadrante/busca e ordenação.
-- **`pages/Simulator.tsx`** — formulário de alavancas + premissas; exibe business case e portfólio.
+- **`pages/`** — `PanelView` (KPIs, mapa, quadrantes), `MunView` (tabela), `ChatView` (agente) e `SolutionView`.
+- **`components/Header.tsx`** — barra do cenário: orçamento, objetivo, premissas e alavancas.
+- **`components/DrawerContent.tsx`** — ficha executiva com diagnóstico, plano de ação e business case.
 - **`api/client.ts`** — helpers tipados `get`/`post` com todos os tipos de domínio.
 
 ## Fluxo de dados
