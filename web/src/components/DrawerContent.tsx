@@ -173,7 +173,7 @@ export default function DrawerContent({ municipio: m }: Props) {
       {situacao && <SituacaoNoPlano m={m} situacao={situacao} />}
 
       <DecisaoMunicipio
-        key={m.id_municipio}
+        key={`decisao-${m.id_municipio}`}
         m={m}
         status={situacao?.status}
         situacaoTexto={situacao?.texto}

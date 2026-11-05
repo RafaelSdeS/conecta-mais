@@ -134,7 +134,8 @@ p     { margin: 0; }
 @media (max-width: 900px) {
   /* Sidebar vira barra horizontal no topo */
   .app-grid {
-    grid-template-columns: 1fr !important;
+    /* minmax(0, …): com 1fr, a tabela (min-width 700px) esticava a página além da tela */
+    grid-template-columns: minmax(0, 1fr) !important;
   }
   .app-sidebar {
     position: static !important;
@@ -169,6 +170,12 @@ p     { margin: 0; }
 
   /* Main content */
   #main-content { padding: 16px !important; }
+
+  /* Campos com fonte < 16px fazem o navegador do celular dar zoom ao focar (busca, motivo da decisão).
+     !important porque os componentes definem fontSize inline. */
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]), select, textarea {
+    font-size: 16px !important;
+  }
 }
 
 @media (max-width: 600px) {
@@ -203,8 +210,7 @@ p     { margin: 0; }
     background: #fff !important;
     color: #111 !important;
   }
-  body.imprimindo-ficha, body.imprimindo-ficha html,
-  body.imprimindo-dossie, body.imprimindo-dossie html { background: #fff !important; }
+  html, body { background: #fff !important; }
   body.imprimindo-ficha .print-sheet *,
   body.imprimindo-dossie .print-dossie * {
     -webkit-print-color-adjust: exact;
