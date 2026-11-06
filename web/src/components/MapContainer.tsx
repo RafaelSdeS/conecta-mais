@@ -296,7 +296,8 @@ export default function MapContainer({ municipios, portfolioIds, onMunicipioClic
         ))}
       </div>
 
-      <div style={{ position: 'relative' }}>
+      {/* isolate: o z-index dos chips de região vale só dentro do mapa, abaixo da ficha, paleta e avisos */}
+      <div style={{ position: 'relative', isolation: 'isolate' }}>
         <div
           ref={mapElRef}
           style={{ width: '100%', height: 'clamp(320px, 62vh, 640px)', borderRadius: 4, background: 'var(--land)', zIndex: 0 }}
