@@ -23,9 +23,8 @@ de referência citados ao longo do texto.
 5. [A solução, pela jornada da persona](#5-a-solução-pela-jornada-da-persona)
 6. [Como funciona](#6-como-funciona)
 7. [IA confiável](#7-ia-confiável)
-8. [Testar: o que validamos e o que falta](#8-testar-o-que-validamos-e-o-que-falta)
-9. [Limites e próximos passos](#9-limites-e-próximos-passos)
-10. [Como rodar e equipe](#10-como-rodar-e-equipe)
+8. [Limites e próximos passos](#8-limites-e-próximos-passos)
+9. [Como rodar e equipe](#9-como-rodar-e-equipe)
 
 ---
 
@@ -51,7 +50,7 @@ cidade ficou de fora?" dos prefeitos e precisa defender cada decisão no comitê
 
 ### Como avaliar em 5 minutos
 
-Com o app rodando ([seção 10](#10-como-rodar-e-equipe)):
+Com o app rodando ([seção 9](#9-como-rodar-e-equipe)):
 
 1. Abra `http://localhost:5173/?uf=BA&semiarido=1` e leve o orçamento do topo para **R$ 150 mi**.
 2. Pressione **Ctrl+K**, digite "Juazeiro" e abra a ficha de Juazeiro (BA). Clique em **O que mudaria para incluir?**
@@ -83,13 +82,13 @@ Seguimos o **IBM Enterprise Design Thinking**: três princípios, o Loop e três
 | **Reinvenção contínua** | O produto saiu de um protótipo HTML com dados simulados para um MVP com a base real; a persona mudou o foco de "painel analítico" para "decidir e defender" (seção 4). |
 | **Times diversos e autônomos** | Três frentes com dono claro: algoritmos (scores, financeiro, otimização), produto (painel e ficha) e dados + IA (ETL e agentes). Veja [`TEAM.md`](../TEAM.md). |
 
-**O Loop.** Observar → Refletir → Fazer, repetido a cada entrega. As seções 2 a 8 seguem esse ciclo e
-fecham com o plano do próximo ciclo.
+**O Loop.** Observar → Refletir → Fazer, repetido a cada entrega. As seções 2 a 7 seguem esse ciclo e
+a seção 8 traz os limites e os próximos passos.
 
 **Práticas-chave.**
 
 - **Hills:** três metas escritas do ponto de vista da gestora (seção 3).
-- **Playbacks:** roteiro de 10 minutos pronto para rodar com gestores (seção 8).
+- **Playbacks:** ainda não realizados; o primeiro, com gestores regionais, está nos próximos passos (seção 8).
 - **Sponsor Users:** ainda **não** envolvidos. Persona, Hills e jornada são hipóteses construídas com
   dados públicos e com o enunciado do desafio. Validá-las é o primeiro passo do próximo ciclo.
 
@@ -101,7 +100,7 @@ Para quem conhece as cinco etapas clássicas, a correspondência é esta:
 | Definir | Refletir | [3. Persona, jornada e Hills](#3-refletir-para-quem) |
 | Idear | Refletir / Fazer | [4. Ideias e decisões](#4-fazer-ideias-e-decisões) |
 | Prototipar | Fazer | [4 e 5. Do protótipo ao MVP](#41-do-protótipo-ao-mvp) |
-| Testar | Observar (de novo) | [8. Testar](#8-testar-o-que-validamos-e-o-que-falta) |
+| Testar | Observar (de novo) | [8. Limites e próximos passos](#8-limites-e-próximos-passos) |
 
 ---
 
@@ -396,52 +395,7 @@ exceções.
 
 ---
 
-## 8. Testar: o que validamos e o que falta
-
-### 8.1 O que já validamos
-
-- **Testes automatizados:** 205 testes do backend (scores, financeiro, otimizador, API, decisões, agente,
-  copiloto, achados, RAG, carga de dados) e 23 do front (filtros, situação no plano, resumo, CSV, chat).
-- **Backtest com histórico real da Anatel** (fibra de dezembro de 2021 contra o último mês publicado):
-  dos 2.783 municípios classificados como Q1 ou Q2a em 2021, 64% pelo menos dobraram a base de fibra
-  (precision); dos 3.144 que dobraram, 56% estavam nesses quadrantes (recall).
-
-![Backtest 2021→2025](img/12-backtest.png)
-
-O backtest também mostra um limite, e o registramos como achado: 56,5% de todos os municípios dobraram a
-fibra no período, então a classificação acerta só um pouco acima do acaso (**lift de 1,13**). Além disso, o
-teste é parcial: os scores de 2021 usam o acesso de 2021, mas os demais indicadores são atuais (INEP 2024,
-Censo 2022, backhaul atual). Os scores precisam de revisão antes de sustentar decisões reais, e a aba
-Solução diz isso ao usuário.
-
-### 8.2 O que ainda não validamos
-
-Persona, jornada, Hills e premissas da seção 3. Nenhum gestor regional usou o Conecta+ até aqui.
-
-### 8.3 Roteiro de Playback (10 minutos)
-
-Com gestores ou mentores; uma pessoa faz o papel da gestora e usa o app pelo celular.
-
-1. **Contexto (1 min):** apresentar a persona e a Hill do ciclo.
-2. **Tarefa 1 (3 min):** "O prefeito de um município fora do plano pergunta por quê. Responda e diga o que
-   mudaria isso." Anotar o tempo (meta da Hill 1: menos de 2 minutos) e onde a pessoa travou.
-3. **Tarefa 2 (3 min):** "Aprove esse município como exceção e gere o dossiê do recorte." Anotar o tempo e
-   os erros.
-4. **Feedback (3 min):** o que funcionou, o que mudar, perguntas e ideias.
-
-| Data | Participantes | Tarefa 1 | Tarefa 2 | Principais achados |
-|---|---|---|---|---|
-| | | | | |
-
-### 8.4 Próximo ciclo do Loop
-
-1. **Observar:** recrutar três gestores regionais como Sponsor Users e rodar o Playback acima.
-2. **Refletir:** confirmar ou corrigir as premissas da seção 3.4 e decidir se a Hill 3 (sem conexão) sobe de prioridade.
-3. **Fazer:** ajustar ficha e dossiê ao que o comitê realmente pede e revisar os pesos dos scores à luz do backtest.
-
----
-
-## 9. Limites e próximos passos
+## 8. Limites e próximos passos
 
 **Limites conhecidos** (os mesmos que a aba Solução mostra):
 
@@ -453,6 +407,8 @@ Com gestores ou mentores; uma pessoa faz o papel da gestora e usa o app pelo cel
 - O Censo Escolar 2024 não traz a localização das escolas: a análise é por município.
 - O backhaul aparece como presença por município, sem o traçado da rede.
 - O registro de decisões não tem login: o responsável é declarado, não verificado, e exige conexão.
+- O backtest 2021→2025 acerta só um pouco acima do acaso (lift de 1,13) e é parcial, porque só o acesso
+  à fibra é de 2021: os scores precisam de revisão antes de sustentar decisões reais.
 
 **Próximos passos**
 
@@ -467,7 +423,7 @@ Com gestores ou mentores; uma pessoa faz o papel da gestora e usa o app pelo cel
 
 ---
 
-## 10. Como rodar e equipe
+## 9. Como rodar e equipe
 
 Pré-requisitos: Python 3.11, Node.js 18 e npm 9.
 
