@@ -90,9 +90,9 @@ python -m pytest
 
 | View | Descrição |
 |---|---|
-| **Painel** | KPIs animados, mapa Leaflet com todos os municípios (cor por quadrante, payback, score, alunos ou decisão), quadrantes, histograma de payback, explicação do portfólio por IA e dossiê do recorte em PDF |
+| **Painel** | KPIs animados, mapa Leaflet com todos os municípios (cor por quadrante, payback, score, alunos ou decisão), quadrantes, histograma de payback, explicação do portfólio e achados do cenário por IA ("O que eu não estou vendo?") e dossiê do recorte em PDF |
 | **Municípios** | Tabela ordenável com busca, filtros (inclusive por decisão), favoritos, portfólio e decisão vigente |
-| **Agente** | Chat com o IBM Granite (watsonx.ai): ranking, portfólio, comparação e dúvidas de uso |
+| **Agente** | Chat com o IBM Granite (watsonx.ai): ranking, portfólio, comparação, simulação de alavancas, menor orçamento para uma meta de alunos e dúvidas de uso; cenários calculados viram um botão "Aplicar no painel" |
 | **Solução** | Arquitetura IBM watsonx, ROI estimado e fases de entrega |
 
 **Atalhos:** `Ctrl+K` abre a paleta de comandos. Clique em qualquer município para abrir a ficha executiva: situação no plano (por que entrou ou ficou fora e o que mudaria), registro de decisão do gestor, diagnóstico e business case.
@@ -143,6 +143,9 @@ Veja [`docs/arquitetura.md`](docs/arquitetura.md) para detalhes completos.
 | `POST` | `/portfolio` | Portfólio ótimo sob restrição de orçamento (MILP); `incluir` simula forçar municípios |
 | `POST` | `/decisoes` | Registra a decisão do gestor (aprovar, adiar, descartar) com motivo e cenário |
 | `GET` | `/decisoes` | Decisão vigente por município ou histórico de um município |
+| `POST` | `/chat` | Agente com IBM Granite e ferramentas do motor; devolve ações "Aplicar no painel" |
+| `POST` | `/ia/justificativa` | Justificativa geral de um município no cenário (situação no plano e custo da exceção calculados no servidor) |
+| `POST` | `/ia/achados` | Até 3 achados do cenário calculados pelo motor e redigidos pelo Granite, cada um com uma ação |
 | `GET` | `/backtest` | Resultado do backtest 2021→2025 (precision, recall, F1) |
 | `GET` | `/health` | Healthcheck |
 

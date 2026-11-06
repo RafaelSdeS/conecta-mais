@@ -453,6 +453,7 @@ def test_registro_adiciona_rag_sem_remover_ferramentas_existentes():
         "consultar_documentacao_conecta",
         "ranking_municipios",
         "otimizar_portfolio",
+        "orcamento_minimo_para_meta",
         "comparar_municipios",
         "consultar_qualidade_dados",
         "consultar_provedores_municipio",

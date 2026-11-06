@@ -5,9 +5,10 @@
  */
 
 import { useState } from 'react'
-import { alavancasDe, api, type Decisao, type Municipio, type TipoDecisao } from '../api/client'
+import { api, type Decisao, type Municipio, type TipoDecisao } from '../api/client'
 import { useAppStore } from '../store/appStore'
 import { useToast } from '../hooks/toastContext'
+import { cenarioDaTela } from '../hooks/usePortfolioTrigger'
 import { DECISOES } from '../utils/constants'
 import { fmtAnos, fmtMi } from '../utils/format'
 import type { StatusPlano } from '../utils/plano'
@@ -79,7 +80,6 @@ export default function DecisaoMunicipio({ m, status, situacaoTexto, justificati
     e.preventDefault()
     setEnviando(true)
     setErro(undefined)
-    const { budget, objetivo, params, levers, filters } = useAppStore.getState()
     try {
       const d = await api.postDecisao({
         id_municipio: m.id_municipio,
@@ -87,17 +87,7 @@ export default function DecisaoMunicipio({ m, status, situacaoTexto, justificati
         motivo,
         observacao_campo: observacao || undefined,
         responsavel,
-        cenario: {
-          orcamento_mi: budget,
-          objetivo,
-          escopo: {
-            ...(filters.uf ? { uf: filters.uf } : {}),
-            ...(filters.regiao ? { regiao: filters.regiao } : {}),
-            semiarido: filters.semiarido,
-          },
-          params,
-          alavancas: alavancasDe(levers),
-        },
+        cenario: cenarioDaTela(useAppStore.getState()),
         situacao_no_plano: situacaoTexto,
         justificativa_ia: justificativa,
       })

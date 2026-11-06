@@ -6,6 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from conecta.data.escopo import Regiao
 from conecta.financial.models import Alavancas, FinancialParams
 
 
@@ -28,6 +29,8 @@ class ChatContext(BaseModel):
     quadrante: str | None = Field(default=None, max_length=4)
     busca: str | None = Field(default=None, max_length=100)
     uf: str | None = Field(default=None, min_length=2, max_length=2)
+    regiao: Regiao | None = None
+    semiarido: bool | None = None
     objetivo: Literal["retorno", "equilibrado", "alunos"] | None = None
     # Cenário ativo na tela: as ferramentas calculam com as mesmas alavancas e premissas.
     alavancas: Alavancas | None = None
@@ -68,6 +71,25 @@ class DocumentReference(BaseModel):
     is_official: bool
 
 
+class AcaoPainel(BaseModel):
+    """Ação de um clique proposta ao usuário, montada pelo código a partir do motor.
+
+    Nunca vem do texto do modelo.
+
+    Campos None mantêm o que está na tela; "" em uf ou regiao limpa o filtro.
+    """
+
+    tipo: Literal["aplicar_cenario", "abrir_municipio"]
+    rotulo: str = Field(max_length=160)
+    orcamento_mi: float | None = None
+    objetivo: Literal["retorno", "equilibrado", "alunos"] | None = None
+    uf: str | None = None
+    regiao: str | None = None
+    semiarido: bool | None = None
+    alavancas: Alavancas | None = None
+    id_municipio: str | None = None
+
+
 class ChatResponse(BaseModel):
     response: str | None
     history: list[ChatHistoryMessage] = Field(max_length=12)
@@ -75,4 +97,5 @@ class ChatResponse(BaseModel):
     tools_executed: list[ToolExecution]
     has_demo_data: bool
     references: list[DocumentReference] = Field(default_factory=list)
+    acoes: list[AcaoPainel] = Field(default_factory=list)
     error: ChatError | None = None

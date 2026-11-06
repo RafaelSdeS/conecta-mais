@@ -156,3 +156,41 @@ def test_resposta_longa_nao_quebra_o_historico(mun):
     fake = _Fake([{"role": "assistant", "content": longa, "finish_reason": "stop"}])
     out = ChatOrchestrator(fake).respond("explique", [], mun)
     assert len(out.response) == 5_000 and len(out.history[-1].content) == 4_000
+
+
+# ── Copiloto: metas, alavancas simuladas e botões do painel ──────────────────
+
+def test_orcamento_minimo_para_meta_devolve_cenario_aplicavel(mun):
+    df = mun.assign(alunos_sem_internet=mun["matriculas_publicas"])
+    df.attrs.update(mun.attrs)
+    result, status = _run("orcamento_minimo_para_meta", {"meta_alunos": 1}, df)
+    data = result["data"]
+    assert status == "success" and data["atingivel"] and data["alunos"] >= 1
+    assert data["cenario_aplicavel"]["objetivo"] == "alunos"
+    assert data["cenario_aplicavel"]["orcamento_mi"] == data["orcamento_mi"]
+
+    longe = _run("orcamento_minimo_para_meta", {"meta_alunos": 10_000_000}, df)[0]["data"]
+    assert not longe["atingivel"] and "cenario_aplicavel" not in longe
+
+
+def test_portfolio_simula_alavancas_e_so_oferece_botao_se_o_painel_reproduz(mun):
+    base = _run("otimizar_portfolio", {"orcamento_mi": 300}, mun)[0]["data"]
+    fust = _run("otimizar_portfolio", {"orcamento_mi": 300, "alavancas": ["fust"]}, mun)[0]["data"]
+    assert "FUST" in fust["premissas"] and "nenhuma" in base["premissas"]
+    assert fust["cenario_aplicavel"]["alavancas"]["fust_reembolsavel"] is True
+    aplicavel = base["cenario_aplicavel"]
+    assert aplicavel["uf"] == "" and aplicavel["objetivo"] == "equilibrado"
+
+    peso = _run("otimizar_portfolio", {"orcamento_mi": 300, "peso_impacto": 0.8}, mun)[0]["data"]
+    assert "cenario_aplicavel" not in peso
+
+
+def test_chat_devolve_botao_aplicar_no_painel(mun):
+    call = _call("a", "otimizar_portfolio", {"orcamento_mi": 300, "uf": "sp", "alavancas": ["tcu"]})
+    fake = _Fake([call, {"role": "assistant", "content": "Plano pronto.", "finish_reason": "stop"}])
+    out = ChatOrchestrator(fake).respond("Simule SP com R$ 300 mi e o acordo", [], mun)
+    assert len(out.acoes) == 1
+    acao = out.acoes[0]
+    assert acao.tipo == "aplicar_cenario" and acao.orcamento_mi == 300 and acao.uf == "SP"
+    assert acao.alavancas.backhaul_comprometido is True
+    assert acao.rotulo == "R$ 300 mi · SP · objetivo Equilíbrio · TCU"

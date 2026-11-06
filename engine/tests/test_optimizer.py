@@ -16,7 +16,13 @@ import pytest
 from conecta.data.loader import load_backhaul, load_municipios
 from conecta.financial.models import Alavancas, FinancialParams
 from conecta.geo.distances import add_backhaul_distances
-from conecta.optimizer.portfolio import add_financials, optimize_portfolio
+from conecta.optimizer.portfolio import (
+    add_financials,
+    alunos_atendidos,
+    optimize_portfolio,
+    orcamento_minimo,
+    situacao_no_plano,
+)
 from conecta.scores.calculator import calculate_scores
 
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -177,3 +183,44 @@ def test_incluir_acima_do_orcamento_e_inviavel(df_com_scores):
         budget=float(caro["_capex"]) / 2, incluir=[str(caro["id_municipio"])],
     )
     assert r.status == "Infeasible" and r.n_selecionados == 0
+
+
+# ── Situação no plano e orçamento mínimo para uma meta ───────────────────────
+
+def test_situacao_no_plano_cobre_os_casos_da_ficha(df_com_scores):
+    fin = add_financials(df_com_scores, PARAMS, ALAVANCAS)
+    base = optimize_portfolio(fin, PARAMS, ALAVANCAS, budget=300.0)
+    no_plano = set(base.municipios["id_municipio"].astype(str))
+    ids = fin["id_municipio"].astype(str)
+
+    dentro = next(iter(no_plano))
+    assert situacao_no_plano(fin, dentro, PARAMS, ALAVANCAS, 300.0)["status"] == "selecionado"
+
+    fora = ids[~ids.isin(no_plano) & (fin["_payback"] <= 10)].iloc[0]
+    s = situacao_no_plano(fin, fora, PARAMS, ALAVANCAS, 300.0)
+    assert s["status"] in {"sem_espaco", "preterido", "nao_cabe"}
+    if s["status"] != "nao_cabe":
+        assert s["para_incluir"]["n_saem"] >= len(s["para_incluir"]["saem"])
+
+    acima = ids[fin["_payback"] > 10].iloc[0]
+    assert situacao_no_plano(fin, acima, PARAMS, ALAVANCAS, 300.0)["status"] == "acima_teto"
+    assert situacao_no_plano(fin, "9999999", PARAMS, ALAVANCAS, 300.0)["status"] == "fora_escopo"
+
+
+def test_orcamento_minimo_acha_o_menor_degrau_que_atinge_a_meta(df_com_scores):
+    fin = add_financials(df_com_scores, PARAMS, ALAVANCAS)
+    fin["alunos_sem_internet"] = range(0, 100 * len(fin), 100)  # com zeros, como na base real
+    no_teto = optimize_portfolio(fin, PARAMS, ALAVANCAS, budget=500.0, objetivo_modo="alunos")
+    meta = alunos_atendidos(no_teto.municipios) // 2
+
+    r = orcamento_minimo(fin, PARAMS, ALAVANCAS, meta)
+    assert r["atingivel"] and r["alunos"] >= meta and r["orcamento_mi"] % 5 == 0
+    if r["orcamento_mi"] > 5:
+        antes = optimize_portfolio(
+            fin, PARAMS, ALAVANCAS, budget=r["orcamento_mi"] - 5, objetivo_modo="alunos"
+        )
+        assert alunos_atendidos(antes.municipios) < meta
+
+    longe = orcamento_minimo(fin, PARAMS, ALAVANCAS, int(fin["alunos_sem_internet"].sum()) + 1)
+    assert not longe["atingivel"]
+    assert longe["max_alunos_no_teto"] == alunos_atendidos(no_teto.municipios)

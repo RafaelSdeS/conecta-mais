@@ -273,6 +273,8 @@ export const MERCADO_KPIS: { label: string; value: string; detail: string }[] = 
 export const CHAT_CHIPS = [
   'Quais municípios do semiárido têm mais alunos sem internet por real investido?',
   'Onde investir R$ 100 milhões no Nordeste para conectar o maior número de alunos?',
+  'Qual o menor orçamento para atender 5 mil alunos no semiárido da Bahia?',
+  'Simule o Nordeste com R$ 200 milhões e o FUST ligado.',
   'Compare Salvador (BA) e Feira de Santana (BA): qual compensa mais investir?',
   'Existe algum município do semiárido com payback abaixo de 6 anos?',
   'Qual a diferença entre os quadrantes Q1 e Q2a?',

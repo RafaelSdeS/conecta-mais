@@ -181,6 +181,30 @@ export interface CenarioDecisao {
   alavancas: Alavancas
 }
 
+/**
+ * Ação de um clique montada pelo servidor a partir do motor (chat e achados).
+ * Campos null mantêm o que está na tela; '' em uf ou regiao limpa o filtro.
+ */
+export interface Acao {
+  tipo: 'aplicar_cenario' | 'abrir_municipio'
+  rotulo: string
+  orcamento_mi?: number | null
+  objetivo?: Objetivo | null
+  uf?: string | null
+  regiao?: string | null
+  semiarido?: boolean | null
+  alavancas?: Alavancas | null
+  id_municipio?: string | null
+}
+
+/** Achado do cenário: fatos do motor, redação do Granite e a ação correspondente. */
+export interface Achado {
+  id: string
+  titulo: string
+  texto: string
+  acao: Acao
+}
+
 export interface NovaDecisao {
   id_municipio: string
   decisao: TipoDecisao
@@ -324,8 +348,10 @@ export const api = {
 
   getHealth: () => get<{ status: string; fonte_dados: FonteDados }>('/health'),
 
-  postJustificativa: (id_municipio: string, params: FinancialParams, alavancas: Alavancas, no_portfolio: boolean) =>
-    postIa<{ texto: string }>('/ia/justificativa', { id_municipio, params, alavancas, no_portfolio }),
+  postJustificativa: (id_municipio: string, cenario: CenarioDecisao) =>
+    postIa<{ texto: string }>('/ia/justificativa', { id_municipio, cenario }),
+
+  postAchados: (cenario: CenarioDecisao) => postIa<{ cartoes: Achado[] }>('/ia/achados', cenario),
 
   postPortfolioNarrativa: (ids: string[], orcamento_mi: number, params: FinancialParams, alavancas: Alavancas) =>
     postIa<{ texto: string }>('/ia/portfolio-narrativa', { ids, orcamento_mi, params, alavancas }),

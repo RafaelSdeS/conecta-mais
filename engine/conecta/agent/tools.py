@@ -29,7 +29,12 @@ from conecta.financial.models import Alavancas, FinancialParams
 from conecta.financial.tecnologia import comparar_tecnologias
 from conecta.mercado.analise import analisar_mercado
 from conecta.data.escopo import Regiao, filtrar_escopo
-from conecta.optimizer.portfolio import add_financials, num_escolas_b2g, optimize_portfolio
+from conecta.optimizer.portfolio import (
+    add_financials,
+    num_escolas_b2g,
+    optimize_portfolio,
+    orcamento_minimo,
+)
 from conecta.rag.retriever import RAGIndexUnavailable, search_documents
 
 
@@ -174,11 +179,31 @@ class RankingArguments(ToolArguments):
         return value.strip().upper() if value is not None else None
 
 
-class PortfolioArguments(ToolArguments):
-    orcamento_mi: float = Field(gt=0, le=1_000_000, description="Orçamento de CapEx em R$ milhões.")
+CAMPO_ALAVANCA = {
+    "tcu": "backhaul_comprometido", "fust": "fust_reembolsavel", "enec": "receita_escolar",
+}
+
+
+class EscopoArguments(ToolArguments):
     uf: str | None = Field(default=None, min_length=2, max_length=2)
     somente_semiarido: bool = False
     regiao: Regiao | None = None
+    alavancas: list[Literal["tcu", "fust", "enec"]] | None = Field(
+        default=None,
+        description=(
+            "Alavancas a simular (tcu = backhaul do acordo, fust = FUST/BNDES, enec = receita "
+            "escolar); lista vazia desliga todas. Omita para usar as alavancas da tela."
+        ),
+    )
+
+    @field_validator("uf")
+    @classmethod
+    def normalize_uf(cls, value: str | None) -> str | None:
+        return value.strip().upper() if value is not None else None
+
+
+class PortfolioArguments(EscopoArguments):
+    orcamento_mi: float = Field(gt=0, le=1_000_000, description="Orçamento de CapEx em R$ milhões.")
     objetivo: Literal["retorno", "equilibrado", "alunos"] = Field(
         default="equilibrado",
         description="alunos = maximiza estudantes em escolas sem internet; retorno = maximiza VPL.",
@@ -186,10 +211,11 @@ class PortfolioArguments(ToolArguments):
     peso_impacto: float = Field(default=0.5, ge=0, le=1, description="1 = só impacto social; 0 = só retorno (VPL).")
     max_payback: float = Field(default=10.0, gt=0, le=50, description="Payback máximo aceito, em anos.")
 
-    @field_validator("uf")
-    @classmethod
-    def normalize_uf(cls, value: str | None) -> str | None:
-        return value.strip().upper() if value is not None else None
+
+class MetaArguments(EscopoArguments):
+    meta_alunos: int = Field(
+        gt=0, le=10_000_000, description="Alunos em escolas sem internet a atender."
+    )
 
 
 class CompareArguments(ToolArguments):
@@ -313,9 +339,23 @@ TOOL_DEFINITIONS = [
             "name": "otimizar_portfolio",
             "description": (
                 "Seleciona o conjunto ótimo de municípios para um orçamento de CapEx "
-                "(R$ milhões), opcionalmente numa UF. Use para 'como distribuir R$ X'."
+                "(R$ milhões), opcionalmente numa UF. Use para 'como distribuir R$ X' e para "
+                "simular alavancas diferentes das da tela ('e se ligar o FUST?')."
             ),
             "parameters": PortfolioArguments.model_json_schema(),
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "orcamento_minimo_para_meta",
+            "description": (
+                "Menor orçamento de CapEx (R$ milhões, em degraus de R$ 5 mi até R$ 500 mi) cujo "
+                "portfólio atende uma meta de alunos em escolas sem internet, opcionalmente "
+                "numa UF, região ou no Semiárido. Use para 'quanto preciso investir para "
+                "conectar N alunos'."
+            ),
+            "parameters": MetaArguments.model_json_schema(),
         },
     },
     {
@@ -390,6 +430,7 @@ _ARGUMENT_MODELS: dict[str, type[ToolArguments]] = {
     "consultar_documentacao_conecta": DocumentationSearchArguments,
     "ranking_municipios": RankingArguments,
     "otimizar_portfolio": PortfolioArguments,
+    "orcamento_minimo_para_meta": MetaArguments,
     "comparar_municipios": CompareArguments,
     "consultar_qualidade_dados": NoArguments,
     "consultar_provedores_municipio": MarketArguments,
@@ -452,6 +493,28 @@ def _engine_municipality(
 
 def _engine_source(municipios: pd.DataFrame) -> dict:
     return _ENGINE_REAL_SOURCE if municipios.attrs.get("fonte") == "real" else _ENGINE_SOURCE
+
+
+def _com_alavancas(cenario: Cenario, escolhidas: list[str] | None) -> Cenario:
+    """Troca as alavancas da tela pelas pedidas na ferramenta (None mantém as da tela)."""
+    if escolhidas is None:
+        return cenario
+    update = {campo: chave in escolhidas for chave, campo in CAMPO_ALAVANCA.items()}
+    return Cenario(cenario.params, cenario.alavancas.model_copy(update=update))
+
+
+def _cenario_aplicavel(
+    args: EscopoArguments, cenario: Cenario, orcamento_mi: float, objetivo: str
+) -> dict:
+    """Cenário que o painel reproduz igual; vira o botão "Aplicar no painel" do chat."""
+    return {
+        "orcamento_mi": orcamento_mi,
+        "objetivo": objetivo,
+        "uf": args.uf or "",
+        "regiao": args.regiao or "",
+        "semiarido": args.somente_semiarido,
+        "alavancas": cenario.alavancas.model_dump(),
+    }
 
 
 _COLUNAS_RESUMO = [
@@ -750,6 +813,13 @@ class ToolDispatcher:
 
         if name == "otimizar_portfolio":
             assert isinstance(args, PortfolioArguments)
+            cenario = _com_alavancas(cenario, args.alavancas)
+            # O painel usa peso 0,5, teto de 10 anos e orçamento de R$ 5 a 500 mi (senão, sem botão)
+            reproduzivel = (
+                args.peso_impacto == 0.5
+                and args.max_payback == 10.0
+                and 5 <= args.orcamento_mi <= 500
+            )
             df = filtrar_escopo(municipios, args.uf, args.somente_semiarido, args.regiao)
             result = optimize_portfolio(
                 df, cenario.params, cenario.alavancas,
@@ -777,6 +847,41 @@ class ToolDispatcher:
                     "premissas": (
                         f"objetivo={args.objetivo}; peso_impacto={args.peso_impacto}; "
                         f"max_payback={args.max_payback} anos; {cenario.descricao()}"
+                    ),
+                    **(
+                        {"cenario_aplicavel": _cenario_aplicavel(
+                            args, cenario, args.orcamento_mi, args.objetivo
+                        )}
+                        if reproduzivel and not sel.empty else {}
+                    ),
+                },
+            ), "success"
+
+        if name == "orcamento_minimo_para_meta":
+            assert isinstance(args, MetaArguments)
+            cenario = _com_alavancas(cenario, args.alavancas)
+            df = filtrar_escopo(municipios, args.uf, args.somente_semiarido, args.regiao)
+            if df.empty:
+                vazio = _not_found(engine_src, "Nenhum município encontrado no escopo pedido.")
+                return vazio, "not_found"
+            df = add_financials(df, cenario.params, cenario.alavancas)
+            meta = orcamento_minimo(df, cenario.params, cenario.alavancas, args.meta_alunos)
+            return _source_result(
+                engine_src,
+                {
+                    "escopo": {
+                        "uf": args.uf, "semiarido": args.somente_semiarido, "regiao": args.regiao,
+                    },
+                    **meta,
+                    "premissas": (
+                        "objetivo=alunos; max_payback=10 anos; orçamento em degraus de R$ 5 mi "
+                        f"até R$ 500 mi (limite do painel); {cenario.descricao()}"
+                    ),
+                    **(
+                        {"cenario_aplicavel": _cenario_aplicavel(
+                            args, cenario, meta["orcamento_mi"], "alunos"
+                        )}
+                        if meta["atingivel"] else {}
                     ),
                 },
             ), "success"

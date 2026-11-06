@@ -15,6 +15,7 @@ Solver: PuLP + CBC (open-source, sem licença).
 from __future__ import annotations
 
 import logging
+import math
 import os
 import warnings
 from dataclasses import dataclass, field
@@ -232,3 +233,126 @@ def optimize_portfolio(
         n_selecionados=len(selecionados),
         solver=solver_nome,
     )
+
+
+def alunos_atendidos(sel: pd.DataFrame) -> int:
+    return int(sel["alunos_sem_internet"].sum()) if "alunos_sem_internet" in sel.columns else 0
+
+
+def situacao_no_plano(
+    fin: pd.DataFrame,
+    id_municipio: str,
+    params: FinancialParams,
+    alavancas: Alavancas,
+    budget: float,
+    objetivo: str = "equilibrado",
+    max_payback: float = 10.0,
+) -> dict:
+    """
+    Por que o município entrou ou ficou fora do plano e quanto custaria incluí-lo.
+
+    Mesma regra de web/src/utils/plano.ts e da simulação "O que mudaria para incluir?" da ficha.
+    `fin` é o recorte do cenário com o business case calculado (_capex, _payback, _npv).
+    """
+    linha = fin[fin["id_municipio"].astype(str) == id_municipio]
+    if linha.empty:
+        return {"status": "fora_escopo"}
+    capex_mun = round(float(linha["_capex"].iloc[0]), 2)
+    pb = float(linha["_payback"].iloc[0])
+
+    base = optimize_portfolio(
+        fin, params, alavancas, budget, max_payback=max_payback, objetivo_modo=objetivo
+    )
+    ids_base = base.municipios["id_municipio"].astype(str)
+    if (ids_base == id_municipio).any():
+        pct = round(100 * capex_mun / budget)
+        return {"status": "selecionado", "capex_mi": capex_mun, "pct_orcamento": pct}
+
+    if not math.isfinite(pb) or pb > max_payback:
+        todas = alavancas.model_copy(
+            update={
+                "backhaul_comprometido": True, "fust_reembolsavel": True, "receita_escolar": True,
+            }
+        )
+        pb_todas = float(add_financials(linha, params, todas)["_payback"].iloc[0])
+        return {
+            "status": "acima_teto",
+            "payback_anos": round(pb, 2) if math.isfinite(pb) else None,
+            "teto_payback_anos": max_payback,
+            "payback_com_todas_alavancas": round(pb_todas, 2) if math.isfinite(pb_todas) else None,
+            "entra_com_todas_alavancas": math.isfinite(pb_todas) and pb_todas <= max_payback,
+        }
+
+    sim = optimize_portfolio(
+        fin, params, alavancas, budget, max_payback=max_payback, objetivo_modo=objetivo,
+        incluir=[id_municipio],
+    )
+    if sim.status == "Infeasible":
+        return {"status": "nao_cabe", "capex_mi": capex_mun, "orcamento_mi": budget}
+    novos = set(sim.municipios["id_municipio"].astype(str))
+    saem = base.municipios.loc[~ids_base.isin(novos), "nome"].tolist()
+    livre = max(0.0, budget - base.capex_total)
+    return {
+        "status": "sem_espaco" if capex_mun > livre else "preterido",
+        "capex_mi": capex_mun,
+        "sobra_orcamento_mi": round(livre, 2),
+        "objetivo": objetivo,
+        "para_incluir": {
+            "saem": saem[:5],
+            "n_saem": len(saem),
+            "delta_alunos": alunos_atendidos(sim.municipios) - alunos_atendidos(base.municipios),
+            "delta_vpl_mi": round(
+                float(sim.municipios["_npv"].sum() - base.municipios["_npv"].sum()), 2
+            ),
+            "delta_capex_mi": round(sim.capex_total - base.capex_total, 2),
+        },
+    }
+
+
+def orcamento_minimo(
+    fin: pd.DataFrame,
+    params: FinancialParams,
+    alavancas: Alavancas,
+    meta_alunos: int,
+    max_payback: float = 10.0,
+    passo: int = 5,
+    teto: int = 500,
+) -> dict:
+    """
+    Menor orçamento, nos degraus do slider do painel (de `passo` em `passo` até `teto`), cujo
+    portfólio com objetivo "alunos" atende ao menos `meta_alunos` alunos em escolas sem internet.
+
+    Busca binária sobre os degraus; os números devolvidos são os da execução final do otimizador.
+    """
+    def rodar(degrau: int) -> PortfolioResult:
+        return optimize_portfolio(
+            fin, params, alavancas, degrau * passo, max_payback=max_payback, objetivo_modo="alunos"
+        )
+
+    hi = teto // passo
+    melhor = rodar(hi)
+    if alunos_atendidos(melhor.municipios) < meta_alunos:
+        return {
+            "atingivel": False,
+            "meta_alunos": meta_alunos,
+            "teto_orcamento_mi": teto,
+            "max_alunos_no_teto": alunos_atendidos(melhor.municipios),
+            "n_municipios_no_teto": melhor.n_selecionados,
+        }
+    lo = 1
+    while lo < hi:  # invariante: o degrau `hi` atinge a meta e `melhor` é o resultado dele
+        meio = (lo + hi) // 2
+        r = rodar(meio)
+        if alunos_atendidos(r.municipios) >= meta_alunos:
+            hi, melhor = meio, r
+        else:
+            lo = meio + 1
+    return {
+        "atingivel": True,
+        "meta_alunos": meta_alunos,
+        "orcamento_mi": hi * passo,
+        "alunos": alunos_atendidos(melhor.municipios),
+        "n_municipios": melhor.n_selecionados,
+        "capex_total_mi": round(melhor.capex_total, 2),
+        "vpl_total_mi": round(float(melhor.municipios["_npv"].sum()), 2),
+    }

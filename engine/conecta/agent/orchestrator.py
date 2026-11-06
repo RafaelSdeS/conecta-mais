@@ -11,6 +11,7 @@ from typing import Any
 import pandas as pd
 
 from conecta.agent.schemas import (
+    AcaoPainel,
     ChatContext,
     ChatError,
     ChatHistoryMessage,
@@ -20,7 +21,7 @@ from conecta.agent.schemas import (
     ToolExecution,
 )
 from conecta.agent.score_explanation import build_score_explanation
-from conecta.agent.tools import TOOL_DEFINITIONS, Cenario, ToolDispatcher
+from conecta.agent.tools import CAMPO_ALAVANCA, TOOL_DEFINITIONS, Cenario, ToolDispatcher
 from conecta.agent.watsonx import (
     WatsonxClient,
     WatsonxError,
@@ -53,7 +54,11 @@ consulte consultar_documentacao_conecta e cite documento e seção.
 Para recomendar onde investir ("qual município", "onde priorizar", "maior
 retorno"), use ranking_municipios (retorno financeiro: criterio payback ou vpl;
 impacto educacional: score_I; visão geral: score_total) e, com um orçamento,
-otimizar_portfolio. Compare candidatos com comparar_municipios. Para "construir ou comprar" e para saber que
+otimizar_portfolio. Para metas ("quanto preciso investir para conectar N alunos"),
+use orcamento_minimo_para_meta. Para simular alavancas diferentes das da tela, informe
+alavancas na ferramenta. Quando o resultado trouxer cenario_aplicavel, diga em uma frase
+que o botão abaixo da resposta aplica esse cenário no painel.
+Compare candidatos com comparar_municipios. Para "construir ou comprar" e para saber que
 provedores atuam num município, use consultar_provedores_municipio; para a tecnologia
 (FTTH, FWA 5G ou satélite), use a comparação de tecnologias da análise financeira e diga que os
 custos de FWA e satélite são ilustrativos. Apresente a
@@ -104,6 +109,7 @@ _SYNTHESIS_PROMPT = (
 _ANALYTICAL_TOOLS = {
     "ranking_municipios",
     "otimizar_portfolio",
+    "orcamento_minimo_para_meta",
     "comparar_municipios",
     "consultar_qualidade_dados",
     "consultar_provedores_municipio",
@@ -864,5 +870,42 @@ class ChatOrchestrator:
             tools_executed=state.executions,
             has_demo_data=state.has_demo_data,
             references=state.references,
+            acoes=_acoes(state),
             error=error,
         )
+
+
+_OBJETIVO_ROTULO = {"retorno": "Retorno", "equilibrado": "Equilíbrio", "alunos": "Alunos"}
+_ALAVANCA_ROTULO = {"tcu": "TCU", "fust": "FUST", "enec": "ENEC"}
+
+
+def _acoes(state: _RunState) -> list[AcaoPainel]:
+    """Botões "Aplicar no painel" montados dos resultados do motor, nunca do texto do modelo."""
+    acoes: list[AcaoPainel] = []
+    for _, result in state.tool_results:
+        data = result.get("data") if result.get("ok") is True else None
+        c = data.get("cenario_aplicavel") if isinstance(data, dict) else None
+        if not isinstance(c, dict):
+            continue
+        alavancas = Alavancas.model_validate(c["alavancas"])
+        ligadas = [r for k, r in _ALAVANCA_ROTULO.items() if getattr(alavancas, CAMPO_ALAVANCA[k])]
+        partes = [
+            f"R$ {c['orcamento_mi']:g} mi",
+            c["uf"] or c["regiao"] or "Brasil",
+            *(["Semiárido"] if c["semiarido"] else []),
+            f"objetivo {_OBJETIVO_ROTULO[c['objetivo']]}",
+            " + ".join(ligadas) or "sem alavancas",
+        ]
+        acao = AcaoPainel(
+            tipo="aplicar_cenario",
+            rotulo=" · ".join(partes),
+            orcamento_mi=c["orcamento_mi"],
+            objetivo=c["objetivo"],
+            uf=c["uf"],
+            regiao=c["regiao"],
+            semiarido=c["semiarido"],
+            alavancas=alavancas,
+        )
+        if acao not in acoes:
+            acoes.append(acao)
+    return acoes[-3:]

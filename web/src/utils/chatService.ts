@@ -1,5 +1,7 @@
 /** Cliente do chat FastAPI; o navegador nunca acessa watsonx.ai diretamente. */
 
+import type { Acao } from '../api/client'
+
 export type ChatRole = 'user' | 'assistant'
 
 export interface ChatHistoryMessage {
@@ -36,6 +38,8 @@ export interface ChatAnswer {
   toolsExecuted: ChatToolExecution[]
   hasDemoData: boolean
   references: RagReference[]
+  /** Botões "Aplicar no painel" montados pelo servidor a partir dos resultados do motor. */
+  actions: Acao[]
 }
 
 interface ChatApiResponse {
@@ -45,6 +49,7 @@ interface ChatApiResponse {
   tools_executed?: unknown
   has_demo_data?: unknown
   references?: unknown
+  acoes?: unknown
   error?: {
     code?: unknown
     message?: unknown
@@ -128,6 +133,18 @@ function parseTools(value: unknown): ChatToolExecution[] {
   })
 }
 
+function parseAcoes(value: unknown): Acao[] {
+  if (!Array.isArray(value)) return []
+  return value.filter(
+    (acao): acao is Acao =>
+      isRecord(acao) &&
+      (acao.tipo === 'aplicar_cenario' || acao.tipo === 'abrir_municipio') &&
+      typeof acao.rotulo === 'string' &&
+      acao.rotulo.trim() !== '' &&
+      (acao.orcamento_mi == null || (typeof acao.orcamento_mi === 'number' && acao.orcamento_mi > 0)),
+  )
+}
+
 function parseReferences(text: string, value: unknown): {
   text: string
   references: RagReference[]
@@ -208,6 +225,8 @@ export interface ChatContext {
   quadrante?: string
   busca?: string
   uf?: string
+  regiao?: string
+  semiarido?: boolean
   objetivo?: 'retorno' | 'equilibrado' | 'alunos'
   /** Cenário ativo na tela: as ferramentas do agente calculam com as mesmas alavancas e premissas. */
   alavancas?: { backhaul_comprometido: boolean; fust_reembolsavel: boolean; receita_escolar: boolean }
@@ -297,5 +316,6 @@ export async function getAnswer(
     toolsExecuted,
     hasDemoData,
     references,
+    actions: parseAcoes(body.acoes),
   }
 }

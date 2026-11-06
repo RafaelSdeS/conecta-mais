@@ -3,6 +3,7 @@
  */
 
 import type { ReactNode } from 'react'
+import type { Acao } from '../api/client'
 import type { ChatDataSource, RagReference } from '../utils/chatService'
 
 interface Props {
@@ -13,6 +14,8 @@ interface Props {
   hasDemoData?: boolean
   error?:    string
   isTyping?: boolean
+  actions?:  Acao[]
+  onAction?: (acao: Acao) => void
 }
 
 function renderInline(text: string): ReactNode[] {
@@ -91,6 +94,8 @@ export default function ChatMessage({
   hasDemoData = false,
   error,
   isTyping,
+  actions = [],
+  onAction,
 }: Props) {
   const isUser = role === 'user'
 
@@ -171,6 +176,23 @@ export default function ChatMessage({
                   >
                     {SOURCE_LABELS[item.id]}
                   </span>
+                ))}
+              </div>
+            )}
+            {actions.length > 0 && onAction && (
+              <div aria-label="Ações sugeridas" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {actions.map((acao) => (
+                  <button
+                    key={acao.rotulo}
+                    type="button"
+                    onClick={() => onAction(acao)}
+                    style={{
+                      font: 'inherit', fontSize: 12, borderRadius: 4, padding: '5px 10px', cursor: 'pointer',
+                      background: 'var(--pn)', color: 'var(--tx)', border: '1px solid var(--ac)', textAlign: 'left',
+                    }}
+                  >
+                    {acao.tipo === 'aplicar_cenario' ? `Aplicar no painel: ${acao.rotulo}` : acao.rotulo}
+                  </button>
                 ))}
               </div>
             )}

@@ -4,7 +4,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import ChatMessage from '../components/ChatMessage'
+import type { Acao } from '../api/client'
 import { useAppStore } from '../store/appStore'
+import { useToast } from '../hooks/toastContext'
+import { aplicarAcao } from '../utils/acoes'
 import {
   ChatServiceError,
   getAnswer,
@@ -23,6 +26,7 @@ interface Message {
   hasDemoData?: boolean
   error?:    string
   isTyping?: boolean
+  actions?:  Acao[]
 }
 
 let nextId = 0
@@ -39,6 +43,12 @@ export default function ChatView() {
   const [input, setInput]       = useState('')
   const [loading, setLoading]   = useState(false)
   const bottomRef               = useRef<HTMLDivElement>(null)
+  const { toast }               = useToast()
+
+  function aplicar(acao: Acao) {
+    aplicarAcao(acao)
+    toast(acao.tipo === 'aplicar_cenario' ? 'Cenário aplicado no painel' : acao.rotulo)
+  }
 
   // Scroll automático para o final
   useEffect(() => {
@@ -70,6 +80,8 @@ export default function ChatView() {
         ...(filters.quadrante ? { quadrante: filters.quadrante } : {}),
         ...(filters.search ? { busca: filters.search } : {}),
         ...(filters.uf ? { uf: filters.uf } : {}),
+        ...(filters.regiao ? { regiao: filters.regiao } : {}),
+        ...(filters.semiarido ? { semiarido: true } : {}),
         objetivo,
         alavancas: {
           backhaul_comprometido: levers.tcu,
@@ -90,6 +102,7 @@ export default function ChatView() {
                 sources: answer.sources,
                 references: answer.references,
                 hasDemoData: answer.hasDemoData,
+                actions: answer.actions,
               }
             : m
         )
@@ -159,6 +172,8 @@ export default function ChatView() {
               hasDemoData={msg.hasDemoData}
               error={msg.error}
               isTyping={msg.isTyping}
+              actions={msg.actions}
+              onAction={aplicar}
             />
           ))}
           <div ref={bottomRef} />

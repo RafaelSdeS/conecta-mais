@@ -270,8 +270,11 @@ maior.
 ![Ficha de Juazeiro com a situação no plano e a simulação de inclusão](img/04-ficha-situacao-no-plano.png)
 
 A ficha também traz diagnóstico (domicílios, escolas, distância ao backhaul, scores), plano de ação e
-business case com e sem alavancas. O botão **Justificativa IA** pede ao Granite um texto curto sobre o
-município, calculado com o cenário da tela e marcado como texto gerado por IA.
+business case com e sem alavancas. O botão **Justificativa IA** pede ao Granite uma justificativa geral,
+que serve para a gestora, o comitê ou a prefeitura: se o município entrou no plano e por quê, o que mudaria
+isso (quem sairia do plano e quantos alunos e quanto de VPL a exceção custa) e os pontos de atenção. A
+situação e a simulação são calculadas no servidor com o cenário da tela; o Granite só redige. O texto vem
+marcado como gerado por IA, tem um botão **Copiar** e fica guardado com a decisão e no PDF.
 
 No celular, a mesma ficha cabe numa coluna, já com a decisão vigente:
 
@@ -305,6 +308,13 @@ dos dados. Se a leitura do plano por IA tiver sido gerada no Painel, ela entra n
 O agente conhece a tela (município aberto, orçamento, UF, quadrante, objetivo, alavancas e premissas) e usa ferramentas
 do motor: ranking, portfólio, comparação, escolas sem internet, provedores e documentação. A resposta é
 redigida pelo IBM Granite sobre os números das ferramentas e mostra as fontes usadas.
+
+O agente também é um copiloto do painel. Ele simula alavancas diferentes das da tela ("simule o Nordeste
+com R$ 200 mi e o FUST ligado") e responde metas ("qual o menor orçamento para atender 5 mil alunos no
+semiárido da Bahia?"): o motor procura o menor orçamento, nos degraus do painel, cujo portfólio atende a
+meta. Quando o cenário calculado pode ser reproduzido no painel, a resposta traz o botão **Aplicar no
+painel**, que ajusta orçamento, objetivo, alavancas e filtros de uma vez. O botão é montado pelo servidor
+com o resultado do motor, não com o texto do modelo.
 
 ![Agente respondendo com ranking calculado pelo motor](img/09-agente.png)
 
@@ -343,8 +353,11 @@ Para o passo a passo de cada tela, veja o [guia de uso](guia-de-uso.md).
 - **watsonx.ai / IBM Granite:** três usos. (1) Chat com *tool calling*: o Granite escolhe a ferramenta do
   motor, recebe os números e redige a resposta. (2) Agente regulatório com RAG sobre a documentação do
   projeto e textos oficiais (Leis 9.998/2000, 14.109/2020 e 14.172/2021 e a nota do TCU sobre a solução
-  consensual da Telefônica). (3) Textos de uma rodada: justificativa do município, leitura do portfólio e
-  filtros em linguagem natural.
+  consensual da Telefônica). (3) Textos de uma rodada: justificativa do município, leitura do portfólio,
+  filtros em linguagem natural e **achados do cenário**: no Painel, "O que eu não estou vendo?" faz o motor
+  procurar o que pode ter passado despercebido (quanto rende um orçamento um pouco maior, o que cada
+  alavanca desligada mudaria, municípios fora do plano com mais alunos por real, decisões registradas que o
+  plano contradiz) e o Granite escolhe os 3 mais úteis e os redige, cada um com uma ação de um clique.
 - **IBM Decision Optimization (CPLEX):** a formulação MILP já está pronta para o CPLEX. Hoje roda com o
   CBC (código aberto); `CONECTA_SOLVER=cplex` troca o solver quando há licença.
 - **watsonx Orchestrate e watsonx.governance:** planejados. Hoje a orquestração é própria (tool calling com

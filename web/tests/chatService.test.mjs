@@ -345,3 +345,35 @@ test('does not render a references section when no reference metadata exists', (
 
   assert.doesNotMatch(markup, /Referências documentais/)
 })
+
+test('keeps valid panel actions from the backend and drops malformed ones', async (t) => {
+  const originalFetch = globalThis.fetch
+  t.after(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  const aplicar = {
+    tipo: 'aplicar_cenario',
+    rotulo: 'R$ 120 mi · BA · Semiárido · objetivo Alunos · sem alavancas',
+    orcamento_mi: 120,
+    objetivo: 'alunos',
+    uf: 'BA',
+    regiao: '',
+    semiarido: true,
+    alavancas: { backhaul_comprometido: false, fust_reembolsavel: false, receita_escolar: false },
+    id_municipio: null,
+  }
+  globalThis.fetch = async () =>
+    mockResponse({
+      response: 'Com R$ 120 mi o plano atende a meta.',
+      history: [],
+      data_sources: [],
+      tools_executed: [{ name: 'orcamento_minimo_para_meta', status: 'success' }],
+      has_demo_data: false,
+      acoes: [aplicar, { tipo: 'apagar_tudo', rotulo: 'x' }, { tipo: 'aplicar_cenario', rotulo: '' }, 'texto'],
+      error: null,
+    })
+
+  const result = await getAnswer('Menor orçamento para 5 mil alunos?', [])
+  assert.deepEqual(result.actions, [aplicar])
+})

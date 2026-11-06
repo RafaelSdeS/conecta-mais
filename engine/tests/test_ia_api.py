@@ -42,6 +42,8 @@ def test_justificativa_usa_dados_do_motor_e_cacheia(api):
     assert r.status_code == 200 and r.json()["texto"] == "Justificativa."
     enviado = json.loads(fake.calls[0][0][1]["content"])
     assert enviado["nome"] == "São Paulo" and "payback_anos" in enviado
+    # Custa mais que o orçamento padrão de R$ 30 mi: o servidor calcula a situação, não o front.
+    assert enviado["situacao_no_plano"]["status"] == "nao_cabe"
     assert fake.calls[0][1] is None
     api.post("/ia/justificativa", json={"id_municipio": "3550308"})
     assert len(fake.calls) == 1  # segunda chamada vem do cache
@@ -60,12 +62,39 @@ def test_justificativa_usa_o_cenario_da_tela(api):
     fake = _use(_Fake("J."))
     api.post("/ia/justificativa", json={"id_municipio": "4106902"})
     api.post("/ia/justificativa", json={
-        "id_municipio": "4106902", "params": {"arpu_mensal": 150}, "no_portfolio": True,
+        "id_municipio": "4106902",
+        "cenario": {
+            "orcamento_mi": 5000, "objetivo": "alunos", "escopo": {"uf": "PR"},
+            "params": {"arpu_mensal": 150},
+        },
     })
     assert len(fake.calls) == 2  # cenário diferente não reaproveita o cache
     padrao, outro = (json.loads(c[0][1]["content"]) for c in fake.calls)
     assert outro["payback_anos"] < padrao["payback_anos"]
-    assert outro["no_portfolio_do_cenario"] is True and "no_portfolio_do_cenario" not in padrao
+    assert outro["situacao_no_plano"]["status"] == "selecionado"
+    assert outro["cenario"]["recorte"]["uf"] == "PR" and outro["cenario"]["objetivo"] == "alunos"
+
+
+def test_achados_ligam_cada_cartao_a_uma_acao_do_motor(api):
+    fake = _use(_Fake(json.dumps({"cartoes": [
+        {"id": "mais_orcamento", "titulo": "Mais orçamento", "texto": "Com R$ 360 mi entram mais."},
+        {"id": "inventado", "titulo": "X", "texto": "Y"},
+    ]})))
+    r = api.post("/ia/achados", json={"orcamento_mi": 300, "objetivo": "equilibrado"})
+    assert r.status_code == 200
+    cartoes = r.json()["cartoes"]
+    assert [c["id"] for c in cartoes] == ["mais_orcamento"]  # id desconhecido é descartado
+    acao = cartoes[0]["acao"]
+    assert acao["tipo"] == "aplicar_cenario" and acao["orcamento_mi"] == 360
+    enviados = json.loads(fake.calls[0][0][1]["content"])["achados"]
+    assert any(a["id"] == "mais_orcamento" for a in enviados)
+    assert all("acao" not in a for a in enviados)  # a ação fica no servidor, fora do prompt
+
+
+def test_achados_com_json_quebrado(api):
+    _use(_Fake("Não é JSON."))
+    r = api.post("/ia/achados", json={"orcamento_mi": 300, "objetivo": "equilibrado"})
+    assert r.status_code == 422
 
 
 def test_narrativa_do_portfolio(api):

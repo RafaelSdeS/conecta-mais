@@ -1,11 +1,14 @@
 /**
- * KPIPanel — grid de KPIs do portfólio atual, com o efeito das alavancas.
+ * KPIPanel — grid de KPIs do portfólio atual, com o efeito das alavancas, a explicação do
+ * portfólio e os achados do cenário pela IA.
  */
 
 import { useAppStore } from '../store/appStore'
 import KPICard from './KPICard'
 import AiText from './AiText'
+import Achados from './Achados'
 import { alavancasDe, api, chaveNarrativa } from '../api/client'
+import { montaPedidoPortfolio } from '../hooks/usePortfolioTrigger'
 import { fmtMi, fmtAnos, fmtN0 } from '../utils/format'
 
 export default function KPIPanel() {
@@ -17,6 +20,8 @@ export default function KPIPanel() {
   const levers    = useAppStore((s) => s.levers)
   const narrativa = useAppStore((s) => s.narrativa)
   const setNarrativa = useAppStore((s) => s.setNarrativa)
+  // Achados valem só para o cenário em que foram gerados.
+  const chaveCenario = useAppStore((s) => JSON.stringify(montaPedidoPortfolio(s)))
   const ids       = portfolio.map((m) => m.id_municipio)
   // O texto só vale para o mesmo portfólio no mesmo cenário (também usado no dossiê).
   const chave     = chaveNarrativa(ids, budget, params, levers)
@@ -83,6 +88,7 @@ export default function KPIPanel() {
         }
         onResult={(texto) => setNarrativa({ chave, texto })}
       />
+      <Achados key={chaveCenario} disabled={!kpis} />
     </>
   )
 }

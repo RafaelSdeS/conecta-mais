@@ -4,11 +4,26 @@
  */
 
 import { useEffect, useRef } from 'react'
-import { alavancasDe, api, type PortfolioRequest } from '../api/client'
+import { alavancasDe, api, type CenarioDecisao, type PortfolioRequest } from '../api/client'
 import { useAppStore, type AppState } from '../store/appStore'
 import { TETO_PAYBACK_ANOS } from '../utils/constants'
 
 type Cenario = Pick<AppState, 'budget' | 'objetivo' | 'params' | 'levers' | 'filters'>
+
+/** Cenário da tela no formato do servidor (decisões, justificativa e achados recalculam a partir dele). */
+export function cenarioDaTela({ budget, objetivo, params, levers, filters }: Cenario): CenarioDecisao {
+  return {
+    orcamento_mi: budget,
+    objetivo,
+    escopo: {
+      ...(filters.uf ? { uf: filters.uf } : {}),
+      ...(filters.regiao ? { regiao: filters.regiao } : {}),
+      semiarido: filters.semiarido,
+    },
+    params,
+    alavancas: alavancasDe(levers),
+  }
+}
 
 /** Pedido de portfólio do cenário da tela; a simulação de inclusão usa o mesmo pedido. */
 export function montaPedidoPortfolio({ budget, objetivo, params, levers, filters }: Cenario): PortfolioRequest {

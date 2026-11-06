@@ -313,7 +313,7 @@ bancos SQLite são ignorados pelo Git. Nunca coloque credenciais no frontend.
 ```
 
 `context` é opcional e descreve a tela do usuário (`pagina`, `municipio_id`,
-`municipio_nome`, `orcamento_mi`, `quadrante`, `busca`, `uf`, `objetivo`) e o cenário ativo
+`municipio_nome`, `orcamento_mi`, `quadrante`, `busca`, `uf`, `regiao`, `semiarido`, `objetivo`) e o cenário ativo
 (`alavancas` e `premissas`, mesmos campos de `/portfolio`); as ferramentas de ranking, portfólio,
 comparação e análise financeira calculam com esse cenário. Entra no prompt como dado, nunca como instrução.
 
@@ -322,8 +322,26 @@ comparação e análise financeira calculam com esse cenário. Entra no prompt c
 atende ao teto de payback, a resposta traz `avisos` e `elegiveis_payback: 0`.
 
 Ferramentas do agente: busca e indicadores de escolas (SQLite), scores e business
-case de um município, `ranking_municipios`, `otimizar_portfolio`,
+case de um município, `ranking_municipios`, `otimizar_portfolio`, `orcamento_minimo_para_meta`,
 `comparar_municipios`, `consultar_qualidade_dados` e consulta à documentação (RAG).
+
+`otimizar_portfolio` e `orcamento_minimo_para_meta` aceitam `alavancas` (`tcu`, `fust`, `enec`) para
+simular um cenário diferente do da tela. `orcamento_minimo_para_meta` recebe `meta_alunos` e o escopo e
+procura, nos degraus de R$ 5 mi do painel (até R$ 500 mi), o menor orçamento cujo portfólio com objetivo
+Alunos atende a meta. Quando o painel consegue reproduzir o cenário calculado (peso 0,5, teto de 10 anos,
+orçamento de R$ 5 a 500 mi), a resposta traz `acoes`, com até 3 botões "Aplicar no painel":
+
+```json
+{
+  "tipo": "aplicar_cenario",
+  "rotulo": "R$ 120 mi · BA · Semiárido · objetivo Alunos · sem alavancas",
+  "orcamento_mi": 120, "objetivo": "alunos", "uf": "BA", "regiao": "", "semiarido": true,
+  "alavancas": { "backhaul_comprometido": false, "fust_reembolsavel": false, "receita_escolar": false }
+}
+```
+
+As ações são montadas pelo servidor a partir do resultado do motor, nunca do texto do modelo. Campos
+`null` mantêm o que está na tela; `""` em `uf` ou `regiao` limpa o filtro.
 Quando as ferramentas terminam, o Granite redige a resposta final; o texto
 determinístico só é usado se essa chamada falhar. As fontes retornadas em
 `data_sources` são `sqlite_integrado`, `engine` (motor sobre a base real),
@@ -470,21 +488,27 @@ do município, da mais recente para a mais antiga.
 Usam o IBM Granite sem ferramentas, sobre números já calculados pelo motor.
 Erros do watsonx.ai retornam o status e a mensagem pública em `detail`.
 
+O `cenario` de `/ia/justificativa` e o corpo de `/ia/achados` têm o mesmo formato do cenário de
+`POST /decisoes`: `orcamento_mi`, `objetivo`, `escopo` (`uf`, `regiao`, `semiarido`), `params` e `alavancas`.
+
 ### POST `/ia/justificativa`
 
 ```json
 {
-  "id_municipio": "2927408",
-  "params": { "arpu_mensal": 95 },
-  "alavancas": { "fust_reembolsavel": true },
-  "no_portfolio": false
+  "id_municipio": "2918407",
+  "cenario": {
+    "orcamento_mi": 150, "objetivo": "equilibrado",
+    "escopo": { "uf": "BA", "semiarido": true },
+    "params": {}, "alavancas": {}
+  }
 }
 ```
 
-Resposta: `{ "texto": "...", "fonte_dados": "real" }`. `params` e `alavancas` são opcionais (padrão
-do motor) e devem ser os da tela, para o texto citar os mesmos números da ficha. `no_portfolio`
-informa se o município está no plano do cenário. O texto é cacheado por município, cenário e
-`no_portfolio` enquanto a API estiver no ar.
+Resposta: `{ "texto": "...", "fonte_dados": "real" }`. É uma justificativa geral, para qualquer leitor:
+se o município entrou no plano e por quê, o que mudaria isso e os pontos de atenção. O servidor calcula a
+situação no plano com o cenário (mesma regra da ficha) e, se o município ficou fora, simula a inclusão:
+quem sairia do plano e a variação de alunos, VPL e CapEx. Sem `cenario`, usa R$ 30 mi e objetivo
+Equilíbrio. O texto é cacheado por município e cenário enquanto a API estiver no ar.
 
 ### POST `/ia/portfolio-narrativa`
 
@@ -503,6 +527,35 @@ Os números são recalculados no servidor a partir dos ids, com `params` e `alav
 
 Resposta: `{ "uf": "CE", "quadrante": "Q1", "busca": null, "apenas_portfolio": false }`.
 Se o modelo não devolver um JSON válido, a API responde 422 e nada é aplicado.
+
+### POST `/ia/achados`
+
+```json
+{ "orcamento_mi": 150, "objetivo": "equilibrado", "escopo": { "uf": "BA", "semiarido": true } }
+```
+
+O motor procura no cenário o que pode ter passado despercebido:
+
+- `mais_orcamento`: quem entra e quanto mudam alunos e VPL com cerca de 20% a mais de orçamento.
+- `alavanca_tcu`, `alavanca_fust`, `alavanca_enec`: para cada alavanca desligada, quantos municípios passam a
+  caber no teto de payback e quanto o VPL do plano atual muda.
+- `alunos_por_real_fora`: municípios fora do plano, dentro do teto, com mais alunos sem internet por R$ mi.
+- `decisoes_divergentes`: aprovações registradas fora do plano atual ou descartes dentro dele.
+
+O Granite escolhe até 3 e redige título e texto. Resposta:
+
+```json
+{
+  "cartoes": [
+    { "id": "mais_orcamento", "titulo": "...", "texto": "...",
+      "acao": { "tipo": "aplicar_cenario", "rotulo": "Usar R$ 180 mi", "orcamento_mi": 180 } }
+  ],
+  "fonte_dados": "real"
+}
+```
+
+Cada `acao` (aplicar um cenário ou abrir uma ficha) é ligada ao achado pelo servidor, nunca pelo modelo.
+Sem achados, devolve `cartoes: []` sem chamar o Granite; se o modelo não devolver JSON válido, responde 422.
 
 ### Auditoria
 

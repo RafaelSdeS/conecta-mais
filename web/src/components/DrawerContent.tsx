@@ -7,7 +7,8 @@
  */
 
 import { useEffect, useState } from 'react'
-import { alavancasDe, api, chaveCenario } from '../api/client'
+import { alavancasDe, api } from '../api/client'
+import { cenarioDaTela, montaPedidoPortfolio } from '../hooks/usePortfolioTrigger'
 import type { FinancialResult } from '../api/client'
 import { useAppStore } from '../store/appStore'
 import { useFavorites } from '../hooks/useFavorites'
@@ -61,7 +62,7 @@ export default function DrawerContent({ municipio: m }: Props) {
   const portfolio  = useAppStore((s) => s.portfolio)
   const financeiro = useAppStore((s) => s.financeiro)
   const kpis       = useAppStore((s) => s.kpis)
-  const isSel      = portfolio.some((p) => p.id_municipio === m.id_municipio)
+  const filters    = useAppStore((s) => s.filters)
   // Sem portfólio calculado (API fora do ar) não há como dizer por que entrou ou não.
   const situacao   = kpis
     ? situacaoNoPlano(m.id_municipio, {
@@ -69,8 +70,8 @@ export default function DrawerContent({ municipio: m }: Props) {
         financeiro, budget, capexUsado: kpis.capexUsado, objetivo,
       })
     : null
-  // Texto da IA depende do cenário e de o município estar ou não no plano.
-  const chaveJust  = `${m.id_municipio}|${isSel}|${chaveCenario(params, levers)}`
+  // O servidor recalcula a situação no plano: o texto vale só para o mesmo cenário completo.
+  const chaveJust  = `${m.id_municipio}|${JSON.stringify(montaPedidoPortfolio({ budget, objetivo, params, levers, filters }))}`
   const justificativa = useAppStore((s) => s.justificativas[chaveJust])
   const setJustificativa = useAppStore((s) => s.setJustificativa)
   const [favs, toggleFav] = useFavorites()
@@ -184,7 +185,7 @@ export default function DrawerContent({ municipio: m }: Props) {
         key={chaveJust}
         label="Justificativa IA"
         initial={justificativa}
-        run={() => api.postJustificativa(m.id_municipio, params, alavancasDe(levers), isSel).then((r) => r.texto)}
+        run={() => api.postJustificativa(m.id_municipio, cenarioDaTela(useAppStore.getState())).then((r) => r.texto)}
         onResult={(t) => setJustificativa(chaveJust, t)}
       />
 
