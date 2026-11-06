@@ -74,6 +74,7 @@ export default function DrawerContent({ municipio: m }: Props) {
   const chaveJust  = `${m.id_municipio}|${JSON.stringify(montaPedidoPortfolio({ budget, objetivo, params, levers, filters }))}`
   const justificativa = useAppStore((s) => s.justificativas[chaveJust])
   const setJustificativa = useAppStore((s) => s.setJustificativa)
+  const drawerOpen = useAppStore((s) => s.drawerOpen)
   const [favs, toggleFav] = useFavorites()
   const { toast } = useToast()
 
@@ -184,7 +185,10 @@ export default function DrawerContent({ municipio: m }: Props) {
       <AiText
         key={chaveJust}
         label="Justificativa IA"
-        initial={justificativa}
+        chave={`justificativa:${chaveJust}`}
+        aviso={`A justificativa IA de ${m.nome} ficou pronta na ficha.`}
+        visivel={drawerOpen}
+        texto={justificativa}
         run={() => api.postJustificativa(m.id_municipio, cenarioDaTela(useAppStore.getState())).then((r) => r.texto)}
         onResult={(t) => setJustificativa(chaveJust, t)}
       />

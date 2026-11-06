@@ -84,8 +84,10 @@ export default function KPIPanel() {
       <AiText
         key={chave}
         label="Explicar portfólio (IA)"
+        chave={`narrativa:${chave}`}
+        aviso="A explicação do portfólio ficou pronta no Painel."
         disabled={portfolio.length === 0}
-        initial={narrativa?.chave === chave ? narrativa.texto : undefined}
+        texto={narrativa?.chave === chave ? narrativa.texto : undefined}
         run={() =>
           api
             .postPortfolioNarrativa(ids, budget, params, alavancasDe(levers))

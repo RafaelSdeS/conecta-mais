@@ -99,6 +99,8 @@ export interface AppState {
   narrativa: { chave: string; texto: string } | null
   /** Achados do cenário pela IA; `chave` identifica o cenário em que foram gerados. */
   achados: { chave: string; cartoes: Achado[] } | null
+  /** Pedidos à IA por chave: presente = gerando; com `erro` = falhou. Ficam aqui para seguir ao trocar de tela. */
+  iaPedidos: Record<string, { erro?: string }>
   /** Decisão vigente por município (a mais recente registrada no servidor). */
   decisoes: Record<string, Decisao>
 
@@ -135,6 +137,7 @@ export interface AppState {
   setJustificativa: (id: string, texto: string) => void
   setNarrativa: (n: { chave: string; texto: string }) => void
   setAchados: (a: { chave: string; cartoes: Achado[] }) => void
+  setIaPedido: (chave: string, p: { erro?: string } | null) => void
   setDecisoes: (lista: Decisao[]) => void
   addDecisao: (d: Decisao) => void
   setView: (v: ViewId) => void
@@ -169,6 +172,7 @@ export const useAppStore = create<AppState>((set) => ({
   justificativas: {},
   narrativa: null,
   achados: null,
+  iaPedidos: {},
   decisoes: {},
 
   view: 'painel',
@@ -219,6 +223,12 @@ export const useAppStore = create<AppState>((set) => ({
   setJustificativa: (id, texto) => set((s) => ({ justificativas: { ...s.justificativas, [id]: texto } })),
   setNarrativa: (n) => set({ narrativa: n }),
   setAchados: (a) => set({ achados: a }),
+  setIaPedido: (chave, p) => set((s) => {
+    const iaPedidos = { ...s.iaPedidos }
+    if (p) iaPedidos[chave] = p
+    else delete iaPedidos[chave]
+    return { iaPedidos }
+  }),
   setDecisoes: (lista) => set({ decisoes: Object.fromEntries(lista.map((d) => [d.id_municipio, d])) }),
   addDecisao: (d) => set((s) => ({ decisoes: { ...s.decisoes, [d.id_municipio]: d } })),
 

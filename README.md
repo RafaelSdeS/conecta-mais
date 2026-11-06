@@ -90,7 +90,7 @@ python -m pytest
 
 | View | Descrição |
 |---|---|
-| **Painel** | KPIs animados, mapa Leaflet com todos os municípios (cor por quadrante, payback, score, alunos ou decisão), quadrantes, histograma de payback, explicação do portfólio e achados do cenário por IA ("O que eu não estou vendo?") e dossiê do recorte em PDF |
+| **Painel** | KPIs animados, mapa Leaflet com todos os municípios (cor por quadrante, payback, score, alunos ou decisão), quadrantes, histograma de payback, explicação do portfólio e achados do cenário por IA ("O que eu não estou vendo?"), que seguem gerando se você trocar de aba, e dossiê do recorte em PDF |
 | **Municípios** | Tabela ordenável com busca, filtros (inclusive por decisão), favoritos, portfólio e decisão vigente |
 | **Agente** | Chat com o IBM Granite (watsonx.ai): ranking, portfólio, comparação, simulação de alavancas, menor orçamento para uma meta de alunos e dúvidas de uso; cenários calculados viram um botão "Aplicar no painel"; a conversa continua ao trocar de aba ou recarregar a página |
 | **Solução** | Arquitetura IBM watsonx, ROI estimado e fases de entrega |

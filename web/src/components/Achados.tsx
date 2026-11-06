@@ -4,9 +4,9 @@
  * plano contradiz); o IBM Granite escolhe até 3 e os redige. Cada cartão traz uma ação de um clique.
  */
 
-import { useState } from 'react'
 import { api, type Achado } from '../api/client'
 import { cenarioDaTela } from '../hooks/usePortfolioTrigger'
+import { usePedidoIa } from '../hooks/usePedidoIa'
 import { useToast } from '../hooks/toastContext'
 import { useAppStore } from '../store/appStore'
 import { aplicarAcao } from '../utils/acoes'
@@ -20,20 +20,13 @@ export default function Achados({ chave, disabled }: { chave: string; disabled?:
   // Guardados no store por cenário: voltar ao painel não perde os cartões nem gasta outra chamada.
   const guardados = useAppStore((s) => (s.achados?.chave === chave ? s.achados.cartoes : null))
   const setAchados = useAppStore((s) => s.setAchados)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string>()
+  // O pedido segue se a pessoa sair do Painel enquanto a IA procura.
+  const { gerando: loading, erro: error, pedir } = usePedidoIa(`achados:${chave}`, 'Os achados do cenário ficaram prontos no Painel.')
   const { toast } = useToast()
 
-  async function gerar() {
-    setLoading(true)
-    setError(undefined)
-    try {
-      setAchados({ chave, cartoes: (await api.postAchados(cenarioDaTela(useAppStore.getState()))).cartoes })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setLoading(false)
-    }
+  function gerar() {
+    const cenario = cenarioDaTela(useAppStore.getState())
+    pedir(async () => setAchados({ chave, cartoes: (await api.postAchados(cenario)).cartoes }))
   }
 
   function aplicar(a: Achado) {

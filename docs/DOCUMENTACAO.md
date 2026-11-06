@@ -264,6 +264,11 @@ ao Granite os três achados mais úteis, cada um com um botão que aplica a muda
 recorte acima: R$ 30 mi a mais trariam 6 municípios e 4.047 alunos; o FUST elevaria o VPL do plano em
 R$ 45,74 mi; a receita escolar (ENEC) colocaria 8 municípios dentro do teto de payback.
 
+Nenhum botão de IA prende a tela. Depois de pedir os achados, a explicação do portfólio ou a justificativa
+de um município, a gestora pode ir para outra aba ou fechar a ficha: o pedido continua, o botão segue
+indicando que a IA está trabalhando se ela voltar antes da resposta, e um aviso diz onde o texto ficou
+pronto.
+
 ![Achados do cenário, calculados pelo motor e redigidos pelo Granite](img/12-achados.png)
 
 *Dor resolvida:* análise espalhada em planilhas (jornada, etapa 2).

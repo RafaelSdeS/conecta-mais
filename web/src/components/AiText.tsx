@@ -1,24 +1,32 @@
 /**
  * AiText — botão que gera um texto com o IBM Granite (backend /ia/*) e o exibe abaixo,
- * com "Copiar" para colar em e-mail, mensagem ou apresentação.
+ * com "Copiar" para colar em e-mail, mensagem ou apresentação. O texto e o pedido em andamento
+ * ficam na store: dá para sair da tela enquanto a IA pensa.
  */
 
 import { useState } from 'react'
+import { usePedidoIa } from '../hooks/usePedidoIa'
 
 interface Props {
   label: string
+  /** Identifica o pedido (o mesmo texto não é pedido duas vezes ao mesmo tempo). */
+  chave: string
+  /** Toast mostrado se a resposta chegar com o botão fora da tela. */
+  aviso: string
+  /** false quando o botão está montado mas escondido (ex.: ficha fechada). */
+  visivel?: boolean
   run: () => Promise<string>
   disabled?: boolean
-  /** Texto já gerado antes (ex.: guardado na store) para reexibir sem nova chamada. */
-  initial?: string
-  onResult?: (texto: string) => void
+  /** Texto já gerado (guardado na store). */
+  texto?: string
+  onResult: (texto: string) => void
 }
 
-export default function AiText({ label, run, disabled, initial, onResult }: Props) {
-  const [loading, setLoading] = useState(false)
-  const [text, setText] = useState<string | undefined>(initial)
-  const [error, setError] = useState<string>()
+export default function AiText({ label, chave, aviso, visivel, run, disabled, texto: text, onResult }: Props) {
+  const { gerando: loading, erro, pedir } = usePedidoIa(chave, aviso, visivel)
+  const [erroCopia, setErroCopia] = useState<string>()
   const [copiado, setCopiado] = useState(false)
+  const error = erroCopia ?? erro
 
   async function copiar() {
     try {
@@ -26,22 +34,13 @@ export default function AiText({ label, run, disabled, initial, onResult }: Prop
       setCopiado(true)
       setTimeout(() => setCopiado(false), 2000)
     } catch {
-      setError('Não foi possível copiar; selecione o texto e copie manualmente.')
+      setErroCopia('Não foi possível copiar; selecione o texto e copie manualmente.')
     }
   }
 
-  async function go() {
-    setLoading(true)
-    setError(undefined)
-    try {
-      const texto = await run()
-      setText(texto)
-      onResult?.(texto)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setLoading(false)
-    }
+  function go() {
+    setErroCopia(undefined)
+    pedir(async () => onResult(await run()))
   }
 
   return (
