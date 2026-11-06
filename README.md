@@ -9,8 +9,11 @@
 
 Sistema de apoio à decisão para expansão de conectividade da Vivo, desenvolvido para o **Desafio IBM SkillsBuild & Fundação Telefônica Vivo**.
 
-> Veja [`TEAM.md`](TEAM.md) para a divisão de trabalho entre Rafael, Joel e Chris e
-> [`docs/design-thinking.md`](docs/design-thinking.md) para persona, Hills e premissas a validar.
+> **Documentação do projeto, com telas:** [`docs/DOCUMENTACAO.md`](docs/DOCUMENTACAO.md)
+> ([PDF](DOCUMENTACAO_CONECTA.pdf)). Conta o problema, a persona, as Hills, as decisões de produto e o que
+> falta validar, seguindo o IBM Enterprise Design Thinking. Divisão de trabalho em [`TEAM.md`](TEAM.md).
+
+![Painel do Conecta+](docs/img/02-painel.png)
 
 ---
 

@@ -1,0 +1,478 @@
+<p align="center">
+  <img src="../SVG/conecta-horizontal.svg" alt="Conecta+" width="320">
+</p>
+
+# Conecta+ — Documentação do projeto
+
+**Desafio IBM SkillsBuild & Fundação Telefônica Vivo** · novembro de 2026
+
+Este documento conta a história do Conecta+ pelo **IBM Enterprise Design Thinking**: o problema que
+observamos, para quem resolvemos, as decisões que tomamos e o que ainda falta validar. Todas as telas
+são do app rodando sobre a base real (IBGE, INEP e Anatel). Os detalhes técnicos estão nos documentos
+de referência citados ao longo do texto.
+
+---
+
+## Sumário
+
+0. [Resumo em 1 minuto](#0-resumo-em-1-minuto)
+1. [Como usamos o Design Thinking](#1-como-usamos-o-design-thinking)
+2. [Observar: o problema](#2-observar-o-problema)
+3. [Refletir: para quem](#3-refletir-para-quem)
+4. [Fazer: ideias e decisões](#4-fazer-ideias-e-decisões)
+5. [A solução, pela jornada da persona](#5-a-solução-pela-jornada-da-persona)
+6. [Como funciona](#6-como-funciona)
+7. [IA confiável](#7-ia-confiável)
+8. [Testar: o que validamos e o que falta](#8-testar-o-que-validamos-e-o-que-falta)
+9. [Limites e próximos passos](#9-limites-e-próximos-passos)
+10. [Como rodar e equipe](#10-como-rodar-e-equipe)
+
+---
+
+## 0. Resumo em 1 minuto
+
+**O que é.** Um sistema de apoio à decisão para a expansão de fibra da Vivo. Ele cruza potencial de
+mercado, impacto educacional, custo de implantação e alavancas públicas (FUST, acordo de migração da
+concessão, programas de conectividade escolar) e monta o melhor portfólio de municípios para um
+orçamento. O IBM Granite, no watsonx.ai, explica os números e responde perguntas; quem calcula é o motor.
+
+**Para quem.** A gestora regional de expansão: decide investimentos da sua regional, ouve "por que minha
+cidade ficou de fora?" dos prefeitos e precisa defender cada decisão no comitê de CapEx.
+
+**O que entrega hoje.**
+
+- Painel com os 5.565 municípios da base real, mapa, quadrantes e portfólio ótimo por orçamento.
+- Ficha executiva que diz se o município entrou no plano, por que não entrou e **o que mudaria para incluí-lo**.
+- Registro de decisões (aprovar, adiar, descartar) com motivo, histórico e exceções ao plano.
+- Dossiê do recorte em PDF para o comitê.
+- Agente com IBM Granite que consulta o motor e a documentação (RAG), sempre com as fontes.
+
+![Painel do Conecta+ com os 5.565 municípios](img/02-painel.png)
+
+### Como avaliar em 5 minutos
+
+Com o app rodando ([seção 10](#10-como-rodar-e-equipe)):
+
+1. Abra `http://localhost:5173/?uf=BA&semiarido=1` e leve o orçamento do topo para **R$ 150 mi**.
+2. Pressione **Ctrl+K**, digite "Juazeiro" e abra a ficha de Juazeiro (BA). Clique em **O que mudaria para incluir?**
+3. Na mesma ficha, **Registrar decisão** → Aprovar, com um motivo. Veja o aviso de exceção ao plano.
+4. Volte ao Painel e clique em **Dossiê (PDF)**.
+5. Na aba **Agente**, pergunte: "Quais municípios do semiárido da Bahia têm mais alunos sem internet por real investido?"
+6. Na aba **Solução** (`/?view=sol`), veja o estado de cada parte do sistema e os limites conhecidos.
+
+### Estado das entregas
+
+| Entregue | Parcial | Planejado |
+|---|---|---|
+| ETL em 12 passos sobre dados públicos e base SQLite | Tecnologia de acesso (custos de FWA e satélite ilustrativos) | watsonx Orchestrate |
+| Scores M·I·C·A, quadrantes e business case | Construir × comprar (sem preço nem qualidade de rede) | watsonx.governance |
+| Otimizador de portfólio (MILP) | Listas para secretarias (sem login nem contrato B2G) | IBM Decision Optimization (CPLEX) em produção |
+| Situação no plano, simulação de inclusão, decisões e dossiê | Módulo Saúde (UBS como demanda, sem conectividade das UBS) | Uso sem conexão em campo (Hill 3) |
+| Agente Granite com ferramentas, RAG e auditoria local | | Login e alçada por gestor |
+| Backtest 2021→2025 com histórico real da Anatel | | |
+
+---
+
+## 1. Como usamos o Design Thinking
+
+Seguimos o **IBM Enterprise Design Thinking**: três princípios, o Loop e três práticas-chave.
+
+| Princípio | Como aparece no Conecta+ |
+|---|---|
+| **Foco no resultado do usuário** | Cada funcionalidade responde a uma Hill da gestora regional (seção 3), não a um módulo técnico. |
+| **Reinvenção contínua** | O produto saiu de um protótipo HTML com dados simulados para um MVP com a base real; a persona mudou o foco de "painel analítico" para "decidir e defender" (seção 4). |
+| **Times diversos e autônomos** | Três frentes com dono claro: algoritmos (scores, financeiro, otimização), produto (painel e ficha) e dados + IA (ETL e agentes). Veja [`TEAM.md`](../TEAM.md). |
+
+**O Loop.** Observar → Refletir → Fazer, repetido a cada entrega. As seções 2 a 8 seguem esse ciclo e
+fecham com o plano do próximo ciclo.
+
+**Práticas-chave.**
+
+- **Hills:** três metas escritas do ponto de vista da gestora (seção 3).
+- **Playbacks:** roteiro de 10 minutos pronto para rodar com gestores (seção 8).
+- **Sponsor Users:** ainda **não** envolvidos. Persona, Hills e jornada são hipóteses construídas com
+  dados públicos e com o enunciado do desafio. Validá-las é o primeiro passo do próximo ciclo.
+
+Para quem conhece as cinco etapas clássicas, a correspondência é esta:
+
+| Etapa clássica | No Loop | Onde está neste documento |
+|---|---|---|
+| Empatizar | Observar | [2. O problema](#2-observar-o-problema) |
+| Definir | Refletir | [3. Persona, jornada e Hills](#3-refletir-para-quem) |
+| Idear | Refletir / Fazer | [4. Ideias e decisões](#4-fazer-ideias-e-decisões) |
+| Prototipar | Fazer | [4 e 5. Do protótipo ao MVP](#41-do-protótipo-ao-mvp) |
+| Testar | Observar (de novo) | [8. Testar](#8-testar-o-que-validamos-e-o-que-falta) |
+
+---
+
+## 2. Observar: o problema
+
+### 2.1 O que os dados públicos mostram
+
+Sem acesso a usuários, começamos pelos dados. A proposta ([`PROPOSTA_DETALHADA.md`](PROPOSTA_DETALHADA.md), §2)
+e a base montada pelo ETL apontam três tensões:
+
+- **A fibra da Vivo chega a 453 cidades, cerca de 8% dos municípios.** A empresa investiu R$ 9,27 bilhões
+  em 2025 (15,6% da receita) e declara foco em reduzir a intensidade de CapEx. Cada município escolhido pesa.
+- **O gargalo da escola é a qualidade da conexão.** Na base do Conecta+, **46.357 escolas públicas (34% de
+  137.755) não têm internet adequada para aprendizagem**, com 8,5 milhões de matrículas.
+- **Os instrumentos públicos existem, mas são avaliados separadamente do plano comercial.** FUST (operado
+  pelo BNDES), backhaul do acordo de migração da concessão (121 municípios) e a Estratégia Nacional de
+  Escolas Conectadas (R$ 8,8 bilhões) atuam nas mesmas regiões, mas raramente entram na mesma conta.
+
+| Indicador da base real | Valor |
+|---|---|
+| Municípios analisados | 5.565 |
+| Escolas públicas sem internet para aprendizagem | 46.357 (34%) |
+| Matrículas nessas escolas | 8.512.282 |
+| Municípios com backhaul de fibra (Anatel) | 1.022 (18%) |
+| Municípios no Semiárido (IBGE/SUDENE 2022) | 1.477 |
+
+### 2.2 Quem é afetado
+
+| Stakeholder | O que precisa |
+|---|---|
+| Gestora regional de expansão (Vivo) | Decidir onde investir e explicar cada decisão |
+| Comitê de CapEx | Números que resistam a questionamento, com premissas explícitas |
+| Relações regulatórias | Extrair valor comercial das obras obrigatórias do acordo |
+| Fundação Telefônica Vivo | Levar formação docente para onde a conexão chega |
+| Prefeituras e secretarias de educação | Entender por que o município entrou ou não |
+
+### 2.3 A oportunidade
+
+> Avaliar cada município com **todos** os instrumentos disponíveis: retorno privado, impacto educacional,
+> custo de implantação e alavancas públicas. E deixar a decisão explicável para quem decide e para quem
+> pergunta.
+
+---
+
+## 3. Refletir: para quem
+
+Tudo nesta seção é **hipótese**, a validar com Sponsor Users (seção 8).
+
+### 3.1 Persona: gestora regional de expansão
+
+- **Quem é:** responde por uma regional (por exemplo, Nordeste e Semiárido), decide investimentos dentro
+  de uma alçada e presta contas ao comitê de CapEx.
+- **Onde trabalha:** boa parte do tempo em campo, com prefeituras e secretarias de educação, pelo celular
+  e com sinal instável.
+- **O que precisa:** explicar por que um município entrou ou não no plano, registrar a decisão com o
+  motivo e levar ao comitê um material que resista a questionamento.
+- **O que atrapalha:** números espalhados em planilhas, premissas implícitas, pressão local para incluir
+  municípios e dados públicos incompletos.
+
+**Mapa de empatia**
+
+| Diz | Pensa |
+|---|---|
+| "Por que minha cidade ficou de fora?" (ouvido do prefeito) | "Se eu aprovar fora do plano, preciso de um motivo que o comitê aceite." |
+| **Faz** | **Sente** |
+| Monta planilhas próprias para cada visita e reunião | Insegurança quando um número não tem fonte clara |
+
+### 3.2 Jornada atual (as-is)
+
+| Etapa | O que a gestora faz | Dor |
+|---|---|---|
+| 1. Recebe a pergunta | O prefeito questiona por que o município ficou fora do plano | Não tem a resposta à mão; promete retornar |
+| 2. Monta a análise | Cruza planilhas de mercado, custo e escolas, cada uma com uma data e uma premissa | Horas de trabalho; números que não batem entre si |
+| 3. Avalia alavancas | Procura se o município tem FUST, backhaul do acordo ou programa escolar | Informação dispersa em editais e listas oficiais |
+| 4. Decide | Aprova uma exceção ou mantém o plano | A decisão fica em e-mail ou reunião, sem registro do motivo |
+| 5. Presta contas | Prepara material para o comitê de CapEx | Refaz a análise; premissas implícitas viram questionamento |
+
+### 3.3 Hills
+
+1. **Explicar:** a gestora regional explica pelo celular, em menos de 2 minutos, por que um município
+   entrou ou não no plano e o que mudaria isso, com números de fonte rastreável.
+2. **Decidir e defender:** a gestora regional registra a decisão (aprovar, adiar ou descartar) com motivo
+   e observação de campo e sai, no mesmo dia, com o dossiê do recorte pronto para o comitê.
+3. **Próxima, a validar:** a gestora regional consulta as fichas e registra decisões da sua região mesmo
+   sem sinal, e tudo é enviado quando a conexão volta.
+
+### 3.4 Premissas a validar primeiro
+
+| Hipótese | Se estiver errada | Como validar |
+|---|---|---|
+| A gestora decide dentro de uma alçada, e não só recomenda | O registro vira proposta e precisa de um fluxo de aprovação | Perguntar a 3 gestores como uma expansão é aprovada hoje |
+| A pergunta mais comum em campo é "por que ficou de fora?" | A situação no plano perde prioridade | Pedir os 5 últimos questionamentos recebidos de prefeituras |
+| O uso em campo é no celular, com sinal ruim | A Hill 3 é desnecessária ou urgente | Perguntar o aparelho usado e acompanhar um dia de visitas |
+| O comitê aceita o dossiê gerado pelo sistema | O dossiê precisa de outro formato ou de outros números | Mostrar um dossiê a quem participa do comitê |
+| Motivo e observação de campo bastam para justificar | Faltam anexos, fotos ou assinaturas | Revisar 3 decisões reais com uma gestora |
+
+---
+
+## 4. Fazer: ideias e decisões
+
+### 4.1 Do protótipo ao MVP
+
+O primeiro protótipo foi uma página HTML com dados simulados de 417 municípios da Bahia: orçamento,
+alavancas, mapa e quadrantes. Ele serviu para discutir a ideia central (alavancas mudam o quadrante de
+um município) antes de existir base ou motor.
+
+![Protótipo de baixa fidelidade, com dados simulados](img/01-prototipo.png)
+
+Do protótipo para o MVP, três mudanças vieram de reflexões do Loop:
+
+- **Dados simulados → base real.** Um ETL de 12 passos integra IBGE, INEP, Anatel, CNES, Ipeadata, SRTM e
+  IBGE/SUDENE. Campos sem fonte pública aparecem como neutros ou aproximados, nunca como dado real.
+- **Cálculo na tela → cenário único no servidor.** Painel, tabela, ficha, PDF e agente usam o mesmo
+  cenário calculado no backend. Antes, cada tela podia mostrar um número diferente para o mesmo município.
+- **Painel analítico → decidir e defender.** A persona mostrou que ranquear não basta: a gestora precisa
+  explicar, registrar e prestar contas. Daí vieram a situação no plano, a simulação de inclusão, o registro
+  de decisões, o dossiê e a ficha no celular.
+
+### 4.2 Necessidade → decisão de produto
+
+| Necessidade da persona | Decisão de produto | Por quê |
+|---|---|---|
+| Responder "por que ficou de fora?" | Situação no plano em uma frase, com cinco motivos possíveis | A resposta tem que caber numa conversa com o prefeito |
+| Saber o que mudaria a decisão | "O que mudaria para incluir?" recalcula o portfólio com o município forçado | Mostra o custo da exceção: quem sai, quantos alunos e quanto de VPL |
+| Números que resistam ao comitê | Motor determinístico calcula; a IA só redige sobre os números do motor | Um texto pode errar a redação, mas não inventa o número |
+| Confiar nos dados | Cada campo é rotulado como real, aproximado ou neutro, na tela e no PDF | Dado público incompleto não pode parecer dado medido |
+| Registrar a decisão | Decisões no servidor, sem apagar o histórico; exceções ao plano marcadas | O comitê vê o que foi decidido, por quem e com qual cenário |
+| Usar em campo | Ficha legível no celular e explicações das alavancas também no toque | A gestora passa boa parte do tempo fora do escritório |
+| Considerar o dinheiro público | Alavancas FUST/BNDES, backhaul do acordo e receita âncora escolar no cenário | É a tese do projeto: expansão com alavancas |
+| Equilibrar retorno e impacto | Objetivo do portfólio: Retorno, Equilíbrio ou Alunos | A escolha entre VPL e alunos conectados fica explícita |
+
+---
+
+## 5. A solução, pela jornada da persona
+
+Os prints usam o mesmo cenário: **Bahia · Semiárido, orçamento de R$ 150 mi, objetivo Equilíbrio, sem
+alavancas.** O recorte tem 287 municípios; o plano escolhe 27, usa R$ 149,79 mi e atende 21.918 alunos
+em 188 escolas sem internet. As decisões mostradas foram registradas por um responsável fictício.
+
+### 5.1 Ver o recorte
+
+A gestora escolhe a região nos filtros ou nos botões sobre o mapa. Orçamento, objetivo, premissas e
+alavancas ficam no topo e valem para todas as telas. O mapa mostra os quadrantes, o backhaul de fibra e
+as bolhas de alunos sem internet; ao lado, a contagem por quadrante e o histograma de payback.
+
+![Recorte Bahia · Semiárido com bolhas de alunos sem internet](img/03-recorte-semiarido.png)
+
+| Quadrante | Perfil | Ação |
+|---|---|---|
+| Q1 | M alto e I alto | Expandir já |
+| Q2a | M baixo, I alto, com alavancas | Expandir com alavancas |
+| Q2b | M baixo, I alto, sem alavancas | Satélite / grant |
+| Q3 | M alto e I baixo | Comercial / M&A |
+| Q4 | M baixo e I baixo | Monitorar |
+
+*Dor resolvida:* análise espalhada em planilhas (jornada, etapa 2).
+
+### 5.2 Hill 1 — Explicar
+
+O prefeito de Juazeiro pergunta por que a cidade ficou fora. A gestora abre a ficha: **"Ficou fora: custa
+R$ 120,27 mi e sobram R$ 0,21 mi no orçamento."** Ao clicar em **O que mudaria para incluir?**, o sistema
+recalcula o mesmo portfólio com Juazeiro dentro e mostra o preço da exceção: sairiam 20 municípios
+(Antônio Gonçalves, Banzaê, Bom Jesus da Serra e outros), com 635 alunos atendidos a menos e VPL R$ 9,09 mi
+maior.
+
+![Ficha de Juazeiro com a situação no plano e a simulação de inclusão](img/04-ficha-situacao-no-plano.png)
+
+A ficha também traz diagnóstico (domicílios, escolas, distância ao backhaul, scores), plano de ação e
+business case com e sem alavancas. O botão **Justificativa IA** pede ao Granite um texto curto sobre o
+município, calculado com o cenário da tela e marcado como texto gerado por IA.
+
+No celular, a mesma ficha cabe numa coluna, já com a decisão vigente:
+
+<p align="center"><img src="img/05-ficha-celular.png" alt="Ficha executiva no celular" width="300"></p>
+
+*Dores resolvidas:* não ter a resposta à mão (etapa 1) e não saber quanto custa uma exceção (etapa 3).
+
+### 5.3 Hill 2 — Decidir e defender
+
+A gestora decide aprovar Juazeiro como exceção. O formulário pede o motivo (obrigatório), a observação
+de campo e o responsável. Como o município está fora do plano, o sistema avisa que a aprovação fica
+registrada como **exceção**. O cenário vai junto e o servidor recalcula CapEx, payback e VPL.
+
+![Registro de decisão com aviso de exceção ao plano](img/06-registrar-decisao.png)
+
+Nada é apagado: uma nova decisão substitui a vigente e o histórico fica na ficha. A tabela de municípios
+mostra a decisão de cada um e filtra por aprovados, adiados, descartados ou pendentes.
+
+![Tabela de municípios com a coluna de decisão](img/07-municipios-decisao.png)
+
+No fim do dia, **Dossiê (PDF)** gera o material do comitê: cenário, resumo do plano com o efeito das
+alavancas, decisões registradas (com as exceções marcadas), a tabela dos municípios do plano e os limites
+dos dados. Se a leitura do plano por IA tiver sido gerada no Painel, ela entra no dossiê.
+
+<p align="center"><img src="img/08-dossie.png" alt="Dossiê do recorte para o comitê de CapEx" width="640"></p>
+
+*Dores resolvidas:* decisão sem registro (etapa 4) e material refeito para o comitê (etapa 5).
+
+### 5.4 Perguntar ao agente
+
+O agente conhece a tela (município aberto, orçamento, UF, quadrante, objetivo, alavancas e premissas) e usa ferramentas
+do motor: ranking, portfólio, comparação, escolas sem internet, provedores e documentação. A resposta é
+redigida pelo IBM Granite sobre os números das ferramentas e mostra as fontes usadas.
+
+![Agente respondendo com ranking calculado pelo motor](img/09-agente.png)
+
+Os números da tabela acima são os do motor: Jitaúna tem 6.018 alunos sem internet e CapEx de R$ 6,91 mi,
+ou cerca de 870 alunos por milhão investido.
+
+A paleta **Ctrl+K** navega entre telas, abre fichas pelo nome e transforma um pedido em linguagem natural
+em filtros, também com o Granite.
+
+![Paleta de comandos com busca e pedido à IA](img/10-paleta-ctrl-k.png)
+
+### 5.5 Transparência
+
+A aba **Solução** mostra, com dados da base, o que o Conecta+ faz hoje, o estado de cada parte
+(entregue, parcial ou planejado), a composição dos scores, a qualidade de cada fonte, o roadmap e os
+limites conhecidos (seção 6). O ROI para a Vivo aparece rotulado como estimativa da proposta.
+
+Para o passo a passo de cada tela, veja o [guia de uso](guia-de-uso.md).
+
+---
+
+## 6. Como funciona
+
+![Da fonte ao agente, com o estado de cada parte](img/11-arquitetura.png)
+
+| Camada | O que faz | Tecnologia |
+|---|---|---|
+| Fontes | IBGE, INEP (Censo Escolar 2024), Anatel, CNES, Ipeadata, SRTM, IBGE/SUDENE | Dados públicos |
+| Dados | ETL em 12 passos; valida cada linha contra o schema e classifica cada campo como real, aproximado ou neutro | Python, pandas, Pydantic, SQLite |
+| Motor | Scores M·I·C·A e quadrantes; business case (CapEx, payback, VPL); portfólio ótimo; backtest | Python, PuLP + CBC (IBM CPLEX opcional) |
+| API | Um cenário único para todas as telas; decisões; IA | FastAPI (OpenAPI em `/docs`) |
+| Interfaces e IA | Painel, mapa, ficha, dossiê, chat e paleta | React, Leaflet, IBM Granite no watsonx.ai |
+
+### Onde entra a IBM
+
+- **watsonx.ai / IBM Granite:** três usos. (1) Chat com *tool calling*: o Granite escolhe a ferramenta do
+  motor, recebe os números e redige a resposta. (2) Agente regulatório com RAG sobre a documentação do
+  projeto e textos oficiais (Leis 9.998/2000, 14.109/2020 e 14.172/2021 e a nota do TCU sobre a solução
+  consensual da Telefônica). (3) Textos de uma rodada: justificativa do município, leitura do portfólio e
+  filtros em linguagem natural.
+- **IBM Decision Optimization (CPLEX):** a formulação MILP já está pronta para o CPLEX. Hoje roda com o
+  CBC (código aberto); `CONECTA_SOLVER=cplex` troca o solver quando há licença.
+- **watsonx Orchestrate e watsonx.governance:** planejados. Hoje a orquestração é própria (tool calling com
+  Granite) e a auditoria é um log local; a API expõe o OpenAPI para importação no Orchestrate.
+
+### O motor em uma página
+
+- **Scores (0 a 100):** M (mercado: domicílios, renda, gap de fibra, base móvel, concentração), I (impacto
+  educacional: matrículas, ruralidade, déficit de banda, escolas sem internet, IVS), C (custo: distância ao
+  backhaul, densidade e elevação, invertido: custo menor, score maior) e A (alavancas: acordo, FUST, EACE).
+- **Business case:** payback simples = CapEx / EBITDA de maturidade; VPL com rampa de adesão de 3 anos,
+  descontado pelo WACC (ou pelo WACC do FUST quando a alavanca está ligada).
+- **Portfólio:** `max Σ xᵢ·[λ·Impactoᵢ + (1−λ)·VPLᵢ]` sujeito a `Σ xᵢ·CapExᵢ ≤ orçamento`, `xᵢ ∈ {0,1}`,
+  com teto de payback de 10 anos. O objetivo escolhido (Retorno, Equilíbrio, Alunos) define λ.
+
+Referências: [arquitetura](arquitetura.md), [API](api.md), [referência técnica do motor](engine-technical-reference.md)
+e [proposta detalhada](PROPOSTA_DETALHADA.md).
+
+---
+
+## 7. IA confiável
+
+Usamos os pilares de confiança da IBM como checklist.
+
+| Pilar | O que o Conecta+ faz | O que ainda falta |
+|---|---|---|
+| **Explicabilidade** | Situação no plano em linguagem simples; simulação de inclusão; scores decompostos em M·I·C·A; respostas com as ferramentas usadas | Explicar a sensibilidade de cada score aos pesos |
+| **Transparência** | Rótulo real, aproximado ou neutro por campo, na tela e no PDF; referências do RAG em cada resposta; textos de IA marcados com "Revise antes de decidir"; estado de cada parte na aba Solução | watsonx.governance para registro formal do modelo |
+| **Robustez** | Números calculados por um motor determinístico com 197 testes automatizados no backend e 22 no front; IA não calcula; backtest com dados reais | A redação do Granite ainda pode trocar termos ou interpretar mal um score; por isso o texto vem marcado e os números ficam ao lado |
+| **Equidade** | Objetivo Alunos ou Equilíbrio coloca o impacto educacional na função objetivo, não só o VPL; recorte do Semiárido | Renda e IVS ainda são por UF e podem esconder desigualdades dentro do estado |
+| **Privacidade** | Só dados públicos agregados por município e escola; o log de auditoria não guarda o texto da pergunta | Login e controle de acesso ao registro de decisões |
+
+**Humano no controle.** Uma recomendação do sistema é uma priorização do modelo, não uma decisão de
+investimento. A decisão é da gestora, fica registrada com o motivo e as exceções ao plano aparecem como
+exceções.
+
+---
+
+## 8. Testar: o que validamos e o que falta
+
+### 8.1 O que já validamos
+
+- **Testes automatizados:** 197 testes do backend (scores, financeiro, otimizador, API, decisões, agente,
+  RAG, carga de dados) e 22 do front (filtros, situação no plano, resumo, CSV, chat).
+- **Backtest com histórico real da Anatel** (fibra de dezembro de 2021 contra o último mês publicado):
+  dos 2.783 municípios classificados como Q1 ou Q2a em 2021, 64% pelo menos dobraram a base de fibra
+  (precision); dos 3.144 que dobraram, 56% estavam nesses quadrantes (recall).
+
+![Backtest 2021→2025](img/12-backtest.png)
+
+O backtest também mostra um limite, e o registramos como achado: 56,5% de todos os municípios dobraram a
+fibra no período, então a classificação acerta só um pouco acima do acaso (**lift de 1,13**). Além disso, o
+teste é parcial: os scores de 2021 usam o acesso de 2021, mas os demais indicadores são atuais (INEP 2024,
+Censo 2022, backhaul atual). Os scores precisam de revisão antes de sustentar decisões reais, e a aba
+Solução diz isso ao usuário.
+
+### 8.2 O que ainda não validamos
+
+Persona, jornada, Hills e premissas da seção 3. Nenhum gestor regional usou o Conecta+ até aqui.
+
+### 8.3 Roteiro de Playback (10 minutos)
+
+Com gestores ou mentores; uma pessoa faz o papel da gestora e usa o app pelo celular.
+
+1. **Contexto (1 min):** apresentar a persona e a Hill do ciclo.
+2. **Tarefa 1 (3 min):** "O prefeito de um município fora do plano pergunta por quê. Responda e diga o que
+   mudaria isso." Anotar o tempo (meta da Hill 1: menos de 2 minutos) e onde a pessoa travou.
+3. **Tarefa 2 (3 min):** "Aprove esse município como exceção e gere o dossiê do recorte." Anotar o tempo e
+   os erros.
+4. **Feedback (3 min):** o que funcionou, o que mudar, perguntas e ideias.
+
+| Data | Participantes | Tarefa 1 | Tarefa 2 | Principais achados |
+|---|---|---|---|---|
+| | | | | |
+
+### 8.4 Próximo ciclo do Loop
+
+1. **Observar:** recrutar três gestores regionais como Sponsor Users e rodar o Playback acima.
+2. **Refletir:** confirmar ou corrigir as premissas da seção 3.4 e decidir se a Hill 3 (sem conexão) sobe de prioridade.
+3. **Fazer:** ajustar ficha e dossiê ao que o comitê realmente pede e revisar os pesos dos scores à luz do backtest.
+
+---
+
+## 9. Limites e próximos passos
+
+**Limites conhecidos** (os mesmos que a aba Solução mostra):
+
+- Campos neutros não diferenciam municípios: o score A depende de listas ainda não carregadas (acordo TCU,
+  FUST e EACE) e o déficit de banda não tem velocidade medida por município.
+- Com as premissas padrão da proposta, o payback simples não cai abaixo de ~5,7 anos e o VPL é negativo.
+  As premissas são editáveis.
+- Os custos de FWA e satélite são ilustrativos: a recomendação de tecnologia segue a regra da proposta.
+- O Censo Escolar 2024 não traz a localização das escolas: a análise é por município.
+- O backhaul aparece como presença por município, sem o traçado da rede.
+- O registro de decisões não tem login: o responsável é declarado, não verificado, e exige conexão.
+
+**Próximos passos**
+
+| Próximo passo | Depende de |
+|---|---|
+| Validar persona e Hills com Sponsor Users | Acesso a gestores da Vivo |
+| Hill 3: fichas e decisões sem conexão | Resultado do Playback |
+| Login, alçada por gestor e fluxo de aprovação | Validar como uma expansão é aprovada hoje |
+| Listas oficiais do acordo TCU, FUST e EACE | Publicação em formato aberto ou parceria |
+| watsonx Orchestrate e watsonx.governance | Instâncias dos serviços IBM |
+| IBM CPLEX em produção | Licença |
+
+---
+
+## 10. Como rodar e equipe
+
+Pré-requisitos: Python 3.11, Node.js 18 e npm 9.
+
+```bash
+# Backend (porta 8000)
+cd engine
+pip install -e ".[dev]"
+uvicorn api.main:app --reload
+
+# Frontend (porta 5173), em outro terminal
+cd web
+npm install
+npm run dev
+```
+
+Acesse `http://localhost:5173`. A base real é gerada com `python -m etl.run_etl` (em `engine/`); sem ela,
+a API usa dados demonstrativos e o app mostra um aviso. As credenciais do watsonx.ai vão em `engine/.env`
+(modelo em `engine/.env.example`). Detalhes no [README](../README.md).
+
+**Equipe:** Rafael (scores, financeiro e otimização), Joel (produto e dashboard) e Chris (ETL e agentes
+de IA). Divisão de trabalho em [`TEAM.md`](../TEAM.md).

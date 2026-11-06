@@ -9,7 +9,7 @@ O menu lateral tem quatro telas:
 - **Painel**: KPIs do portfólio, filtros, mapa dos municípios, botões de quadrante e histograma de payback.
 - **Municípios**: tabela com busca, filtros, ordenação, favoritos e seleção para o portfólio.
 - **Agente**: chat com o assistente Conecta+ (IBM Granite no watsonx.ai).
-- **Solução**: o que o Conecta+ faz hoje, com números da base real (por região), o fluxo da fonte ao agente com o estado de cada parte (entregue, parcial ou planejado), a composição dos scores, a qualidade de cada fonte de dados, o roadmap e os limites conhecidos. O ROI e os números de mercado são estimativas da proposta, e o backtest usa dados demonstrativos; ambos aparecem rotulados.
+- **Solução**: o que o Conecta+ faz hoje, com números da base real (por região), o fluxo da fonte ao agente com o estado de cada parte (entregue, parcial ou planejado), a composição dos scores, a qualidade de cada fonte de dados, o roadmap e os limites conhecidos. O ROI e os números de mercado são estimativas da proposta e aparecem rotulados; o backtest usa o histórico real da Anatel e mostra o próprio limite (lift).
 
 Clicar em um município abre a **ficha executiva**: situação no plano, decisão do gestor, scores, quadrante, CapEx, payback e VPL.
 
