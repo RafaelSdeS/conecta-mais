@@ -127,7 +127,7 @@ function AppInner({
               alt="Conecta+"
               style={{
                 display: 'block',
-                width: 130,
+                width: 184, maxWidth: '100%',
                 height: 'auto',
               }}
             />

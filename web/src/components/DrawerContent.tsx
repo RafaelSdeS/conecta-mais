@@ -137,7 +137,7 @@ export default function DrawerContent({ municipio: m }: Props) {
     <div>
       {/* Cabeçalho exclusivo da impressão / PDF */}
       <div className="print-only" style={{ marginBottom: 16, paddingBottom: 8, borderBottom: '2px solid var(--ac)' }}>
-        <img src={logo} alt="Conecta+" style={{ height: 28 }} />
+        <img src={logo} alt="Conecta+" style={{ height: 44 }} />
         <p style={{ margin: '6px 0 0', fontSize: 11 }}>
           Ficha executiva · gerada em {new Date().toLocaleString('pt-BR')} · dados {fonteDados === 'mock' ? 'DEMONSTRATIVOS' : 'reais (IBGE, INEP, Anatel)'}
         </p>
@@ -202,7 +202,7 @@ export default function DrawerContent({ municipio: m }: Props) {
 
         <dt style={{ color: 'var(--mu)' }}>PoP de fibra</dt>
         <dd style={{ margin: 0 }}>
-          {m.dist_backhaul_km != null ? `${m.dist_backhaul_km.toFixed(1)} km` : 'sem dado'}
+          {m.dist_backhaul_km != null ? `${m.dist_backhaul_km.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} km` : 'sem dado'}
           {m.tem_backhaul_fibra ? ' (município com backhaul de fibra)' : ''}
         </dd>
 

@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="SVG/conecta-vertical-escuro.svg">
+    <img src="SVG/conecta-vertical.svg" alt="Conecta+" width="200">
+  </picture>
+</p>
+
 # Conecta+ — Painel de Expansão de Conectividade
 
 Sistema de apoio à decisão para expansão de conectividade da Vivo, desenvolvido para o **Desafio IBM SkillsBuild & Fundação Telefônica Vivo**.
@@ -14,7 +21,7 @@ conecta+/
   engine/          ← backend Python (FastAPI + PuLP)
   web/             ← frontend React (Vite + Tailwind + Leaflet)
   docs/            ← documentação técnica e planos de implementação
-  SVG/             ← logos oficiais do projeto
+  SVG/             ← marca oficial: lockups horizontal e vertical, símbolo completo e pequeno (claro e escuro)
   TEAM.md
   PROPOSTA_CONECTA.pdf
 ```

@@ -47,7 +47,7 @@ export default function Dossie() {
   return (
     <div className="print-dossie" aria-hidden="true">
       <div style={{ marginBottom: 12, paddingBottom: 8, borderBottom: '2px solid var(--ac)' }}>
-        <img src={logo} alt="Conecta+" style={{ height: 28 }} />
+        <img src={logo} alt="Conecta+" style={{ height: 44 }} />
         <h1 style={{ fontSize: 18, margin: '8px 0 2px' }}>Dossiê do recorte: {escopo}</h1>
         <p style={{ margin: 0, fontSize: 11 }}>
           Gerado em {new Date().toLocaleString('pt-BR')} · dados {fonteDados === 'mock' ? 'DEMONSTRATIVOS (não valem como recomendação)' : 'reais (IBGE, INEP, Anatel)'}
