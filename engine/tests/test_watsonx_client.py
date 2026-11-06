@@ -147,6 +147,7 @@ def test_chat_envia_modelo_configurado_e_bearer_token(
     assert chat_request["payload"]["max_tokens"] == 1024
     assert chat_request["payload"]["time_limit"] == 30_000
     assert "parameters" not in chat_request["payload"]
+    assert "temperature" not in chat_request["payload"]  # o chat usa a temperatura padrão
     assert message["finish_reason"] == "stop"
 
 

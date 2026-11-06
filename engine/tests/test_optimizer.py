@@ -240,3 +240,22 @@ def test_objetivo_alunos_maximiza_a_soma_de_alunos():
     r = optimize_portfolio(df, PARAMS, ALAVANCAS, budget=10.0, objetivo_modo="alunos")
     assert sorted(r.municipios["id_municipio"]) == ["B", "C"]
     assert alunos_atendidos(r.municipios) == 300
+
+
+def test_plano_repetido_vem_da_memoria_sem_compartilhar_o_dataframe(df_com_scores, monkeypatch):
+    import conecta.optimizer.portfolio as portfolio
+
+    fin = add_financials(df_com_scores, PARAMS, ALAVANCAS)
+    primeiro = optimize_portfolio(fin, PARAMS, ALAVANCAS, budget=300.0)
+    # Alterar o resultado recebido não afeta o que ficou guardado.
+    primeiro.municipios["_capex"] = 0.0
+
+    def nao_resolve(*args, **kwargs):
+        raise AssertionError("a mesma entrada não deveria resolver o MILP de novo")
+
+    monkeypatch.setattr(portfolio, "_resolver", nao_resolve)
+    de_novo = optimize_portfolio(fin, PARAMS, ALAVANCAS, budget=300.0)
+    assert de_novo.n_selecionados > 0 and de_novo.municipios["_capex"].sum() > 0
+
+    with pytest.raises(AssertionError):  # entrada diferente resolve de novo
+        optimize_portfolio(fin, PARAMS, ALAVANCAS, budget=295.0)

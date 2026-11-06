@@ -17,8 +17,9 @@ class _Fake:
     def __init__(self, content="Texto gerado.", error=None):
         self.content, self.error, self.calls = content, error, []
 
-    def chat(self, messages, tools=None):
+    def chat(self, messages, tools=None, temperature=None):
         self.calls.append((messages, tools))
+        self.temperature = temperature
         if self.error:
             raise self.error
         return {"role": "assistant", "content": self.content, "finish_reason": "stop"}
@@ -36,15 +37,21 @@ def _use(fake):
     return fake
 
 
+def _fatos(chamada) -> str:
+    """Todas as frases de fatos enviadas ao Granite numa chamada da justificativa."""
+    blocos = json.loads(chamada[0][1]["content"])["fatos"]
+    return " ".join(frase for frases in blocos.values() for frase in frases)
+
+
 def test_justificativa_usa_dados_do_motor_e_cacheia(api):
     fake = _use(_Fake("Justificativa."))
     r = api.post("/ia/justificativa", json={"id_municipio": "3550308"})
     assert r.status_code == 200 and r.json()["texto"] == "Justificativa."
-    enviado = json.loads(fake.calls[0][0][1]["content"])
-    assert enviado["nome"] == "São Paulo" and "payback_anos" in enviado
+    fatos = _fatos(fake.calls[0])
+    assert "São Paulo (SP)" in fatos and "payback de" in fatos
     # Custa mais que o orçamento padrão de R$ 30 mi: o servidor calcula a situação, não o front.
-    assert enviado["situacao_no_plano"]["status"] == "nao_cabe"
-    assert fake.calls[0][1] is None
+    assert "mais que o orçamento inteiro de R$ 30,00 mi" in fatos
+    assert fake.calls[0][1] is None and fake.temperature == 0  # texto estável, sem amostragem
     api.post("/ia/justificativa", json={"id_municipio": "3550308"})
     assert len(fake.calls) == 1  # segunda chamada vem do cache
 
@@ -69,10 +76,10 @@ def test_justificativa_usa_o_cenario_da_tela(api):
         },
     })
     assert len(fake.calls) == 2  # cenário diferente não reaproveita o cache
-    padrao, outro = (json.loads(c[0][1]["content"]) for c in fake.calls)
-    assert outro["payback_anos"] < padrao["payback_anos"]
-    assert outro["situacao_no_plano"]["status"] == "selecionado"
-    assert outro["cenario"]["recorte"]["uf"] == "PR" and outro["cenario"]["objetivo"] == "alunos"
+    padrao, outro = (_fatos(c) for c in fake.calls)
+    assert "Entrou no plano deste cenário" in outro and "Entrou no plano" not in padrao
+    assert "objetivo Alunos, recorte PR" in outro
+    assert "objetivo Equilíbrio, recorte Brasil" in padrao
 
 
 def test_achados_ligam_cada_cartao_a_uma_acao_do_motor(api):
@@ -87,14 +94,26 @@ def test_achados_ligam_cada_cartao_a_uma_acao_do_motor(api):
     acao = cartoes[0]["acao"]
     assert acao["tipo"] == "aplicar_cenario" and acao["orcamento_mi"] == 360
     enviados = json.loads(fake.calls[0][0][1]["content"])["achados"]
-    assert any(a["id"] == "mais_orcamento" for a in enviados)
-    assert all("acao" not in a for a in enviados)  # a ação fica no servidor, fora do prompt
+    mais = next(a for a in enviados if a["id"] == "mais_orcamento")
+    assert mais["fato"].startswith("Com orçamento de R$ 360,00 mi (R$ 60,00 mi a mais)")
+    # A ação fica no servidor, fora do prompt.
+    assert all(set(a) == {"id", "fato"} for a in enviados)
 
 
-def test_achados_com_json_quebrado(api):
-    _use(_Fake("Não é JSON."))
+def test_achados_com_json_quebrado_tenta_de_novo_e_responde_422(api):
+    fake = _use(_Fake("Não é JSON."))
     r = api.post("/ia/achados", json={"orcamento_mi": 300, "objetivo": "equilibrado"})
-    assert r.status_code == 422
+    assert r.status_code == 422 and len(fake.calls) == 2
+
+
+def test_achados_aceitam_lista_solta_ou_chave_acentuada(api):
+    for resposta in (
+        '```json\n[{"id": "mais_orcamento", "titulo": "T", "texto": "X"}]\n```',
+        '{"cartões": [{"id": "mais_orcamento", "titulo": "T", "texto": "X"}]}',
+    ):
+        _use(_Fake(resposta))
+        r = api.post("/ia/achados", json={"orcamento_mi": 300, "objetivo": "equilibrado"})
+        assert [c["id"] for c in r.json()["cartoes"]] == ["mais_orcamento"]
 
 
 def test_narrativa_do_portfolio(api):

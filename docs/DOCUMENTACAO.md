@@ -256,6 +256,13 @@ as bolhas de alunos sem internet; ao lado, a contagem por quadrante e o histogra
 | Q3 | M alto e I baixo | Comercial / M&A |
 | Q4 | M baixo e I baixo | Monitorar |
 
+No Painel, **O que eu não estou vendo?** pede ao motor o que pode ter passado despercebido no recorte e
+ao Granite os três achados mais úteis, cada um com um botão que aplica a mudança ou abre a ficha. No
+recorte acima: R$ 30 mi a mais trariam 6 municípios e 4.047 alunos; o FUST elevaria o VPL do plano em
+R$ 45,74 mi; a receita escolar (ENEC) colocaria 8 municípios dentro do teto de payback.
+
+![Achados do cenário, calculados pelo motor e redigidos pelo Granite](img/12-achados.png)
+
 *Dor resolvida:* análise espalhada em planilhas (jornada, etapa 2).
 
 ### 5.2 Hill 1 — Explicar
@@ -266,13 +273,14 @@ recalcula o mesmo portfólio com Juazeiro dentro e mostra o preço da exceção:
 (Antônio Gonçalves, Banzaê, Bom Jesus da Serra e outros), com 635 alunos atendidos a menos e VPL R$ 9,09 mi
 maior.
 
-![Ficha de Juazeiro com a situação no plano e a simulação de inclusão](img/04-ficha-situacao-no-plano.png)
+![Ficha de Juazeiro com a situação no plano, a simulação de inclusão e a justificativa por IA](img/04-ficha-situacao-no-plano.png)
 
 A ficha também traz diagnóstico (domicílios, escolas, distância ao backhaul, scores), plano de ação e
 business case com e sem alavancas. O botão **Justificativa IA** pede ao Granite uma justificativa geral,
 que serve para a gestora, o comitê ou a prefeitura: se o município entrou no plano e por quê, o que mudaria
 isso (quem sairia do plano e quantos alunos e quanto de VPL a exceção custa) e os pontos de atenção. A
-situação e a simulação são calculadas no servidor com o cenário da tela; o Granite só redige. O texto vem
+situação e a simulação são calculadas no servidor com o cenário da tela e chegam ao Granite como frases
+prontas, com unidades; ele só redige, com temperatura 0 para não variar nem inventar. O texto vem
 marcado como gerado por IA, tem um botão **Copiar** e fica guardado com a decisão e no PDF.
 
 No celular, a mesma ficha cabe numa coluna, já com a decisão vigente:
@@ -308,6 +316,11 @@ O agente conhece a tela (município aberto, orçamento, UF, quadrante, objetivo,
 do motor: ranking, portfólio, comparação, escolas sem internet, provedores e documentação. A resposta é
 redigida pelo IBM Granite sobre os números das ferramentas e mostra as fontes usadas.
 
+![Agente respondendo com ranking calculado pelo motor](img/09-agente.png)
+
+Os números da tabela acima são os do motor: Jitaúna tem 6.018 alunos sem internet e CapEx de R$ 6,91 mi,
+ou cerca de 870 alunos por milhão investido.
+
 O agente também é um copiloto do painel. Ele simula alavancas diferentes das da tela ("simule o Nordeste
 com R$ 200 mi e o FUST ligado") e responde metas ("qual o menor orçamento para atender 5 mil alunos no
 semiárido da Bahia?"): o motor procura o menor orçamento, nos degraus do painel, cujo portfólio atende a
@@ -315,10 +328,10 @@ meta. Quando o cenário calculado pode ser reproduzido no painel, a resposta tra
 painel**, que ajusta orçamento, objetivo, alavancas e filtros de uma vez. O botão é montado pelo servidor
 com o resultado do motor, não com o texto do modelo.
 
-![Agente respondendo com ranking calculado pelo motor](img/09-agente.png)
+![Copiloto: menor orçamento para uma meta de alunos, com o botão Aplicar no painel](img/13-copiloto.png)
 
-Os números da tabela acima são os do motor: Jitaúna tem 6.018 alunos sem internet e CapEx de R$ 6,91 mi,
-ou cerca de 870 alunos por milhão investido.
+Na resposta acima, o motor chegou a R$ 10 mi: com o objetivo Alunos, o portfólio atende 6.602 alunos em 2
+municípios. O botão leva esse cenário ao painel, que mostra os mesmos números.
 
 A paleta **Ctrl+K** navega entre telas, abre fichas pelo nome e transforma um pedido em linguagem natural
 em filtros, também com o Granite.
@@ -385,7 +398,7 @@ Usamos os pilares de confiança da IBM como checklist.
 |---|---|---|
 | **Explicabilidade** | Situação no plano em linguagem simples; simulação de inclusão; scores decompostos em M·I·C·A; respostas com as ferramentas usadas | Explicar a sensibilidade de cada score aos pesos |
 | **Transparência** | Rótulo real, aproximado ou neutro por campo, na tela e no PDF; referências do RAG em cada resposta; textos de IA marcados com "Revise antes de decidir"; estado de cada parte na aba Solução | watsonx.governance para registro formal do modelo |
-| **Robustez** | Números calculados por um motor determinístico com 205 testes automatizados no backend e 23 no front; IA não calcula; backtest com dados reais | A redação do Granite ainda pode trocar termos ou interpretar mal um score; por isso o texto vem marcado e os números ficam ao lado |
+| **Robustez** | Números calculados por um motor determinístico com 207 testes automatizados no backend e 23 no front; IA não calcula: recebe fatos já redigidos pelo motor e escreve com temperatura 0; backtest com dados reais | A redação do Granite ainda pode trocar termos ou interpretar mal um score; por isso o texto vem marcado e os números ficam ao lado |
 | **Equidade** | Objetivo Alunos ou Equilíbrio coloca o impacto educacional na função objetivo, não só o VPL; recorte do Semiárido | Renda e IVS ainda são por UF e podem esconder desigualdades dentro do estado |
 | **Privacidade** | Só dados públicos agregados por município e escola; o log de auditoria não guarda o texto da pergunta | Login e controle de acesso ao registro de decisões |
 

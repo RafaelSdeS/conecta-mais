@@ -145,10 +145,11 @@ class Cenario:
             if ligada
         ]
         p = self.params
+        arpu = f"{p.arpu_mensal:.2f}".replace(".", ",")
         return (
-            f"alavancas: {', '.join(ativas) or 'nenhuma'}; ARPU R$ {p.arpu_mensal}, "
-            f"adesão {p.adesao_pct:.0%}, margem EBITDA {p.margem_ebitda:.0%}, WACC {p.wacc:.2%}; "
-            "CapEx e VPL em R$ milhões."
+            f"alavancas: {', '.join(ativas) or 'nenhuma'}; ARPU residencial de R$ {arpu} por "
+            f"domicílio por mês, adesão de {p.adesao_pct:.0%} dos domicílios, margem EBITDA "
+            f"{p.margem_ebitda:.0%}, WACC {p.wacc:.2%}; CapEx, VPL e orçamento em R$ milhões."
         )
 
 

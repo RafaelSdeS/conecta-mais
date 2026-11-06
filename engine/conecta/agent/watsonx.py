@@ -192,7 +192,12 @@ class WatsonxClient:
             raise WatsonxInvalidResponseError
         return token
 
-    def chat(self, messages: list[dict], tools: list[dict] | None = None) -> dict:
+    def chat(
+        self,
+        messages: list[dict],
+        tools: list[dict] | None = None,
+        temperature: float | None = None,
+    ) -> dict:
         config = WatsonxConfig.from_environment()
         token = self._access_token(config)
         payload: dict = {
@@ -202,6 +207,8 @@ class WatsonxClient:
             "max_tokens": config.max_tokens,
             "time_limit": 30_000,
         }
+        if temperature is not None:
+            payload["temperature"] = temperature
         # Granite rejeita tools=[] com json_validation_error; omitir quando vazio
         if tools:
             payload["tools"] = tools

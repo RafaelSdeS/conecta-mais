@@ -485,7 +485,9 @@ do município, da mais recente para a mais antiga.
 
 ## Endpoints de IA (`/ia`)
 
-Usam o IBM Granite sem ferramentas, sobre números já calculados pelo motor.
+Usam o IBM Granite sem ferramentas, sobre números já calculados pelo motor, com temperatura 0
+(resposta estável). A justificativa e os achados recebem os fatos já redigidos em português, com
+unidades; o modelo só escolhe e reescreve. Com dados crus, ele trocava sentidos e inventava valores.
 Erros do watsonx.ai retornam o status e a mensagem pública em `detail`.
 
 O `cenario` de `/ia/justificativa` e o corpo de `/ia/achados` têm o mesmo formato do cenário de

@@ -10,15 +10,20 @@ Formulação (§5.1 Componente 5):
 onde Î e VPL̂ são normalizações min-max dentro do recorte filtrado.
 
 Solver: PuLP + CBC (open-source, sem licença).
+
+Resultados ficam em memória por entrada idêntica (dados, premissas, orçamento e opções): o painel,
+o chat, a justificativa e os achados repetem o mesmo plano sem resolver o MILP de novo. Recortes
+grandes podem levar até o limite de 30 s do solver.
 """
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import math
 import os
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 import pandas as pd
@@ -131,7 +136,41 @@ def optimize_portfolio(
     """
     if weights is None:
         weights = ScoreWeights()
+    try:
+        chave = (
+            hashlib.sha1(pd.util.hash_pandas_object(municipios_df).values.tobytes()).digest(),
+            tuple(municipios_df.columns), params.model_dump_json(), alavancas.model_dump_json(),
+            float(budget), float(lambda_), float(max_payback), weights.model_dump_json(),
+            objetivo_modo, tuple(sorted(incluir or ())), os.getenv("CONECTA_SOLVER", ""),
+        )
+    except TypeError:  # coluna com valores sem hash: resolve sem guardar
+        return _resolver(municipios_df, params, alavancas, budget, lambda_, max_payback, weights,
+                         objetivo_modo, incluir)
+    if chave not in _cache_planos:
+        if len(_cache_planos) >= _MAX_CACHE_PLANOS:
+            _cache_planos.pop(next(iter(_cache_planos)))  # descarta o mais antigo
+        _cache_planos[chave] = _resolver(municipios_df, params, alavancas, budget, lambda_,
+                                         max_payback, weights, objetivo_modo, incluir)
+    r = _cache_planos[chave]
+    return replace(r, municipios=r.municipios.copy())  # quem chama pode alterar sem afetar o cache
 
+
+_MAX_CACHE_PLANOS = 64
+_cache_planos: dict[tuple, PortfolioResult] = {}
+
+
+def _resolver(
+    municipios_df: pd.DataFrame,
+    params: FinancialParams,
+    alavancas: Alavancas,
+    budget: float,
+    lambda_: float,
+    max_payback: float,
+    weights: ScoreWeights,
+    objetivo_modo: str,
+    incluir: list[str] | None,
+) -> PortfolioResult:
+    """Monta e resolve o MILP (sem cache)."""
     df = municipios_df.copy()
     solver, solver_nome = _escolhe_solver()
 

@@ -76,7 +76,8 @@ atendessem à restrição. Estudantes por real investido é o critério alunos_p
 O score total é a média ponderada de M, I, C e A (não a soma). O payback simples tem
 piso de cerca de 5,7 anos com as premissas padrão, pois CapEx e receita crescem juntos
 com os domicílios; só a distância ao backhaul e as premissas o alteram. Use as
-premissas e alavancas informadas pela ferramenta e pelo contexto da tela.
+premissas e alavancas informadas pela ferramenta e pelo contexto da tela. CapEx, VPL e
+orçamento vêm em R$ milhões: escreva "R$ 10 mi", sem converter unidades.
 
 Não invente números, indicadores, scores, resultados, fontes ou consultas. Use
 somente dados retornados pelas ferramentas para afirmações específicas do
