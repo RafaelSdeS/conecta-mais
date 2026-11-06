@@ -85,7 +85,7 @@ def test_catalogo_indexa_documentos_do_projeto_e_codigo_sem_normas_oficiais(
         REPOSITORY_ROOT / "docs" / "engine-technical-reference.md"
     ).read_text(encoding="utf-8")
 
-    assert documents == len(DOCUMENT_SOURCES) == 15
+    assert documents == len(DOCUMENT_SOURCES) == 14
     assert chunks > documents
     assert (rebuilt_documents, rebuilt_chunks) == (documents, chunks)
     # só as fontes de docs/fontes-oficiais (leis e nota do TCU) são oficiais; o resto é interno

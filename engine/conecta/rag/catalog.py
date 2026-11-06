@@ -65,11 +65,6 @@ DOCUMENT_SOURCES = (
         "internal_project",
     ),
     DocumentSource(
-        "docs/rafael-plan.md",
-        "Plano de implementação do motor",
-        "internal_project",
-    ),
-    DocumentSource(
         "docs/guia-de-uso.md",
         "Guia de uso do painel e do assistente",
         "internal_project",
