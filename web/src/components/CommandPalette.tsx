@@ -115,13 +115,7 @@ function PaletteBody({
   const { toast }           = useToast()
   const [query, setQuery]   = useState('')
   const [active, setActive] = useState(0)
-  const inputRef            = useRef<HTMLInputElement>(null)
   const listRef             = useRef<HTMLDivElement>(null)
-
-  // Foca o input ao montar — sem setState, apenas side-effect de DOM
-  useEffect(() => {
-    setTimeout(() => inputRef.current?.focus(), 30)
-  }, [])
 
   // Constrói lista de itens
   const items: PaletteItem[] = []
@@ -211,7 +205,7 @@ function PaletteBody({
       }}
     >
       <input
-        ref={inputRef}
+        autoFocus // foca já na montagem: quem digita logo após o Ctrl+K não perde as primeiras letras
         value={query}
         onChange={(e) => { setQuery(e.target.value); setActive(0) }}
         onKeyDown={handleKeyDown}

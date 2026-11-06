@@ -92,10 +92,10 @@ python -m pytest
 |---|---|
 | **Painel** | KPIs animados, mapa Leaflet com todos os municípios (cor por quadrante, payback, score, alunos ou decisão), quadrantes, histograma de payback, explicação do portfólio e achados do cenário por IA ("O que eu não estou vendo?") e dossiê do recorte em PDF |
 | **Municípios** | Tabela ordenável com busca, filtros (inclusive por decisão), favoritos, portfólio e decisão vigente |
-| **Agente** | Chat com o IBM Granite (watsonx.ai): ranking, portfólio, comparação, simulação de alavancas, menor orçamento para uma meta de alunos e dúvidas de uso; cenários calculados viram um botão "Aplicar no painel" |
+| **Agente** | Chat com o IBM Granite (watsonx.ai): ranking, portfólio, comparação, simulação de alavancas, menor orçamento para uma meta de alunos e dúvidas de uso; cenários calculados viram um botão "Aplicar no painel"; a conversa continua ao trocar de aba ou recarregar a página |
 | **Solução** | Arquitetura IBM watsonx, ROI estimado e fases de entrega |
 
-**Atalhos:** `Ctrl+K` abre a paleta de comandos. Clique em qualquer município para abrir a ficha executiva: situação no plano (por que entrou ou ficou fora e o que mudaria), registro de decisão do gestor, diagnóstico e business case.
+**Atalhos:** `Ctrl+K` abre a paleta de comandos. O cenário (orçamento, objetivo, alavancas, filtros), a aba e a ficha aberta ficam na URL, então recarregar mantém a tela e o link pode ser compartilhado, ex.: `/?uf=BA&semiarido=1&orcamento=150`. Clique em qualquer município para abrir a ficha executiva: situação no plano (por que entrou ou ficou fora e o que mudaria), registro de decisão do gestor, diagnóstico e business case.
 
 ---
 

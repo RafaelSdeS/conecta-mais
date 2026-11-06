@@ -1,12 +1,14 @@
 /**
- * Dossie — folha impressa do recorte atual para o comitê: cenário, KPIs, municípios do plano,
- * decisões registradas (com as exceções ao plano) e limites dos dados.
+ * Dossie — folha impressa do recorte atual para o comitê: cenário, KPIs, leitura e achados da IA
+ * (quando gerados no Painel), municípios do plano, decisões registradas (com as exceções ao plano e a
+ * justificativa guardada) e limites dos dados.
  * Fica escondido na tela; o botão "Dossiê (PDF)" do Painel liga body.imprimindo-dossie.
  */
 
 import { useMemo } from 'react'
 import { chaveNarrativa, type Decisao } from '../api/client'
 import { useAppStore } from '../store/appStore'
+import { montaPedidoPortfolio } from '../hooks/usePortfolioTrigger'
 import { DECISOES, TETO_PAYBACK_ANOS } from '../utils/constants'
 import { descreveCenario, fmtAnos, fmtMi, fmtN0 } from '../utils/format'
 import logo from '../assets/logo-texto.svg'
@@ -29,6 +31,9 @@ export default function Dossie() {
   const qualidade  = useAppStore((s) => s.qualidade)
   const fonteDados = useAppStore((s) => s.fonteDados)
   const narrativa  = useAppStore((s) => s.narrativa)
+  // Só os achados gerados para o cenário atual entram no dossiê.
+  const achados    = useAppStore((s) =>
+    s.achados?.chave === JSON.stringify(montaPedidoPortfolio(s)) ? s.achados.cartoes : null)
 
   const nomes = useMemo(() => new Map(municipios.map((m) => [m.id_municipio, `${m.nome}/${m.uf}`])), [municipios])
   const noPlano = useMemo(() => new Set(portfolio.map((m) => m.id_municipio)), [portfolio])
@@ -77,6 +82,15 @@ export default function Dossie() {
         </>
       )}
 
+      {achados && achados.length > 0 && (
+        <>
+          <h2 style={{ fontSize: 14 }}>Achados do cenário (IA)</h2>
+          <ul style={{ fontSize: 12, margin: 0, paddingLeft: 18 }}>
+            {achados.map((a) => <li key={a.id}><b>{a.titulo}:</b> {a.texto}</li>)}
+          </ul>
+        </>
+      )}
+
       {decididas.length > 0 && (
         <>
           <h2 style={{ fontSize: 14 }}>Decisões registradas</h2>
@@ -87,6 +101,7 @@ export default function Dossie() {
                 {excecao(d) ? ' (exceção ao plano)' : ''} · {d.responsavel}, {new Date(d.criado_em).toLocaleDateString('pt-BR')}
                 <br />Motivo: {d.motivo}
                 {d.observacao_campo ? <><br />Observação de campo: {d.observacao_campo}</> : null}
+                {d.justificativa_ia ? <><br />Justificativa (IA, guardada com a decisão): {d.justificativa_ia}</> : null}
               </li>
             ))}
           </ul>

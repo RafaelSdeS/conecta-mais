@@ -52,7 +52,7 @@ cidade ficou de fora?" dos prefeitos e precisa defender cada decisão no comitê
 
 Com o app rodando ([seção 9](#9-como-rodar-e-equipe)):
 
-1. Abra `http://localhost:5173/?uf=BA&semiarido=1` e leve o orçamento do topo para **R$ 150 mi**.
+1. Abra `http://localhost:5173/?uf=BA&semiarido=1&orcamento=150`: o recorte e o orçamento de **R$ 150 mi** já vêm na URL.
 2. Pressione **Ctrl+K**, digite "Juazeiro" e abra a ficha de Juazeiro (BA). Clique em **O que mudaria para incluir?**
 3. Na mesma ficha, **Registrar decisão** → Aprovar, com um motivo. Veja o aviso de exceção ao plano.
 4. Volte ao Painel e clique em **Dossiê (PDF)**.
@@ -243,8 +243,11 @@ em 188 escolas sem internet. As decisões mostradas foram registradas por um res
 ### 5.1 Ver o recorte
 
 A gestora escolhe a região nos filtros ou nos botões sobre o mapa. Orçamento, objetivo, premissas e
-alavancas ficam no topo e valem para todas as telas. O mapa mostra os quadrantes, o backhaul de fibra e
-as bolhas de alunos sem internet; ao lado, a contagem por quadrante e o histograma de payback.
+alavancas ficam no topo e valem para todas as telas. O cenário, a aba e a ficha aberta ficam na URL:
+recarregar a página não perde nada e o link abre a mesma tela para outra pessoa. Enquanto o plano é
+recalculado, o topo mostra "recalculando…" e os KPIs ficam esmaecidos. O mapa mostra os quadrantes, o
+backhaul de fibra e as bolhas de alunos sem internet; ao lado, a contagem por quadrante e o histograma de
+payback.
 
 ![Recorte Bahia · Semiárido com bolhas de alunos sem internet](img/03-recorte-semiarido.png)
 
@@ -304,7 +307,8 @@ mostra a decisão de cada um e filtra por aprovados, adiados, descartados ou pen
 
 No fim do dia, **Dossiê (PDF)** gera o material do comitê: cenário, resumo do plano com o efeito das
 alavancas, decisões registradas (com as exceções marcadas), a tabela dos municípios do plano e os limites
-dos dados. Se a leitura do plano por IA tiver sido gerada no Painel, ela entra no dossiê.
+dos dados. Se a leitura do plano ou os achados por IA tiverem sido gerados no Painel, eles entram no
+dossiê, assim como a justificativa por IA guardada com cada decisão.
 
 <p align="center"><img src="img/08-dossie.png" alt="Dossiê do recorte para o comitê de CapEx" width="640"></p>
 
@@ -327,6 +331,10 @@ semiárido da Bahia?"): o motor procura o menor orçamento, nos degraus do paine
 meta. Quando o cenário calculado pode ser reproduzido no painel, a resposta traz o botão **Aplicar no
 painel**, que ajusta orçamento, objetivo, alavancas e filtros de uma vez. O botão é montado pelo servidor
 com o resultado do motor, não com o texto do modelo.
+
+A conversa não depende da tela: a gestora pode perguntar e seguir para o Painel ou para uma ficha enquanto
+o agente trabalha. O menu mostra "pensando…" e, quando a resposta chega, "nova resposta". A conversa
+continua lá ao recarregar a página e recomeça com **Nova conversa**.
 
 ![Copiloto: menor orçamento para uma meta de alunos, com o botão Aplicar no painel](img/13-copiloto.png)
 
