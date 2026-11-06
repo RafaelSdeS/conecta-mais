@@ -20,6 +20,7 @@ export default function KPIPanel() {
   const levers    = useAppStore((s) => s.levers)
   const narrativa = useAppStore((s) => s.narrativa)
   const setNarrativa = useAppStore((s) => s.setNarrativa)
+  const recalculando = useAppStore((s) => s.portfolioLoading)
   // Achados valem só para o cenário em que foram gerados.
   const chaveCenario = useAppStore((s) => JSON.stringify(montaPedidoPortfolio(s)))
   const ids       = portfolio.map((m) => m.id_municipio)
@@ -40,11 +41,15 @@ export default function KPIPanel() {
   return (
     <>
       <div
+        aria-busy={recalculando}
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: 12,
           marginBottom: 16,
+          // Esmaecido enquanto o plano é recalculado: os números ainda são do cenário anterior.
+          opacity: recalculando ? 0.55 : 1,
+          transition: 'opacity .2s',
         }}
       >
         <KPICard
@@ -88,7 +93,7 @@ export default function KPIPanel() {
         }
         onResult={(texto) => setNarrativa({ chave, texto })}
       />
-      <Achados key={chaveCenario} disabled={!kpis} />
+      <Achados key={chaveCenario} chave={chaveCenario} disabled={!kpis} />
     </>
   )
 }

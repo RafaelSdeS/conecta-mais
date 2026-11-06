@@ -8,6 +8,7 @@
 
 import { create } from 'zustand'
 import type {
+  Achado,
   CampoQualidade,
   Decisao,
   FinancialParams,
@@ -96,6 +97,8 @@ export interface AppState {
   justificativas: Record<string, string>
   /** Explicação do portfólio pela IA; `chave` identifica o portfólio e o cenário em que foi gerada. */
   narrativa: { chave: string; texto: string } | null
+  /** Achados do cenário pela IA; `chave` identifica o cenário em que foram gerados. */
+  achados: { chave: string; cartoes: Achado[] } | null
   /** Decisão vigente por município (a mais recente registrada no servidor). */
   decisoes: Record<string, Decisao>
 
@@ -131,6 +134,7 @@ export interface AppState {
   setPortfolioResult: (r: PortfolioResult) => void
   setJustificativa: (id: string, texto: string) => void
   setNarrativa: (n: { chave: string; texto: string }) => void
+  setAchados: (a: { chave: string; cartoes: Achado[] }) => void
   setDecisoes: (lista: Decisao[]) => void
   addDecisao: (d: Decisao) => void
   setView: (v: ViewId) => void
@@ -164,6 +168,7 @@ export const useAppStore = create<AppState>((set) => ({
   kpis: null,
   justificativas: {},
   narrativa: null,
+  achados: null,
   decisoes: {},
 
   view: 'painel',
@@ -213,6 +218,7 @@ export const useAppStore = create<AppState>((set) => ({
     }),
   setJustificativa: (id, texto) => set((s) => ({ justificativas: { ...s.justificativas, [id]: texto } })),
   setNarrativa: (n) => set({ narrativa: n }),
+  setAchados: (a) => set({ achados: a }),
   setDecisoes: (lista) => set({ decisoes: Object.fromEntries(lista.map((d) => [d.id_municipio, d])) }),
   addDecisao: (d) => set((s) => ({ decisoes: { ...s.decisoes, [d.id_municipio]: d } })),
 

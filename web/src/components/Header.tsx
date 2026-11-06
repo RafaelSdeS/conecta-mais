@@ -41,6 +41,7 @@ export default function Header() {
   const setBudget      = useAppStore((s) => s.setBudget)
   const setLevers      = useAppStore((s) => s.setLevers)
   const setCmdPalette  = useAppStore((s) => s.setCmdPaletteOpen)
+  const recalculando   = useAppStore((s) => s.portfolioLoading)
 
   const { toast } = useToast()
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -105,6 +106,10 @@ export default function Header() {
           onChange={(e) => setBudget(Number(e.target.value))}
           style={{ width: 180, accentColor: 'var(--ac)' }}
         />
+        {/* Recortes grandes levam até 30 s; sem o aviso, os números antigos parecem os novos. */}
+        <span role="status" style={{ fontSize: 12, color: 'var(--mu)', minWidth: 84 }}>
+          {recalculando ? 'recalculando…' : ''}
+        </span>
       </div>
 
       {/* Escopo (definido pelos filtros) */}

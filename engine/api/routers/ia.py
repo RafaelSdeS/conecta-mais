@@ -274,7 +274,8 @@ def post_justificativa(
 
 
 class PortfolioNarrativaRequest(BaseModel):
-    ids: list[str] = Field(min_length=1, max_length=300)
+    # Todos os municípios do país cabem: o prompt leva só totais e os 5 principais, não a lista.
+    ids: list[str] = Field(min_length=1, max_length=6000)
     orcamento_mi: float = Field(gt=0, le=1_000_000)
     params: FinancialParams = FinancialParams()
     alavancas: Alavancas = Alavancas()

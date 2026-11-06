@@ -16,8 +16,10 @@ const botao: React.CSSProperties = {
   background: 'transparent', color: 'var(--tx)', border: '1px solid var(--ac)',
 }
 
-export default function Achados({ disabled }: { disabled?: boolean }) {
-  const [cartoes, setCartoes] = useState<Achado[] | null>(null)
+export default function Achados({ chave, disabled }: { chave: string; disabled?: boolean }) {
+  // Guardados no store por cenário: voltar ao painel não perde os cartões nem gasta outra chamada.
+  const guardados = useAppStore((s) => (s.achados?.chave === chave ? s.achados.cartoes : null))
+  const setAchados = useAppStore((s) => s.setAchados)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>()
   const { toast } = useToast()
@@ -26,7 +28,7 @@ export default function Achados({ disabled }: { disabled?: boolean }) {
     setLoading(true)
     setError(undefined)
     try {
-      setCartoes((await api.postAchados(cenarioDaTela(useAppStore.getState()))).cartoes)
+      setAchados({ chave, cartoes: (await api.postAchados(cenarioDaTela(useAppStore.getState()))).cartoes })
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -45,13 +47,13 @@ export default function Achados({ disabled }: { disabled?: boolean }) {
         {loading ? 'Procurando…' : '✦ O que eu não estou vendo?'}
       </button>
       {error && <p role="alert" style={{ color: 'var(--q2b)', fontSize: 12, margin: '8px 0 0' }}>{error}</p>}
-      {cartoes && cartoes.length === 0 && (
+      {guardados && guardados.length === 0 && (
         <p style={{ fontSize: 13, color: 'var(--mu)', margin: '8px 0 0' }}>Nada fora do comum neste cenário.</p>
       )}
-      {cartoes && cartoes.length > 0 && (
+      {guardados && guardados.length > 0 && (
         <div aria-live="polite" style={{ marginTop: 8 }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
-            {cartoes.map((c) => (
+            {guardados.map((c) => (
               <article key={c.id} style={{ border: '1px solid var(--ln)', borderRadius: 6, padding: 10, background: 'var(--pn)' }}>
                 <b style={{ fontSize: 13 }}>{c.titulo}</b>
                 <p style={{ fontSize: 13, lineHeight: 1.5, margin: '4px 0 8px' }}>{c.texto}</p>

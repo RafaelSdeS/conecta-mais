@@ -123,6 +123,9 @@ def test_narrativa_do_portfolio(api):
     enviado = json.loads(fake.calls[0][0][1]["content"])
     assert enviado["n_municipios"] == 2 and enviado["capex_total_mi"] > 0
     assert api.post("/ia/portfolio-narrativa", json={"ids": ["x"], "orcamento_mi": 5}).status_code == 422
+    # Planos grandes (ex.: Brasil com R$ 500 mi) passam de 300 municípios.
+    grande = ["3550308"] + [f"{9000000 + i}" for i in range(400)]
+    assert api.post("/ia/portfolio-narrativa", json={"ids": grande, "orcamento_mi": 500}).status_code == 200
 
 
 def test_filtros_validos_e_invalidos(api):

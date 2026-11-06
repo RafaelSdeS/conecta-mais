@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { useAppStore } from './store/appStore'
+import { useChatStore } from './store/chatStore'
 import { VIEWS, type ViewId } from './utils/constants'
 import { ToastProvider } from './hooks/useToast'
 import { useToast } from './hooks/toastContext'
@@ -63,6 +64,8 @@ function AppInner({
 
   const currentView    = useAppStore((s) => s.view)
   const setCurrentView = useAppStore((s) => s.setView)
+  const agentePensando = useChatStore((s) => s.loading)
+  const respostaNova   = useChatStore((s) => s.naoLida)
 
   // Carrega municípios na inicialização
   useInitialData()
@@ -160,6 +163,11 @@ function AppInner({
                   }}
                 >
                   {v.label}
+                  {v.id === 'chat' && (agentePensando || respostaNova) && (
+                    <span style={{ marginLeft: 6, fontSize: 11, color: respostaNova ? 'var(--ac)' : 'var(--mu)' }}>
+                      {agentePensando ? 'pensando…' : '● nova resposta'}
+                    </span>
+                  )}
                 </button>
               )
             })}

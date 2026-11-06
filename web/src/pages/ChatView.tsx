@@ -1,146 +1,70 @@
 /**
  * ChatView — conversa com o agente Granite pelo backend FastAPI.
+ * A conversa fica no chatStore: sair desta tela não perde mensagens nem a resposta em andamento.
  */
 
 import { useEffect, useRef, useState } from 'react'
 import ChatMessage from '../components/ChatMessage'
 import type { Acao } from '../api/client'
-import { useAppStore } from '../store/appStore'
+import { useChatStore } from '../store/chatStore'
 import { useToast } from '../hooks/toastContext'
 import { aplicarAcao } from '../utils/acoes'
-import {
-  ChatServiceError,
-  getAnswer,
-  type ChatDataSource,
-  type ChatHistoryMessage,
-  type RagReference,
-} from '../utils/chatService'
 import { CHAT_CHIPS } from '../utils/constants'
 
-interface Message {
-  id:        number
-  role:      'user' | 'agent'
-  text:      string
-  sources?:  ChatDataSource[]
-  references?: RagReference[]
-  hasDemoData?: boolean
-  error?:    string
-  isTyping?: boolean
-  actions?:  Acao[]
-}
-
-let nextId = 0
-
-const INITIAL_MESSAGE: Message = {
-  id:   nextId++,
-  role: 'agent',
-  text: 'Pergunte por rankings de municípios, portfólio para um orçamento, comparação entre cidades, escolas sem internet ou o significado dos scores e quadrantes.',
-}
-
 export default function ChatView() {
-  const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
-  const [history, setHistory] = useState<ChatHistoryMessage[]>([])
-  const [input, setInput]       = useState('')
-  const [loading, setLoading]   = useState(false)
-  const bottomRef               = useRef<HTMLDivElement>(null)
-  const { toast }               = useToast()
+  const messages   = useChatStore((s) => s.messages)
+  const loading    = useChatStore((s) => s.loading)
+  const enviar     = useChatStore((s) => s.enviar)
+  const marcarLida = useChatStore((s) => s.marcarLida)
+  const limpar     = useChatStore((s) => s.limpar)
+  const conversou  = useChatStore((s) => s.messages.length > 1)
+  const [input, setInput] = useState('')
+  const bottomRef         = useRef<HTMLDivElement>(null)
+  const { toast }         = useToast()
 
   function aplicar(acao: Acao) {
     aplicarAcao(acao)
     toast(acao.tipo === 'aplicar_cenario' ? 'Cenário aplicado no painel' : acao.rotulo)
   }
 
+  // Ao abrir a tela, a resposta que chegou em outra tela deixa de contar como nova.
+  useEffect(() => { marcarLida() }, [marcarLida, messages])
+
   // Scroll automático para o final
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  async function send(question: string) {
-    const q = question.trim()
-    if (!q || loading) return
-
-    const userMsg: Message = { id: nextId++, role: 'user', text: q }
-    const typingMsg: Message = {
-      id: nextId++,
-      role: 'agent',
-      text: '',
-      isTyping: true,
-    }
-
-    setMessages((prev) => [...prev, userMsg, typingMsg])
+  function send(question: string) {
+    if (!question.trim() || loading) return
     setInput('')
-    setLoading(true)
-
-    try {
-      const { selectedId, municipios, budget, filters, levers, params, objetivo } = useAppStore.getState()
-      const selecionado = municipios.find((m) => m.id_municipio === selectedId)
-      const answer = await getAnswer(q, history, {
-        ...(selecionado ? { municipio_id: selecionado.id_municipio, municipio_nome: selecionado.nome } : {}),
-        orcamento_mi: budget,
-        ...(filters.quadrante ? { quadrante: filters.quadrante } : {}),
-        ...(filters.search ? { busca: filters.search } : {}),
-        ...(filters.uf ? { uf: filters.uf } : {}),
-        ...(filters.regiao ? { regiao: filters.regiao } : {}),
-        ...(filters.semiarido ? { semiarido: true } : {}),
-        objetivo,
-        alavancas: {
-          backhaul_comprometido: levers.tcu,
-          fust_reembolsavel:     levers.fust,
-          receita_escolar:       levers.enec,
-        },
-        premissas: { ...params },
-      })
-      setHistory(answer.history)
-
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === typingMsg.id
-            ? {
-                ...m,
-                isTyping: false,
-                text: answer.text,
-                sources: answer.sources,
-                references: answer.references,
-                hasDemoData: answer.hasDemoData,
-                actions: answer.actions,
-              }
-            : m
-        )
-      )
-    } catch (error) {
-      const serviceError =
-        error instanceof ChatServiceError
-          ? error
-          : new ChatServiceError(
-              'Não foi possível obter resposta do backend Conecta+.',
-            )
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === typingMsg.id
-            ? {
-                ...m,
-                isTyping: false,
-                text: serviceError.partialResponse ?? '',
-                sources: serviceError.dataSources,
-                hasDemoData: serviceError.hasDemoData,
-                error: serviceError.message,
-              }
-            : m
-        )
-      )
-    } finally {
-      setLoading(false)
-    }
+    void enviar(question)
   }
 
   return (
     <div>
       {/* Cabeçalho */}
-      <div style={{ marginBottom: 16 }}>
-        <h1>Agente de justificativa</h1>
-        <p style={{ color: 'var(--mu)' }}>
-          Consulte dados reais, resultados demonstrativos e documentação técnica com referências.
-        </p>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1>Agente de justificativa</h1>
+          <p style={{ color: 'var(--mu)' }}>
+            Consulte dados reais, resultados demonstrativos e documentação técnica com referências.
+          </p>
+        </div>
+        {/* Desabilitado com resposta a caminho: ela gravaria o histórico numa conversa já limpa. */}
+        <button
+          type="button"
+          onClick={limpar}
+          disabled={loading || !conversou}
+          title={loading ? 'Aguarde a resposta do agente' : undefined}
+          style={{
+            font: 'inherit', fontSize: 13, borderRadius: 4, padding: '8px 12px',
+            cursor: loading || !conversou ? 'default' : 'pointer', background: 'transparent',
+            color: 'var(--tx)', border: '1px solid var(--ln)', opacity: loading || !conversou ? 0.5 : 1,
+          }}
+        >
+          Nova conversa
+        </button>
       </div>
 
       <div
