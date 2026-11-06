@@ -165,7 +165,10 @@ def optimize_portfolio(
     norm_npv = _minmax_series(candidatos["_npv"])
 
     if objetivo_modo == "alunos" and "alunos_sem_internet" in candidatos.columns:
-        objetivo = _minmax_series(candidatos["alunos_sem_internet"])
+        # Proporcional ao total (sem subtrair o mínimo, como no min-max): maximiza exatamente a
+        # soma de alunos. Sem nenhum aluno no recorte, todos valem o mesmo.
+        alunos = candidatos["alunos_sem_internet"]
+        objetivo = alunos / alunos.max() if alunos.max() > 0 else _minmax_series(alunos)
     else:
         lam = 0.0 if objetivo_modo == "retorno" else lambda_
         objetivo = lam * norm_I + (1 - lam) * norm_npv
@@ -322,7 +325,8 @@ def orcamento_minimo(
     Menor orçamento, nos degraus do slider do painel (de `passo` em `passo` até `teto`), cujo
     portfólio com objetivo "alunos" atende ao menos `meta_alunos` alunos em escolas sem internet.
 
-    Busca binária sobre os degraus; os números devolvidos são os da execução final do otimizador.
+    Busca binária sobre os degraus (o objetivo "alunos" maximiza a soma de alunos, que só cresce
+    com o orçamento); os números devolvidos são os da execução final do otimizador.
     """
     def rodar(degrau: int) -> PortfolioResult:
         return optimize_portfolio(

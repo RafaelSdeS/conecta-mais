@@ -178,7 +178,10 @@ paybackᵢ ≤ max_payback (pré-filtro)
 ```
 
 `λ` varia de 0 (VPL normalizado) a 1 (Impacto normalizado); o padrão é 0,5.
-Scores e VPL são normalizados no conjunto de candidatos elegíveis. Se o score
+Scores e VPL são normalizados no conjunto de candidatos elegíveis. O objetivo
+"retorno" usa λ = 0. O objetivo "alunos" troca a expressão por
+`alunos_sem_internetᵢ / max(alunos_sem_internet)`, sem subtrair o mínimo: assim
+maximiza exatamente a soma de alunos em escolas sem internet atendidas. Se o score
 I não existir, o código usa 50. A otimização depende do solver PuLP/CBC e dos
 dados e premissas recebidos.
 

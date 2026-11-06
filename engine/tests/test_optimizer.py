@@ -11,6 +11,7 @@ Casos verificáveis à mão:
 
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from conecta.data.loader import load_backhaul, load_municipios
@@ -209,7 +210,7 @@ def test_situacao_no_plano_cobre_os_casos_da_ficha(df_com_scores):
 
 def test_orcamento_minimo_acha_o_menor_degrau_que_atinge_a_meta(df_com_scores):
     fin = add_financials(df_com_scores, PARAMS, ALAVANCAS)
-    fin["alunos_sem_internet"] = range(0, 100 * len(fin), 100)  # com zeros, como na base real
+    fin["alunos_sem_internet"] = range(100, 100 * (len(fin) + 1), 100)  # nenhum município com zero
     no_teto = optimize_portfolio(fin, PARAMS, ALAVANCAS, budget=500.0, objetivo_modo="alunos")
     meta = alunos_atendidos(no_teto.municipios) // 2
 
@@ -224,3 +225,18 @@ def test_orcamento_minimo_acha_o_menor_degrau_que_atinge_a_meta(df_com_scores):
     longe = orcamento_minimo(fin, PARAMS, ALAVANCAS, int(fin["alunos_sem_internet"].sum()) + 1)
     assert not longe["atingivel"]
     assert longe["max_alunos_no_teto"] == alunos_atendidos(no_teto.municipios)
+
+
+def test_objetivo_alunos_maximiza_a_soma_de_alunos():
+    """Dois municípios baratos somam mais alunos que um caro; o min-max escolheria o caro."""
+    df = pd.DataFrame({
+        "id_municipio": ["A", "B", "C"],
+        "_capex": [10.0, 5.0, 5.0],
+        "_payback": [6.0, 6.0, 6.0],
+        "_npv": [0.0, 0.0, 0.0],
+        "score_I": [50.0, 50.0, 50.0],
+        "alunos_sem_internet": [250, 150, 150],
+    })
+    r = optimize_portfolio(df, PARAMS, ALAVANCAS, budget=10.0, objetivo_modo="alunos")
+    assert sorted(r.municipios["id_municipio"]) == ["B", "C"]
+    assert alunos_atendidos(r.municipios) == 300

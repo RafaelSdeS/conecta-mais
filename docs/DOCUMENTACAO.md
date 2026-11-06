@@ -386,7 +386,7 @@ Usamos os pilares de confiança da IBM como checklist.
 |---|---|---|
 | **Explicabilidade** | Situação no plano em linguagem simples; simulação de inclusão; scores decompostos em M·I·C·A; respostas com as ferramentas usadas | Explicar a sensibilidade de cada score aos pesos |
 | **Transparência** | Rótulo real, aproximado ou neutro por campo, na tela e no PDF; referências do RAG em cada resposta; textos de IA marcados com "Revise antes de decidir"; estado de cada parte na aba Solução | watsonx.governance para registro formal do modelo |
-| **Robustez** | Números calculados por um motor determinístico com 197 testes automatizados no backend e 22 no front; IA não calcula; backtest com dados reais | A redação do Granite ainda pode trocar termos ou interpretar mal um score; por isso o texto vem marcado e os números ficam ao lado |
+| **Robustez** | Números calculados por um motor determinístico com 205 testes automatizados no backend e 23 no front; IA não calcula; backtest com dados reais | A redação do Granite ainda pode trocar termos ou interpretar mal um score; por isso o texto vem marcado e os números ficam ao lado |
 | **Equidade** | Objetivo Alunos ou Equilíbrio coloca o impacto educacional na função objetivo, não só o VPL; recorte do Semiárido | Renda e IVS ainda são por UF e podem esconder desigualdades dentro do estado |
 | **Privacidade** | Só dados públicos agregados por município e escola; o log de auditoria não guarda o texto da pergunta | Login e controle de acesso ao registro de decisões |
 
@@ -400,8 +400,8 @@ exceções.
 
 ### 8.1 O que já validamos
 
-- **Testes automatizados:** 197 testes do backend (scores, financeiro, otimizador, API, decisões, agente,
-  RAG, carga de dados) e 22 do front (filtros, situação no plano, resumo, CSV, chat).
+- **Testes automatizados:** 205 testes do backend (scores, financeiro, otimizador, API, decisões, agente,
+  copiloto, achados, RAG, carga de dados) e 23 do front (filtros, situação no plano, resumo, CSV, chat).
 - **Backtest com histórico real da Anatel** (fibra de dezembro de 2021 contra o último mês publicado):
   dos 2.783 municípios classificados como Q1 ou Q2a em 2021, 64% pelo menos dobraram a base de fibra
   (precision); dos 3.144 que dobraram, 56% estavam nesses quadrantes (recall).
