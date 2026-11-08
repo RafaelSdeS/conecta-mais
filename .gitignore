@@ -19,6 +19,7 @@ htmlcov/
 .env.*
 !.env.example
 *.db
+!engine/data/conecta_mais.db
 *.sqlite
 *.sqlite3
 *.db-shm
