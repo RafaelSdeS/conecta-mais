@@ -43,5 +43,6 @@ ENV CONECTA_WEB_DIST=/app/web/dist \
 # As credenciais do watsonx (WATSONX_APIKEY, WATSONX_PROJECT_ID, WATSONX_URL, WATSONX_MODEL_ID,
 # WATSONX_MAX_TOKENS) entram como Secrets do Space, nunca na imagem.
 
+# 7860 é a porta do Hugging Face Spaces; Render e similares definem PORT.
 EXPOSE 7860
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["sh", "-c", "exec uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-7860}"]
