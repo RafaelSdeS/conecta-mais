@@ -32,6 +32,7 @@ import pandas as pd
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from api.routers import backtest, chat, dados, decisoes, financial, ia, municipios, portfolio, scores
 
@@ -99,6 +100,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def sem_prefixo_api(request: Request, call_next):
+    """O front chama /api/...; em dev o Vite remove o prefixo, aqui fazemos o mesmo na mesma origem."""
+    path = request.scope["path"]
+    if path.startswith("/api/"):
+        request.scope["path"] = path[4:]
+    return await call_next(request)
+
+
 app.include_router(municipios.router)
 app.include_router(scores.router)
 app.include_router(financial.router)
@@ -119,3 +129,10 @@ def qualidade(request: Request):
 @app.get("/health", tags=["infra"])
 def health(request: Request):
     return {"status": "ok", "fonte_dados": request.app.state.fonte_dados}
+
+
+# Front compilado na mesma origem (container). Sem a variável, o dev segue com o Vite.
+# Precisa ser o último registro: o mount em "/" captura tudo que as rotas acima não atenderam.
+_web_dist = os.getenv("CONECTA_WEB_DIST")
+if _web_dist and Path(_web_dist).is_dir():
+    app.mount("/", StaticFiles(directory=_web_dist, html=True), name="web")

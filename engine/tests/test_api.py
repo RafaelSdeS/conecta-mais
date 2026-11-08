@@ -27,6 +27,13 @@ def test_health(client):
     assert r.json()["status"] == "ok"
 
 
+def test_prefixo_api_e_aceito(client):
+    """O front chama /api/...; no container não há proxy do Vite para remover o prefixo."""
+    r = client.get("/api/health")
+    assert r.status_code == 200
+    assert r.json()["status"] == "ok"
+
+
 # ── GET /municipios ───────────────────────────────────────────────────────────
 
 def test_get_municipios_retorna_lista(client):
