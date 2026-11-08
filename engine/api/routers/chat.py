@@ -6,12 +6,13 @@ import time
 
 from fastapi import APIRouter, Depends, Request, Response
 
+from api.limite import limitar_ia
 from conecta.agent import audit
 from conecta.agent.orchestrator import ChatOrchestrator
 from conecta.agent.schemas import ChatError, ChatRequest, ChatResponse
 from conecta.agent.watsonx import WatsonxClient, WatsonxError
 
-router = APIRouter(tags=["chat"])
+router = APIRouter(tags=["chat"], dependencies=[Depends(limitar_ia)])
 
 
 def get_watsonx_client() -> WatsonxClient:

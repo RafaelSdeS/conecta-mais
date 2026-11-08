@@ -11,6 +11,7 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from api.limite import limitar_ia
 from api.routers.chat import get_watsonx_client
 from api.routers.decisoes import Cenario, get_decisoes
 from api.routers.portfolio import financeiro_cenario
@@ -28,7 +29,7 @@ from conecta.optimizer.portfolio import (
     situacao_no_plano,
 )
 
-router = APIRouter(prefix="/ia", tags=["ia"])
+router = APIRouter(prefix="/ia", tags=["ia"], dependencies=[Depends(limitar_ia)])
 
 TETO_PAYBACK_ANOS = 10.0  # o mesmo teto do painel (web/src/utils/constants.ts)
 _NOME_ALAVANCA = {

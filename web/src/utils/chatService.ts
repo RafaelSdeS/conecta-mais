@@ -208,6 +208,9 @@ function errorMessage(status: number, code: string | undefined): string {
   if (status === 502 && code === 'watsonx_incomplete_response') {
     return 'O Granite interrompeu a resposta antes de concluí-la. Tente novamente mais tarde.'
   }
+  if (status === 429) {
+    return 'Muitas perguntas em pouco tempo. Aguarde alguns minutos e tente de novo.'
+  }
   if (status === 504 || code === 'watsonx_timeout') {
     return 'O backend excedeu o tempo limite ao consultar o assistente.'
   }
