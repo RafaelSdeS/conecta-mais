@@ -157,7 +157,7 @@ Veja [`docs/api.md`](docs/api.md) para exemplos de request/response.
 
 A API usa a base real quando `engine/data/conecta_mais.db` (ou `CONECTA_SQLITE_PATH`) tem as
 tabelas do motor; caso contrário cai nos CSVs demonstrativos de `engine/data/` e `GET /health`
-informa `fonte_dados: "mock"`. Para gerar ou atualizar a base real:
+informa `fonte_dados: "mock"`. A base real já vem versionada no repositório, então o app roda sem o ETL. Para regenerá-la ou atualizá-la (precisa de rede):
 
 ```bash
 cd engine

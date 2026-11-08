@@ -465,7 +465,7 @@ npm install
 npm run dev
 ```
 
-Acesse `http://localhost:5173`. A base real é gerada com `python -m etl.run_etl` (em `engine/`); sem ela,
+Acesse `http://localhost:5173`. A base real já vem em `engine/data/conecta_mais.db` (para regenerá-la, `python -m etl.run_etl` em `engine/`); sem ela,
 a API usa dados demonstrativos e o app mostra um aviso. As credenciais do watsonx.ai vão em `engine/.env`
 (modelo em `engine/.env.example`). Detalhes no [README](../README.md).
 
