@@ -50,9 +50,12 @@ cidade ficou de fora?" dos prefeitos e precisa defender cada decisão no comitê
 
 ### Como avaliar em 5 minutos
 
-Com o app rodando ([seção 9](#9-como-rodar-e-equipe)):
+No protótipo online, <https://conecta-mais.onrender.com>, ou com o app rodando ([seção 9](#9-como-rodar-e-equipe)).
+O servidor gratuito hiberna sem visitas, então o primeiro acesso pode levar cerca de um minuto.
 
-1. Abra `http://localhost:5173/?uf=BA&semiarido=1&orcamento=150` e clique em **Abrir o painel**: o recorte e o orçamento de **R$ 150 mi** já vêm na URL.
+1. Abra [`/?uf=BA&semiarido=1&orcamento=150`](https://conecta-mais.onrender.com/?uf=BA&semiarido=1&orcamento=150)
+   (localmente, `http://localhost:5173/?uf=BA&semiarido=1&orcamento=150`) e clique em **Abrir o painel**: o recorte e o
+   orçamento de **R$ 150 mi** já vêm na URL.
 2. Pressione **Ctrl+K**, digite "Juazeiro" e abra a ficha de Juazeiro (BA). Clique em **O que mudaria para incluir?**
 3. Na mesma ficha, **Registrar decisão** → Aprovar, com um motivo. Veja o aviso de exceção ao plano.
 4. Volte ao Painel e clique em **Dossiê (PDF)**.

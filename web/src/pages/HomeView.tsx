@@ -368,9 +368,9 @@ export default function HomeView({ onEnter }: HomeViewProps) {
               <span style={{ color: 'var(--ac)' }}>com agentes que raciocinam pelos dados.</span>
             </h1>
             <p style={{ fontSize: 15.5, color: 'var(--mu)', maxWidth: '48ch', lineHeight: 1.65, marginBottom: 32 }}>
-              Cinco agentes especializados analisam mercado, impacto educacional, custo e
-              alavancas públicas e entregam o portfólio ótimo de expansão com justificativa
-              auditável em linguagem natural, gerada pelo IBM Granite.
+              O motor calcula mercado, impacto educacional, custo e alavancas públicas de cada
+              município e monta o portfólio ótimo para o orçamento. O IBM Granite explica cada
+              escolha em linguagem natural, sempre sobre os números do motor.
             </p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <button onClick={onEnter} style={btnPrimary}>

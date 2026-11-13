@@ -13,6 +13,9 @@ Sistema de apoio à decisão para expansão de conectividade da Vivo, desenvolvi
 > ([PDF](DOCUMENTACAO_CONECTA.pdf)). Conta o problema, a persona, as Hills, as decisões de produto e o que
 > falta validar, seguindo o IBM Enterprise Design Thinking. Divisão de trabalho em [`TEAM.md`](TEAM.md).
 
+> **Protótipo online:** <https://conecta-mais.onrender.com> (o servidor gratuito hiberna sem visitas; o primeiro
+> acesso pode levar cerca de um minuto).
+
 ![Tela de início do Conecta+](docs/img/00-inicio.png)
 
 ---
