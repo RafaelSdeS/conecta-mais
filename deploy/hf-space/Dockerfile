@@ -1,14 +1,16 @@
-# Imagem do protótipo público (Hugging Face Spaces, SDK Docker).
-# O Space só precisa deste Dockerfile e do README.md ao lado: o código vem do repositório
-# público, clonado no build. Cada push na main dispara um "Factory rebuild" no Space
-# (.github/workflows/deploy.yml); sem isso, o Space segue com a versão antiga.
+# syntax=docker/dockerfile:1
+# Imagem do protótipo público (Render ou Hugging Face Spaces com SDK Docker).
+# O código vem do repositório público, baixado no build. No Hugging Face, o Space só precisa
+# deste Dockerfile e do README.md ao lado.
 ARG REPO=https://github.com/RafaelSdeS/conecta-mais.git
 ARG REF=main
 
-FROM alpine/git AS src
+# ADD de um repositório git refaz o download quando a REF aponta para outro commit.
+# Um "RUN git clone" ficaria preso no cache do build e publicaria sempre a versão antiga.
+FROM scratch AS src
 ARG REPO
 ARG REF
-RUN git clone --depth 1 --branch "$REF" "$REPO" /src
+ADD ${REPO}#${REF} /src
 
 FROM node:22-slim AS web
 WORKDIR /web
