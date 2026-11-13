@@ -1,6 +1,7 @@
 # Imagem do protótipo público (Hugging Face Spaces, SDK Docker).
 # O Space só precisa deste Dockerfile e do README.md ao lado: o código vem do repositório
-# público, clonado no build. Para publicar uma versão nova: "Factory rebuild" no Space.
+# público, clonado no build. Cada push na main dispara um "Factory rebuild" no Space
+# (.github/workflows/deploy.yml); sem isso, o Space segue com a versão antiga.
 ARG REPO=https://github.com/RafaelSdeS/conecta-mais.git
 ARG REF=main
 
