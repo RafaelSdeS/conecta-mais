@@ -6,6 +6,7 @@
 import { useEffect, useRef } from 'react'
 import { useAppStore } from '../store/appStore'
 import DrawerContent from './DrawerContent'
+import { imprimir } from '../utils/imprimir'
 
 export default function Drawer() {
   const drawerOpen = useAppStore((s) => s.drawerOpen)
@@ -31,6 +32,8 @@ export default function Drawer() {
     return () => window.removeEventListener('keydown', handler)
   }, [drawerOpen, closeDrawer])
 
+  const imprimirFicha = () => imprimir('imprimindo-ficha')
+
   return (
     <>
       {/* Overlay */}
@@ -48,6 +51,7 @@ export default function Drawer() {
 
       {/* Drawer */}
       <aside
+        className="print-sheet"
         role="dialog"
         aria-modal="true"
         aria-labelledby="drawer-title"
@@ -67,7 +71,7 @@ export default function Drawer() {
         }}
       >
         {/* Cabeçalho do drawer */}
-        <div style={{
+        <div className="no-print" style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
@@ -77,7 +81,7 @@ export default function Drawer() {
           <b style={{ fontSize: 13 }}>Ficha executiva</b>
           <span style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <button
-              onClick={() => window.print()}
+              onClick={imprimirFicha}
               className="no-print"
               style={{
                 font: 'inherit',

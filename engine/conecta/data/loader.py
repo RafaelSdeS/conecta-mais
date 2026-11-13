@@ -8,6 +8,7 @@ dado malformado falha cedo com uma mensagem clara.
 
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 
 import pandas as pd
@@ -77,3 +78,56 @@ def load_backhaul(path: str | Path) -> pd.DataFrame:
         raise ValueError(f"Colunas obrigatórias ausentes em {path.name}: {faltando}")
 
     return df[["id_municipio", "lat", "lon"]].copy()
+
+
+_BOOL_COLS = ["tem_backhaul_fibra", "acordo_migracao", "fust_elegivel", "semiarido"]
+
+
+def _read_sql(path: str | Path, query: str) -> pd.DataFrame:
+    path = Path(path)
+    if not path.is_file():
+        raise FileNotFoundError(f"Banco não encontrado: {path}")
+    with sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True) as con:
+        return pd.read_sql(query, con, dtype_backend="numpy_nullable").astype(object).where(
+            lambda d: d.notna(), None
+        )
+
+
+def has_engine_data(path: str | Path) -> bool:
+    """True se o SQLite do ETL contém as tabelas do motor (municipios_engine, backhaul)."""
+    try:
+        df = _read_sql(path, "SELECT name FROM sqlite_master WHERE type='table'")
+    except (FileNotFoundError, sqlite3.Error):
+        return False
+    return {"municipios_engine", "backhaul"} <= set(df["name"])
+
+
+def load_municipios_db(path: str | Path) -> pd.DataFrame:
+    """Municípios do motor a partir do SQLite do ETL (já validados pelo schema no ETL)."""
+    df = _read_sql(path, "SELECT * FROM municipios_engine").infer_objects()
+    for col, default in (("semiarido", False), ("alunos_sem_internet", 0), ("total_escolas", 0), ("ubs", 0)):
+        if col not in df.columns:  # bancos gerados antes dessas colunas
+            df[col] = default
+    for col in _BOOL_COLS:
+        df[col] = df[col].astype(bool)
+    return df
+
+
+def load_backhaul_db(path: str | Path) -> pd.DataFrame:
+    return _read_sql(path, "SELECT id_municipio, lat, lon FROM backhaul").infer_objects()
+
+
+def load_bl_2021(path: str | Path) -> pd.DataFrame | None:
+    """Banda larga fixa de dezembro de 2021 por município (base do backtest); None se a tabela não existir."""
+    try:
+        return _read_sql(path, "SELECT id_municipio, acessos_total_bl, acessos_fibra FROM bl_2021").infer_objects()
+    except (FileNotFoundError, sqlite3.Error, pd.errors.DatabaseError):
+        return None
+
+
+def load_data_quality(path: str | Path) -> list[dict]:
+    """Qualidade por campo (real/aproximado/neutro); vazio se a tabela não existir."""
+    try:
+        return _read_sql(path, "SELECT campo, tipo, cobertura FROM data_quality").to_dict("records")
+    except (FileNotFoundError, sqlite3.Error, pd.errors.DatabaseError):
+        return []

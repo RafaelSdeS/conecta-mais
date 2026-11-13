@@ -3,35 +3,35 @@
 ## Visão geral
 
 ```
-                  ┌─────────────────────────────────┐
-                  │   USUÁRIO / ANALISTA             │
-                  │   (React — Painel + Simulador)   │
-                  └──────────────┬──────────────────┘
-                                 │ HTTP JSON
-                  ┌──────────────▼──────────────────┐
-                  │   FastAPI (engine/api/)          │
-                  │   POST /scores                   │
-                  │   POST /financial                │
-                  │   POST /portfolio                │
-                  │   GET  /municipios               │
-                  │   GET  /backtest                 │
-                  └──┬──────┬──────┬──────┬─────────┘
-                     │      │      │      │
-              ┌──────▼─┐ ┌──▼───┐ ┌▼────┐ ┌▼────────┐
-              │ scores │ │ geo  │ │ fin │ │optimizer│
-              │ M,I,C,A│ │ dist │ │ VPL │ │ MILP    │
-              └──────┬─┘ └──────┘ └─────┘ └─────────┘
-                     │
-              ┌──────▼──────────────────────────────┐
-              │   data/ (CSVs mock → GeoParquet)     │
-              │   schema Pydantic + loader           │
-              └─────────────────────────────────────┘
+          ┌──────────────────────────────────────────────┐
+          │  USUÁRIO (React: Painel, Municípios, Agente, │
+          │  Solução, ficha executiva, dossiê em PDF)    │
+          └──────────────────────┬───────────────────────┘
+                                 │ HTTP JSON (proxy /api no Vite)
+          ┌──────────────────────▼───────────────────────┐
+          │  FastAPI (engine/api/)                       │
+          │  /municipios  /scores  /financial /portfolio │
+          │  /decisoes  /backtest  /qualidade  /dados/*  │
+          │  /chat  /ia/*  /health                       │
+          └───┬────────┬────────┬─────────┬────────┬─────┘
+              │        │        │         │        │
+         ┌────▼───┐ ┌──▼───┐ ┌──▼───┐ ┌───▼────┐ ┌─▼──────────────┐
+         │ scores │ │ geo  │ │ fin  │ │optimiz.│ │ agent + rag    │
+         │ M,I,C,A│ │ dist │ │ VPL  │ │ MILP   │ │ IBM Granite    │
+         └────┬───┘ └──────┘ └──────┘ └────────┘ │ (watsonx.ai)   │
+              │                                  └────────────────┘
+         ┌────▼─────────────────────────────────────────┐
+         │  data/: SQLite do ETL (base real), decisões  │
+         │  e CSVs demonstrativos de fallback           │
+         └──────────────────────▲───────────────────────┘
+                                │ etl/ (12 passos)
+                 IBGE · INEP · Anatel · CNES · Ipeadata · SRTM
 ```
 
 ## Módulos do backend
 
 ### `conecta/data/`
-- **`schema.py`** — modelo Pydantic `Municipio` com todos os campos e validações (código IBGE 7 dígitos, UF válida, ranges numéricos). É o contrato entre o ETL do Joel e os módulos de cálculo.
+- **`schema.py`** — modelo Pydantic `Municipio` com todos os campos e validações (código IBGE 7 dígitos, UF válida, ranges numéricos). É o contrato entre o ETL e os módulos de cálculo.
 - **`loader.py`** — `load_municipios()` e `load_backhaul()`. Valida cada linha contra o schema e falha com mensagem clara se algum campo estiver inválido ou ausente.
 
 ### `conecta/scores/`
@@ -70,8 +70,9 @@
 ### `web/src/`
 - **`App.tsx`** — layout sidebar 208 px + main (idêntico ao mockup).
 - **`components/QuadrantBadge.tsx`** — badge colorido com as cores exatas do mockup.
-- **`pages/ScoreMap.tsx`** — tabela de municípios com filtros UF/quadrante/busca e ordenação.
-- **`pages/Simulator.tsx`** — formulário de alavancas + premissas; exibe business case e portfólio.
+- **`pages/`** — `PanelView` (KPIs, mapa, quadrantes), `MunView` (tabela), `ChatView` (agente) e `SolutionView`.
+- **`components/Header.tsx`** — barra do cenário: orçamento, objetivo, premissas e alavancas.
+- **`components/DrawerContent.tsx`** — ficha executiva com diagnóstico, plano de ação e business case.
 - **`api/client.ts`** — helpers tipados `get`/`post` com todos os tipos de domínio.
 
 ## Fluxo de dados
@@ -99,9 +100,12 @@ CSV / GeoParquet
 
 | Decisão | Motivo |
 |---|---|
-| Normalização min-max por recorte | Scores relativos ao conjunto analisado; escala nacional quando Joel entregar os 5.570 municípios |
+| Normalização min-max por recorte | Scores relativos ao conjunto analisado; na base real, o conjunto é o país inteiro (5.565 municípios) |
 | Payback simples sem rampa | Consistente com tabela §4.3 da proposta; VPL usa rampa |
 | Pré-filtro de payback antes do MILP | Elimina municípios inviáveis antes do solver, mais simples que big-M |
 | PuLP `< 4.0` | API quebrou na v4; pino no `pyproject.toml` |
 | `astype(object).where()` no loader | Converte `NaN` pandas para `None` Python antes do Pydantic |
 | `df_to_records()` na API | `json.dumps` não aceita `float('nan')`; helper centraliza a limpeza |
+| Base real com fallback demonstrativo | `api/main.py` carrega `municipios_engine` e `backhaul` do SQLite do ETL; sem eles, usa os CSVs mock e `/health` informa `fonte_dados` |
+| `data_quality` no SQLite | O ETL classifica cada campo como real, aproximado ou neutro; agente e telas avisam sobre os limites |
+| IA em duas camadas | Chat com tool calling (ranking, portfólio, comparação) e `/ia/*` para textos de uma rodada; ambos redigidos pelo Granite sobre números do motor |

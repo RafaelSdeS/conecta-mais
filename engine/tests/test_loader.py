@@ -47,3 +47,10 @@ def test_load_backhaul_coluna_faltando(tmp_path):
     csv_ruim.write_text("id_municipio,lat\n3550308,-23.55\n")
     with pytest.raises(ValueError, match="lon"):
         load_backhaul(csv_ruim)
+
+
+def test_total_escolas_e_opcional_no_schema():
+    from conecta.data.schema import Municipio
+
+    campos = Municipio.model_fields
+    assert campos["total_escolas"].default == 0 and campos["semiarido"].default is False

@@ -27,6 +27,16 @@ class FinancialParams(BaseModel):
     anos_projeto: int = Field(10, gt=0, description="Horizonte de projeção em anos")
     aliquota_imposto: float = Field(0.34, ge=0, le=1.0, description="Alíquota efetiva de IR+CSLL")
 
+    # Tecnologias alternativas à fibra. PREMISSAS ILUSTRATIVAS: sem fonte pública, devem ser
+    # validadas com a engenharia da operadora. Só entram na comparação de tecnologias.
+    fwa_custo_hp: float = Field(150.0, gt=0, description="FWA 5G: custo de rede por domicílio coberto (R$)")
+    fwa_custo_cpe: float = Field(1000.0, gt=0, description="FWA 5G: CPE + instalação por cliente (R$)")
+    fwa_arpu: float = Field(80.0, gt=0, description="FWA 5G: ARPU mensal (R$)")
+    fwa_margem: float = Field(0.35, gt=0, le=1.0, description="FWA 5G: margem EBITDA")
+    sat_custo_terminal: float = Field(2500.0, gt=0, description="Satélite: terminal + instalação por cliente (R$)")
+    sat_arpu: float = Field(150.0, gt=0, description="Satélite: ARPU mensal (R$)")
+    sat_margem: float = Field(0.25, gt=0, le=1.0, description="Satélite: margem EBITDA (capacidade espacial)")
+
 
 class Alavancas(BaseModel):
     """Alavancas financeiras e regulatórias disponíveis por município."""

@@ -1,132 +1,324 @@
-/**
- * chatService — lógica de resposta do agente de justificativa.
- *
- * Hoje: mock local com as mesmas respostas do protótipo HTML.
- * Para conectar ao watsonx.ai Granite do Chris: substitua apenas
- * a função `getAnswer` por uma chamada à API real — a UI não muda.
- */
+/** Cliente do chat FastAPI; o navegador nunca acessa watsonx.ai diretamente. */
 
-import type { Municipio } from '../api/client'
-import { fmtMi, fmtN0 } from './format'
-import { calcFinancial } from './calculation'
+import type { Acao } from '../api/client'
 
-export interface ChatContext {
-  municipios:  Municipio[]
-  portfolio:   Municipio[]
-  levers:      { fust: boolean; tcu: boolean; enec: boolean }
-  budget:      number
+export type ChatRole = 'user' | 'assistant'
+
+export interface ChatHistoryMessage {
+  role: ChatRole
+  content: string
+}
+
+export type ChatSourceId = 'sqlite_integrado' | 'engine' | 'engine_mock' | 'rag_tecnico'
+
+export interface ChatDataSource {
+  id: ChatSourceId
+  tipo: 'real' | 'demonstrativo' | 'documental'
+  descricao: string
+}
+
+export interface ChatToolExecution {
+  name: string
+  status: 'success' | 'not_found' | 'failed' | 'cached'
+}
+
+export interface RagReference {
+  title: string
+  sourcePath: string
+  section: string
+  lines: string
+  documentType?: string
+  isOfficial?: boolean
 }
 
 export interface ChatAnswer {
-  text:   string   // pode conter HTML simples (<b>, <br>)
-  source: string
+  text: string
+  history: ChatHistoryMessage[]
+  sources: ChatDataSource[]
+  toolsExecuted: ChatToolExecution[]
+  hasDemoData: boolean
+  references: RagReference[]
+  /** Botões "Aplicar no painel" montados pelo servidor a partir dos resultados do motor. */
+  actions: Acao[]
 }
 
-// ── Mock local ────────────────────────────────────────────────────────────────
-
-function top2Viáveis(ctx: ChatContext): [Municipio | null, Municipio | null] {
-  const viáveis = ctx.municipios
-    .map((m) => {
-      const r = calcFinancial(
-        m.domicilios_urbanos ?? 5000,
-        m.dist_backhaul_km ?? 50,
-        m.escolas_sem_internet_aprendizagem ?? 0,
-        m.acordo_migracao ?? false,
-        ctx.levers,
-      )
-      return { m, pay: r.pay, capex: r.capex }
-    })
-    .filter((x) => x.pay <= 6)
-    .sort((a, b) => (b.m.matriculas_publicas ?? 0) / b.capex - (a.m.matriculas_publicas ?? 0) / a.capex)
-
-  return [viáveis[0]?.m ?? null, viáveis[1]?.m ?? null]
+interface ChatApiResponse {
+  response?: unknown
+  history?: unknown
+  data_sources?: unknown
+  tools_executed?: unknown
+  has_demo_data?: unknown
+  references?: unknown
+  acoes?: unknown
+  error?: {
+    code?: unknown
+    message?: unknown
+  } | null
 }
 
-function mockAnswer(q: string, ctx: ChatContext): ChatAnswer {
-  const ql = q.toLowerCase()
-  const [x, y] = top2Viáveis(ctx)
+export class ChatServiceError extends Error {
+  readonly status?: number
+  readonly code?: string
+  readonly partialResponse?: string
+  readonly dataSources: ChatDataSource[]
+  readonly hasDemoData: boolean
 
-  // Semiárido / estudantes
-  if (ql.includes('semi') || ql.includes('estudantes')) {
-    const semi = ctx.municipios
-      .map((m) => {
-        const r = calcFinancial(
-          m.domicilios_urbanos ?? 5000,
-          m.dist_backhaul_km ?? 50,
-          m.escolas_sem_internet_aprendizagem ?? 0,
-          m.acordo_migracao ?? false,
-          ctx.levers,
-        )
-        return { m, pay: r.pay, capex: r.capex }
+  constructor(
+    message: string,
+    status?: number,
+    code?: string,
+    partialResponse?: string,
+    dataSources: ChatDataSource[] = [],
+    hasDemoData = false,
+  ) {
+    super(message)
+    this.name = 'ChatServiceError'
+    this.status = status
+    this.code = code
+    this.partialResponse = partialResponse
+    this.dataSources = dataSources
+    this.hasDemoData = hasDemoData
+  }
+}
+
+const CHAT_ENDPOINT = '/api/chat'
+const MAX_HISTORY_MESSAGES = 12
+const RAG_CITATION =
+  /\(fonte:\s*([^,\n()]+),\s*((?:docs|engine)\/[^,\n()]+),\s*seção\s*([^,\n()]+),\s*linhas\s*(\d+[–-]\d+)\)/g
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function parseSources(value: unknown): ChatDataSource[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((source): source is ChatDataSource => {
+    if (!isRecord(source)) return false
+    return (
+      (source.id === 'sqlite_integrado' ||
+        source.id === 'engine' ||
+        source.id === 'engine_mock' ||
+        source.id === 'rag_tecnico') &&
+      (source.tipo === 'real' ||
+        source.tipo === 'demonstrativo' ||
+        source.tipo === 'documental') &&
+      typeof source.descricao === 'string'
+    )
+  })
+}
+
+function parseHistory(value: unknown): ChatHistoryMessage[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter(
+      (message): message is ChatHistoryMessage =>
+        isRecord(message) &&
+        (message.role === 'user' || message.role === 'assistant') &&
+        typeof message.content === 'string',
+    )
+    .slice(-MAX_HISTORY_MESSAGES)
+}
+
+function parseTools(value: unknown): ChatToolExecution[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((tool): tool is ChatToolExecution => {
+    if (!isRecord(tool)) return false
+    return (
+      typeof tool.name === 'string' &&
+      (tool.status === 'success' ||
+        tool.status === 'not_found' ||
+        tool.status === 'failed' ||
+        tool.status === 'cached')
+    )
+  })
+}
+
+function parseAcoes(value: unknown): Acao[] {
+  if (!Array.isArray(value)) return []
+  return value.filter(
+    (acao): acao is Acao =>
+      isRecord(acao) &&
+      (acao.tipo === 'aplicar_cenario' || acao.tipo === 'abrir_municipio') &&
+      typeof acao.rotulo === 'string' &&
+      acao.rotulo.trim() !== '' &&
+      (acao.orcamento_mi == null || (typeof acao.orcamento_mi === 'number' && acao.orcamento_mi > 0)),
+  )
+}
+
+function parseReferences(text: string, value: unknown): {
+  text: string
+  references: RagReference[]
+} {
+  const inlineReferences: RagReference[] = []
+  const cleanText = text.replace(
+    RAG_CITATION,
+    (_citation, title: string, sourcePath: string, section: string, lines: string) => {
+      inlineReferences.push({ title, sourcePath, section, lines })
+      return ''
+    },
+  )
+
+  const references: RagReference[] = []
+  if (Array.isArray(value)) {
+    for (const reference of value) {
+      if (
+        !isRecord(reference) ||
+        typeof reference.title !== 'string' ||
+        typeof reference.source_path !== 'string' ||
+        typeof reference.section !== 'string' ||
+        !Number.isInteger(reference.line_start) ||
+        !Number.isInteger(reference.line_end) ||
+        typeof reference.document_type !== 'string' ||
+        typeof reference.is_official !== 'boolean'
+      ) {
+        continue
+      }
+
+      references.push({
+        title: reference.title,
+        sourcePath: reference.source_path,
+        section: reference.section,
+        lines: `${reference.line_start}–${reference.line_end}`,
+        documentType: reference.document_type,
+        isOfficial: reference.is_official,
       })
-      .filter(({ m, pay }) => (m.lon ?? 0) > -42 && (m.lat ?? 0) > -13 && pay < 5)
-      .sort((a, b) => (b.m.matriculas_publicas ?? 0) / b.capex - (a.m.matriculas_publicas ?? 0) / a.capex)
-      .slice(0, 3)
-
-    if (!semi.length) {
-      return {
-        text:   'Nenhum município do semiárido atinge payback abaixo de 5 anos com as alavancas atuais. Ligue FUST, TCU e ENEC no topo da página.',
-        source: 'Fonte: modelo Conecta+ · Confiança: média',
-      }
-    }
-    return {
-      text: 'Top 3 do semiárido por matrículas conectadas por real investido (payback abaixo de 5 anos):<br>' +
-        semi.map(({ m, pay, capex }) =>
-          `• <b>${m.nome}</b>: ${fmtN0(m.matriculas_publicas)} matrículas, payback ${pay.toFixed(1)} anos, CapEx ${fmtMi(capex)}`
-        ).join('<br>'),
-      source: 'Fontes: INEP Censo Escolar, Anatel, IBGE · Confiança: 78%',
     }
   }
 
-  // Priorização
-  if (ql.includes('priorizar') || ql.includes('por que') || ql.includes('x sobre')) {
-    if (!x || !y) {
-      return {
-        text:   'Não há municípios viáveis suficientes no cenário atual para comparar. Ajuste o orçamento ou as alavancas.',
-        source: 'Modelo Conecta+ · Confiança: baixa',
-      }
-    }
-    const xCalc = calcFinancial(x.domicilios_urbanos ?? 5000, x.dist_backhaul_km ?? 50, x.escolas_sem_internet_aprendizagem ?? 0, x.acordo_migracao ?? false, ctx.levers)
-    const yCalc = calcFinancial(y.domicilios_urbanos ?? 5000, y.dist_backhaul_km ?? 50, y.escolas_sem_internet_aprendizagem ?? 0, y.acordo_migracao ?? false, ctx.levers)
-    return {
-      text: `Recomendo <b>${x.nome}</b> sobre <b>${y.nome}</b>: ${fmtN0(x.matriculas_publicas)} matrículas` +
-        `${x.acordo_migracao ? ', backhaul financiado pelo Acordo TCU' : ''}. ` +
-        `Payback de ${xCalc.pay.toFixed(1)} contra ${yCalc.pay.toFixed(1)} anos.`,
-      source: 'Fontes: Censo Escolar INEP, Anatel SMP/SCM, Acordo TCU · Confiança: 82% · Incerteza: distância ao backhaul por centroide',
-    }
-  }
+  const uniqueReferences = references.filter(
+    (reference, index, allReferences) =>
+      allReferences.findIndex(
+        (candidate) =>
+          candidate.sourcePath === reference.sourcePath &&
+          candidate.section === reference.section &&
+          candidate.lines === reference.lines,
+      ) === index,
+  )
 
-  // FUST
-  if (ql.includes('fust')) {
-    return {
-      text:   'O FUST/BNDES (PAR 2025) oferece R$ 1,2 bi reembolsável a TR + 1,0–1,45% a.a. e R$ 52 mi não reembolsável, reduzindo o custo de capital frente ao WACC privado de 14–16%.',
-      source: 'Fonte: BNDES PAR 2025 · Confiança: alta',
-    }
-  }
-
-  // TCU
-  if (ql.includes('tcu')) {
-    return {
-      text:   'O Acordo TCU–Vivo prevê R$ 4,5 bi: backhaul em 121 municípios, 4G/5G em 649 localidades e 895 escolas até 2026. Tratado como parâmetro exógeno no modelo.',
-      source: 'Fonte: Acordo TCU · Confiança: alta',
-    }
-  }
-
-  // Default
   return {
-    text:   `Posso comparar municípios, listar o semiárido, explicar o FUST ou o Acordo TCU. No cenário atual, ${ctx.portfolio.length} municípios cabem no orçamento de R$ ${ctx.budget} mi.`,
-    source: 'Agente de Justificativa · watsonx.governance',
+    text: cleanText.replace(/[ \t]+\n/g, '\n').trim(),
+    references: uniqueReferences.length > 0 ? uniqueReferences : inlineReferences,
   }
 }
 
-// ── Ponto de entrada público ──────────────────────────────────────────────────
+function errorMessage(status: number, code: string | undefined): string {
+  if (status === 503 && code === 'watsonx_not_configured') {
+    return 'O chat não está configurado no backend. Contate o responsável pelo serviço.'
+  }
+  if (status === 502 && code === 'watsonx_incomplete_response') {
+    return 'O Granite interrompeu a resposta antes de concluí-la. Tente novamente mais tarde.'
+  }
+  if (status === 429) {
+    return 'Muitas perguntas em pouco tempo. Aguarde alguns minutos e tente de novo.'
+  }
+  if (status === 504 || code === 'watsonx_timeout') {
+    return 'O backend excedeu o tempo limite ao consultar o assistente.'
+  }
+  return `Não foi possível obter uma resposta do backend${status ? ` (HTTP ${status})` : ''}.`
+}
 
 /**
- * Retorna a resposta do agente para uma pergunta.
- * Troque esta implementação por uma chamada à API do Chris quando disponível.
+ * Envia a pergunta e até 12 mensagens anteriores compatíveis com o FastAPI.
+ * O Vite reescreve /api/chat para /chat no backend local.
  */
-export async function getAnswer(question: string, ctx: ChatContext): Promise<ChatAnswer> {
-  // Simula latência de rede (600–900ms)
-  await new Promise((r) => setTimeout(r, 600 + Math.random() * 300))
-  return mockAnswer(question, ctx)
+export interface ChatContext {
+  municipio_id?: string
+  municipio_nome?: string
+  orcamento_mi?: number
+  quadrante?: string
+  busca?: string
+  uf?: string
+  regiao?: string
+  semiarido?: boolean
+  objetivo?: 'retorno' | 'equilibrado' | 'alunos'
+  /** Cenário ativo na tela: as ferramentas do agente calculam com as mesmas alavancas e premissas. */
+  alavancas?: { backhaul_comprometido: boolean; fust_reembolsavel: boolean; receita_escolar: boolean }
+  premissas?: Record<string, number>
+}
+
+export async function getAnswer(
+  question: string,
+  history: ChatHistoryMessage[],
+  context?: ChatContext,
+): Promise<ChatAnswer> {
+  let response: Response
+  try {
+    response = await fetch(CHAT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: question,
+        history: history.slice(-MAX_HISTORY_MESSAGES),
+        ...(context ? { context } : {}),
+      }),
+    })
+  } catch {
+    throw new ChatServiceError(
+      'Não foi possível conectar ao backend Conecta+. Verifique se a API está em execução.',
+    )
+  }
+
+  let body: ChatApiResponse
+  try {
+    const parsed: unknown = await response.json()
+    if (!isRecord(parsed)) throw new Error('Invalid response')
+    body = parsed as ChatApiResponse
+  } catch {
+    throw new ChatServiceError(
+      `O backend retornou uma resposta inválida (HTTP ${response.status}).`,
+      response.status,
+    )
+  }
+
+  const sources = parseSources(body.data_sources)
+  const toolsExecuted = parseTools(body.tools_executed)
+  const hasDemoData =
+    body.has_demo_data === true ||
+    sources.some((source) => source.id === 'engine_mock')
+  const partialResponse =
+    typeof body.response === 'string' ? body.response : undefined
+  const errorCode =
+    isRecord(body.error) && typeof body.error.code === 'string'
+      ? body.error.code
+      : undefined
+
+  if (!response.ok || body.error) {
+    const backendMessage =
+      isRecord(body.error) && typeof body.error.message === 'string'
+        ? body.error.message
+        : errorMessage(response.status, errorCode)
+    throw new ChatServiceError(
+      backendMessage || errorMessage(response.status, errorCode),
+      response.status,
+      errorCode,
+      partialResponse,
+      sources,
+      hasDemoData,
+    )
+  }
+
+  if (!partialResponse?.trim()) {
+    throw new ChatServiceError(
+      'O backend não retornou uma resposta textual.',
+      response.status,
+      undefined,
+      undefined,
+      sources,
+      hasDemoData,
+    )
+  }
+
+  const { text, references } = parseReferences(
+    partialResponse,
+    body.references,
+  )
+  return {
+    text,
+    history: parseHistory(body.history),
+    sources,
+    toolsExecuted,
+    hasDemoData,
+    references,
+    actions: parseAcoes(body.acoes),
+  }
 }

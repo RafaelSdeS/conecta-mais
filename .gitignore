@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local configuration and data
+/conecta-mais-chris/
+.env
+.env.*
+!.env.example
+*.db
+!engine/data/conecta_mais.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+*.jsonl
+
+# Node
+node_modules/
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

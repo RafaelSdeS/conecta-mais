@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useAppStore } from './store/appStore'
+import { useChatStore } from './store/chatStore'
 import { VIEWS, type ViewId } from './utils/constants'
 import { ToastProvider } from './hooks/useToast'
-import { useToast } from './hooks/useToast'
+import { useToast } from './hooks/toastContext'
 import { usePortfolioTrigger } from './hooks/usePortfolioTrigger'
 import { useInitialData }      from './hooks/useInitialData'
 
@@ -19,6 +20,7 @@ import Header          from './components/Header'
 import Drawer          from './components/Drawer'
 import CommandPalette  from './components/CommandPalette'
 import Toast           from './components/Toast'
+import Dossie          from './components/Dossie'
 
 const VIEW_COMPONENTS: Record<ViewId, React.ComponentType> = {
   painel: PanelView,
@@ -71,10 +73,14 @@ function AppInner({
   const cmdOpen        = useAppStore((s) => s.cmdPaletteOpen)
   const setBudget      = useAppStore((s) => s.setBudget)
   const setAllLevers   = useAppStore((s) => s.setAllLevers)
-  const kpis           = useAppStore((s) => s.kpis)
+  const fonteDados    = useAppStore((s) => s.fonteDados)
+  const apiOffline     = useAppStore((s) => s.apiOffline)
   const { toast }      = useToast()
 
-  const [currentView, setCurrentView] = useState<ViewId>('painel')
+  const currentView    = useAppStore((s) => s.view)
+  const setCurrentView = useAppStore((s) => s.setView)
+  const agentePensando = useChatStore((s) => s.loading)
+  const respostaNova   = useChatStore((s) => s.naoLida)
 
   // Carrega municípios na inicialização
   useInitialData()
@@ -97,9 +103,13 @@ function AppInner({
   const handleApplyAll = useCallback(() => {
     setBudget(80)
     setAllLevers(true)
-    const viav = kpis?.municipiosViaveis ?? 0
-    toast(`Orçamento de R$ 80 mi e todas as alavancas ligadas — ${viav} municípios viáveis`)
-  }, [setBudget, setAllLevers, kpis, toast])
+    // Alavanca sem dados reais no ETL não tem efeito: não é ligada.
+    const { qualidade } = useAppStore.getState()
+    if (qualidade.some((q) => q.campo === 'acordo_migracao' && q.tipo === 'neutro')) {
+      useAppStore.getState().setLevers({ tcu: false })
+    }
+    toast('Orçamento de R$ 80 mi e alavancas ligadas. Recalculando o portfólio…')
+  }, [setBudget, setAllLevers, toast])
 
   const CurrentPage = VIEW_COMPONENTS[currentView]
 
@@ -135,7 +145,7 @@ function AppInner({
               alt="Conecta+"
               style={{
                 display: 'block',
-                width: 130,
+                width: 184, maxWidth: '100%',
                 height: 'auto',
               }}
             />
@@ -168,6 +178,11 @@ function AppInner({
                   }}
                 >
                   {v.label}
+                  {v.id === 'chat' && (agentePensando || respostaNova) && (
+                    <span style={{ marginLeft: 6, fontSize: 11, color: respostaNova ? 'var(--ac)' : 'var(--mu)' }}>
+                      {agentePensando ? 'pensando…' : '● nova resposta'}
+                    </span>
+                  )}
                 </button>
               )
             })}
@@ -193,7 +208,7 @@ function AppInner({
               {theme === 'dark' ? '☀ Tema claro' : '☾ Tema escuro'}
             </button>
             <p style={{ fontSize: 11, color: 'var(--mu)', margin: 0 }} className="sidebar-note">
-              Protótipo com dados simulados.<br />
+              {fonteDados === 'mock' ? 'Protótipo com dados simulados.' : 'Base real integrada.'}<br />
               IBM SkillsBuild &amp; Fundação Telefônica Vivo.
             </p>
           </div>
@@ -202,6 +217,16 @@ function AppInner({
         {/* ── Área principal ───────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100svh' }}>
           <Header />
+          {fonteDados === 'mock' && (
+            <div
+              role="status"
+              style={{ padding: '8px 24px', background: 'var(--q2b)', color: '#fff', fontSize: 13 }}
+            >
+              {apiOffline
+                ? 'Sem conexão com o servidor do Conecta+. Estes são municípios de demonstração da Bahia e não valem como recomendação. Recarregue a página quando a conexão voltar.'
+                : 'O servidor está sem a base real e mostra dados de demonstração. Os resultados não valem como recomendação; avise o responsável técnico.'}
+            </div>
+          )}
           <main
             id="main-content"
             tabIndex={-1}
@@ -220,6 +245,7 @@ function AppInner({
         onApplyAll={handleApplyAll}
       />
       <Toast />
+      <Dossie />
     </>
   )
 }

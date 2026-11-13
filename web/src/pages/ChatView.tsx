@@ -1,88 +1,70 @@
 /**
- * ChatView — view do agente de justificativa.
- * Interface pronta; lógica isolada em chatService.ts para troca futura pela API do Chris.
+ * ChatView — conversa com o agente Granite pelo backend FastAPI.
+ * A conversa fica no chatStore: sair desta tela não perde mensagens nem a resposta em andamento.
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { useAppStore } from '../store/appStore'
 import ChatMessage from '../components/ChatMessage'
-import { getAnswer } from '../utils/chatService'
+import type { Acao } from '../api/client'
+import { useChatStore } from '../store/chatStore'
+import { useToast } from '../hooks/toastContext'
+import { aplicarAcao } from '../utils/acoes'
 import { CHAT_CHIPS } from '../utils/constants'
 
-interface Message {
-  id:        number
-  role:      'user' | 'agent'
-  text?:     string
-  source?:   string
-  isTyping?: boolean
-}
-
-let nextId = 0
-
-const INITIAL_MESSAGE: Message = {
-  id:   nextId++,
-  role: 'agent',
-  text: 'Pergunte sobre um município, o portfólio, o FUST ou o Acordo TCU.',
-}
-
 export default function ChatView() {
-  const municipios = useAppStore((s) => s.municipios)
-  const portfolio  = useAppStore((s) => s.portfolio)
-  const levers     = useAppStore((s) => s.levers)
-  const budget     = useAppStore((s) => s.budget)
+  const messages   = useChatStore((s) => s.messages)
+  const loading    = useChatStore((s) => s.loading)
+  const enviar     = useChatStore((s) => s.enviar)
+  const marcarLida = useChatStore((s) => s.marcarLida)
+  const limpar     = useChatStore((s) => s.limpar)
+  const conversou  = useChatStore((s) => s.messages.length > 1)
+  const [input, setInput] = useState('')
+  const bottomRef         = useRef<HTMLDivElement>(null)
+  const { toast }         = useToast()
 
-  const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
-  const [input, setInput]       = useState('')
-  const [loading, setLoading]   = useState(false)
-  const bottomRef               = useRef<HTMLDivElement>(null)
+  function aplicar(acao: Acao) {
+    aplicarAcao(acao)
+    toast(acao.tipo === 'aplicar_cenario' ? 'Cenário aplicado no painel' : acao.rotulo)
+  }
+
+  // Ao abrir a tela, a resposta que chegou em outra tela deixa de contar como nova.
+  useEffect(() => { marcarLida() }, [marcarLida, messages])
 
   // Scroll automático para o final
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  async function send(question: string) {
-    const q = question.trim()
-    if (!q || loading) return
-
-    const userMsg: Message = { id: nextId++, role: 'user', text: q }
-    const typingMsg: Message = { id: nextId++, role: 'agent', isTyping: true }
-
-    setMessages((prev) => [...prev, userMsg, typingMsg])
+  function send(question: string) {
+    if (!question.trim() || loading) return
     setInput('')
-    setLoading(true)
-
-    try {
-      const answer = await getAnswer(q, { municipios, portfolio, levers, budget })
-
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === typingMsg.id
-            ? { ...m, isTyping: false, text: answer.text, source: answer.source }
-            : m
-        )
-      )
-    } catch {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === typingMsg.id
-            ? { ...m, isTyping: false, text: 'Erro ao obter resposta. Tente novamente.', source: '' }
-            : m
-        )
-      )
-    } finally {
-      setLoading(false)
-    }
+    void enviar(question)
   }
 
   return (
     <div>
       {/* Cabeçalho */}
-      <div style={{ marginBottom: 16 }}>
-        <h1>Agente de justificativa</h1>
-        <p style={{ color: 'var(--mu)' }}>
-          Respostas com fonte e grau de confiança. Simulado: em produção usa watsonx.ai Granite e watsonx.governance.
-        </p>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1>Agente de justificativa</h1>
+          <p style={{ color: 'var(--mu)' }}>
+            Consulte dados reais, resultados demonstrativos e documentação técnica com referências.
+          </p>
+        </div>
+        {/* Desabilitado com resposta a caminho: ela gravaria o histórico numa conversa já limpa. */}
+        <button
+          type="button"
+          onClick={limpar}
+          disabled={loading || !conversou}
+          title={loading ? 'Aguarde a resposta do agente' : undefined}
+          style={{
+            font: 'inherit', fontSize: 13, borderRadius: 4, padding: '8px 12px',
+            cursor: loading || !conversou ? 'default' : 'pointer', background: 'transparent',
+            color: 'var(--tx)', border: '1px solid var(--ln)', opacity: loading || !conversou ? 0.5 : 1,
+          }}
+        >
+          Nova conversa
+        </button>
       </div>
 
       <div
@@ -109,8 +91,13 @@ export default function ChatView() {
               key={msg.id}
               role={msg.role}
               text={msg.text}
-              source={msg.source}
+              sources={msg.sources}
+              references={msg.references}
+              hasDemoData={msg.hasDemoData}
+              error={msg.error}
               isTyping={msg.isTyping}
+              actions={msg.actions}
+              onAction={aplicar}
             />
           ))}
           <div ref={bottomRef} />
@@ -148,7 +135,12 @@ export default function ChatView() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') send(input) }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                send(input)
+              }
+            }}
             placeholder="Ex.: Por que priorizar o município X sobre o Y?"
             aria-label="Pergunta ao agente"
             disabled={loading}

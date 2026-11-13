@@ -27,6 +27,13 @@ def test_health(client):
     assert r.json()["status"] == "ok"
 
 
+def test_prefixo_api_e_aceito(client):
+    """O front chama /api/...; no container não há proxy do Vite para remover o prefixo."""
+    r = client.get("/api/health")
+    assert r.status_code == 200
+    assert r.json()["status"] == "ok"
+
+
 # ── GET /municipios ───────────────────────────────────────────────────────────
 
 def test_get_municipios_retorna_lista(client):
@@ -136,3 +143,37 @@ def test_get_backtest_retorna_estrutura(client):
     assert "f1" in data
     assert 0.0 <= data["precision"] <= 1.0
     assert 0.0 <= data["recall"] <= 1.0
+
+
+# ── Cenário: financeiro, efeito das alavancas e escopo ───────────────────────
+
+def test_portfolio_devolve_financeiro_e_efeito_das_alavancas(client):
+    r = client.post("/portfolio", json={"budget": 600, "alavancas": {"fust_reembolsavel": True}})
+    assert r.status_code == 200
+    d = r.json()
+    assert len(d["financeiro"]) == 49 and {"id_municipio", "capex", "payback", "npv"} <= set(d["financeiro"][0])
+    assert d["n_selecionados"] > 0
+    assert d["efeito_alavancas"]["com"]["vpl_total"] > d["efeito_alavancas"]["sem"]["vpl_total"]
+
+
+def test_portfolio_objetivo_e_escopo(client):
+    r = client.post("/portfolio", json={"budget": 600, "objetivo": "alunos", "regiao": "Sudeste"})
+    assert r.status_code == 200
+    assert all(str(m["id_municipio"]).startswith("3") for m in r.json()["municipios"])
+    assert client.post("/portfolio", json={"budget": 5, "objetivo": "invalido"}).status_code == 422
+
+
+def test_qualidade_informa_fonte(client):
+    d = client.get("/qualidade").json()
+    assert d["fonte_dados"] == "mock" and d["campos"] == []
+
+
+def test_backtest_e_rotulado_como_demonstrativo(client):
+    assert client.get("/backtest").json()["fonte"] == "demonstrativo"
+
+
+def test_financial_traz_comparacao_de_tecnologias(client):
+    r = client.post("/financial", json={"id_municipio": "3550308"})
+    d = r.json()
+    assert r.status_code == 200 and d["tecnologia_recomendada"] in {"FTTH", "FWA 5G", "Satélite"}
+    assert len(d["tecnologias"]) == 3 and "regra" in d

@@ -73,3 +73,9 @@ def test_modelo_tem_alguma_precisao(data_2021, data_2025, backhaul):
     result = run_backtest(data_2021, data_2025, backhaul)
     assert result.precision > 0.0
     assert result.recall > 0.0
+
+
+def test_taxa_base_e_lift(data_2021, data_2025, backhaul):
+    r = run_backtest(data_2021, data_2025, backhaul)
+    assert 0.0 <= r.taxa_base <= 1.0
+    assert r.lift == pytest.approx(r.precision / r.taxa_base, abs=0.01)

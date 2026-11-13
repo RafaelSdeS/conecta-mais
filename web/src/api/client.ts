@@ -21,6 +21,20 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>
 }
 
+/** POST dos endpoints de IA: devolve a mensagem de erro do backend (campo detail). */
+async function postIa<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const detail = await res.json().then((j) => j?.detail).catch(() => undefined)
+    throw new Error(typeof detail === 'string' ? detail : `Falha na IA (HTTP ${res.status})`)
+  }
+  return res.json() as Promise<T>
+}
+
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
 export interface Municipio {
@@ -54,6 +68,11 @@ export interface Municipio {
   ano_backhaul: number | null
   fust_elegivel: boolean
   eace_escolas: number
+  // recortes e métrica de impacto
+  alunos_sem_internet: number
+  total_escolas: number
+  ubs: number
+  semiarido: boolean
   // calculados pelo engine
   score_M: number
   score_I: number
@@ -68,6 +87,21 @@ export interface ScoreWeights {
   w_I: number
   w_C: number
   w_A: number
+}
+
+/** Alavancas da tela (fust/tcu/enec) no formato da API. */
+export function alavancasDe(l: { fust: boolean; tcu: boolean; enec: boolean }): Alavancas {
+  return { backhaul_comprometido: l.tcu, fust_reembolsavel: l.fust, receita_escolar: l.enec }
+}
+
+/** Identifica premissas + alavancas: textos de IA gerados num cenário não valem em outro. */
+export function chaveCenario(params: FinancialParams, l: { fust: boolean; tcu: boolean; enec: boolean }): string {
+  return JSON.stringify([params, l.fust, l.tcu, l.enec])
+}
+
+/** Narrativa do portfólio vale para o mesmo portfólio, orçamento e cenário (painel e dossiê). */
+export function chaveNarrativa(ids: string[], budget: number, params: FinancialParams, l: { fust: boolean; tcu: boolean; enec: boolean }): string {
+  return JSON.stringify([ids, budget, chaveCenario(params, l)])
 }
 
 export interface Alavancas {
@@ -97,7 +131,19 @@ export interface CapexResult {
   total: number
 }
 
+export interface TecnologiaLinha {
+  tecnologia: 'FTTH' | 'FWA 5G' | 'Satélite'
+  capex_mi: number
+  payback_anos: number | null
+  vpl_mi: number
+}
+
 export interface FinancialResult {
+  /** Comparação de tecnologias (custos de FWA e satélite são ilustrativos). */
+  tecnologias?: TecnologiaLinha[]
+  tecnologia_recomendada?: string
+  regra?: string
+  aviso?: string
   id_municipio: string
   capex: CapexResult
   receita_anual: number
@@ -107,17 +153,104 @@ export interface FinancialResult {
   sensitivity: { adesao_pct: number; payback_anos: number }[]
 }
 
+export type Objetivo = 'retorno' | 'equilibrado' | 'alunos'
+
 export interface PortfolioRequest {
   budget: number
   lambda_?: number
   max_payback?: number
   uf?: string
+  semiarido?: boolean
+  regiao?: string
+  objetivo?: Objetivo
   alavancas?: Alavancas
   params?: FinancialParams
   weights?: ScoreWeights
+  /** Força estes municípios no portfólio (simulação "o que mudaria para incluir"). */
+  incluir?: string[]
+}
+
+export type TipoDecisao = 'aprovar' | 'adiar' | 'descartar'
+
+/** Cenário da tela no momento da decisão; o servidor recalcula os números a partir dele. */
+export interface CenarioDecisao {
+  orcamento_mi: number
+  objetivo: Objetivo
+  escopo: { uf?: string; regiao?: string; semiarido?: boolean }
+  params: FinancialParams
+  alavancas: Alavancas
+}
+
+/**
+ * Ação de um clique montada pelo servidor a partir do motor (chat e achados).
+ * Campos null mantêm o que está na tela; '' em uf ou regiao limpa o filtro.
+ */
+export interface Acao {
+  tipo: 'aplicar_cenario' | 'abrir_municipio'
+  rotulo: string
+  orcamento_mi?: number | null
+  objetivo?: Objetivo | null
+  uf?: string | null
+  regiao?: string | null
+  semiarido?: boolean | null
+  alavancas?: Alavancas | null
+  id_municipio?: string | null
+}
+
+/** Achado do cenário: fatos do motor, redação do Granite e a ação correspondente. */
+export interface Achado {
+  id: string
+  titulo: string
+  texto: string
+  acao: Acao
+}
+
+export interface NovaDecisao {
+  id_municipio: string
+  decisao: TipoDecisao
+  motivo: string
+  observacao_campo?: string
+  responsavel: string
+  cenario: CenarioDecisao
+  situacao_no_plano?: string
+  justificativa_ia?: string
+}
+
+export interface Decisao extends Omit<NovaDecisao, 'observacao_campo' | 'situacao_no_plano' | 'justificativa_ia'> {
+  id: number
+  criado_em: string
+  observacao_campo: string | null
+  situacao_no_plano: string | null
+  justificativa_ia: string | null
+  fonte_dados: string
+  /** Calculados pelo servidor com o cenário da decisão. */
+  numeros: { capex_mi: number; payback_anos: number | null; vpl_mi: number; quadrante: string; score_total: number }
+}
+
+export interface FinanceiroLinha {
+  id_municipio: string
+  capex: number
+  payback: number | null
+  npv: number
+}
+
+export interface ResumoPortfolio {
+  payback_medio: number
+  vpl_total: number
+}
+
+export interface CampoQualidade {
+  campo: string
+  tipo: 'real' | 'aproximado' | 'neutro'
+  cobertura: number
 }
 
 export interface PortfolioResult {
+  alunos_atendidos: number
+  escolas_atendidas: number
+  vpl_total: number
+  efeito_alavancas: { com: ResumoPortfolio; sem: ResumoPortfolio } | null
+  financeiro: FinanceiroLinha[]
   municipios: Municipio[]
   capex_total: number
   payback_medio: number
@@ -127,8 +260,58 @@ export interface PortfolioResult {
   n_selecionados: number
 }
 
+export interface Provedor {
+  empresa: string
+  grupo: string
+  porte: string
+  acessos: number
+  acessos_fibra: number
+}
+
+export interface MercadoMunicipio {
+  domicilios: number
+  penetracao_fibra_total: number
+  penetracao_fibra_ppp: number
+  n_provedores: number
+  candidatas_compra_ou_parceria: { empresa: string; cnpj: string; acessos_fibra: number; acessos: number; fibra_sobre_domicilios: number }[]
+  provedores: Provedor[]
+  leitura: string
+  aviso: string
+}
+
+export interface UbsLinha { codigo_cnes: string; nome: string; lat: number | null; lon: number | null }
+
+export interface EscolaSemInternet { codigo_inep: string; escola: string; municipio: string; uf: string }
+
+export interface Auditoria {
+  total: number
+  ok: number
+  taxa_ok: number | null
+  latencia_media_ms: number | null
+  latencia_p95_ms: number | null
+  por_endpoint: Record<string, number>
+  ferramentas: Record<string, number>
+  ultimas: { ts: string; endpoint: string; modelo: string; ok: boolean; latencia_ms: number; ferramentas?: string[]; erro?: string }[]
+}
+
+export interface LimiarBacktest {
+  limiar: number
+  precision: number
+  recall: number
+  f1: number
+  cresceram: number
+  taxa_base: number
+  lift: number
+}
+
 export interface BacktestResult {
   status: string
+  descricao?: string
+  taxa_base?: number
+  lift?: number
+  limiares?: LimiarBacktest[]
+  /** O backtest roda sobre dados demonstrativos (sem histórico real de 2021). */
+  fonte?: 'demonstrativo' | 'real'
   precision: number
   recall: number
   f1: number
@@ -140,16 +323,47 @@ export interface BacktestResult {
 
 // ── Endpoints ─────────────────────────────────────────────────────────────────
 
+export type FonteDados = 'real' | 'mock'
+
+export interface FiltrosIA {
+  uf: string | null
+  quadrante: string | null
+  busca: string | null
+  apenas_portfolio: boolean
+}
+
 export const api = {
+  getProvedores: (id: string) => get<MercadoMunicipio>(`/dados/provedores/${id}`),
+
+  getUbs: (id: string) => get<{ total: number; ubs: UbsLinha[] }>(`/dados/ubs?codigo_municipio=${id}&limite=100`),
+
+  getEscolasSemInternet: (id: string) =>
+    get<{ total_sem_internet: number; escolas: EscolaSemInternet[] }>(
+      `/dados/escolas/sem-internet?codigo_municipio=${id}&limite=100`,
+    ),
+
+  getAuditoria: () => get<Auditoria>('/ia/auditoria?limite=10'),
+
+  getQualidade: () => get<{ fonte_dados: FonteDados; campos: CampoQualidade[] }>('/qualidade'),
+
+  getHealth: () => get<{ status: string; fonte_dados: FonteDados }>('/health'),
+
+  postJustificativa: (id_municipio: string, cenario: CenarioDecisao) =>
+    postIa<{ texto: string }>('/ia/justificativa', { id_municipio, cenario }),
+
+  postAchados: (cenario: CenarioDecisao) => postIa<{ cartoes: Achado[] }>('/ia/achados', cenario),
+
+  postPortfolioNarrativa: (ids: string[], orcamento_mi: number, params: FinancialParams, alavancas: Alavancas) =>
+    postIa<{ texto: string }>('/ia/portfolio-narrativa', { ids, orcamento_mi, params, alavancas }),
+
+  postFiltros: (texto: string) => postIa<FiltrosIA>('/ia/filtros', { texto }),
+
   getMunicipios: (params?: { uf?: string; quadrante?: string }) => {
     const qs = new URLSearchParams(
       Object.entries(params ?? {}).filter(([, v]) => v != null) as [string, string][]
     ).toString()
     return get<Municipio[]>(`/municipios${qs ? `?${qs}` : ''}`)
   },
-
-  postScores: (weights: ScoreWeights) =>
-    post<Municipio[]>('/scores', { weights }),
 
   postFinancial: (id_municipio: string, params: FinancialParams, alavancas: Alavancas) =>
     post<FinancialResult>('/financial', { id_municipio, params, alavancas }),
@@ -159,4 +373,10 @@ export const api = {
 
   getBacktest: () =>
     get<BacktestResult>('/backtest'),
+
+  postDecisao: (d: NovaDecisao) => postIa<Decisao>('/decisoes', d),
+
+  /** Com id: histórico do município (mais recente primeiro). Sem id: decisão vigente de cada município. */
+  getDecisoes: (id_municipio?: string) =>
+    get<Decisao[]>(`/decisoes${id_municipio ? `?id_municipio=${id_municipio}` : ''}`),
 }
