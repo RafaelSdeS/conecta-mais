@@ -32,16 +32,8 @@ const VIEW_COMPONENTS: Record<ViewId, React.ComponentType> = {
 export default function App() {
   const theme    = useAppStore((s) => s.theme)
   const setTheme = useAppStore((s) => s.setTheme)
-
-  // Persiste a visita para não mostrar a home novamente na mesma sessão
-  const [showHome, setShowHome] = useState<boolean>(
-    () => sessionStorage.getItem('cm_entered') !== '1'
-  )
-
-  const handleEnter = () => {
-    sessionStorage.setItem('cm_entered', '1')
-    setShowHome(false)
-  }
+  const showHome = useAppStore((s) => s.showHome)
+  const enterApp = useAppStore((s) => s.enterApp)
 
   // Sincroniza data-theme no <html>
   useEffect(() => {
@@ -51,7 +43,7 @@ export default function App() {
   }, [theme])
 
   if (showHome) {
-    return <HomeView onEnter={handleEnter} />
+    return <HomeView onEnter={enterApp} />
   }
 
   return (
@@ -69,6 +61,7 @@ function AppInner({
   theme: string
   setTheme: (t: 'light' | 'dark') => void
 }) {
+  const goHome         = useAppStore((s) => s.goHome)
   const setCmdPalette  = useAppStore((s) => s.setCmdPaletteOpen)
   const cmdOpen        = useAppStore((s) => s.cmdPaletteOpen)
   const setBudget      = useAppStore((s) => s.setBudget)
@@ -153,6 +146,29 @@ function AppInner({
               Expansão de conectividade
             </span>
           </div>
+
+          {/* Botão Início */}
+          <button
+            onClick={goHome}
+            title="Voltar à tela de início"
+            style={{
+              font: 'inherit',
+              fontSize: 12,
+              textAlign: 'left',
+              background: 'none',
+              border: '1px solid var(--ln)',
+              borderRadius: 4,
+              padding: '5px 10px',
+              cursor: 'pointer',
+              color: 'var(--mu)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              flexShrink: 0,
+            }}
+          >
+            ← Início
+          </button>
 
           {/* Navegação */}
           <nav aria-label="Navegação principal" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

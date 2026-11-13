@@ -106,6 +106,7 @@ export interface AppState {
 
   // UI
   view: ViewId
+  showHome: boolean
   selectedId: string | null
   hoveredId: string | null
   drawerOpen: boolean
@@ -141,6 +142,8 @@ export interface AppState {
   setDecisoes: (lista: Decisao[]) => void
   addDecisao: (d: Decisao) => void
   setView: (v: ViewId) => void
+  enterApp: () => void
+  goHome: () => void
   openDrawer: (id: string) => void
   closeDrawer: () => void
   setHovered: (id: string | null) => void
@@ -176,6 +179,7 @@ export const useAppStore = create<AppState>((set) => ({
   decisoes: {},
 
   view: 'painel',
+  showHome: true,
   selectedId: null,
   hoveredId: null,
   drawerOpen: false,
@@ -234,6 +238,8 @@ export const useAppStore = create<AppState>((set) => ({
 
   // UI
   setView: (v) => set({ view: v }),
+  enterApp: () => set({ showHome: false }),
+  goHome:   () => set({ showHome: true }),
   openDrawer: (id) => set({ selectedId: id, drawerOpen: true }),
   closeDrawer: () => set({ drawerOpen: false }),
   setHovered: (id) => set({ hoveredId: id }),
