@@ -9,6 +9,7 @@ import { useInitialData }      from './hooks/useInitialData'
 import logoTexto       from './assets/logo-texto.svg'
 import logoTextoBranca from './assets/logo-texto-branca.svg'
 
+import HomeView     from './pages/HomeView'
 import PanelView    from './pages/PanelView'
 import MunView      from './pages/MunView'
 import ChatView     from './pages/ChatView'
@@ -30,12 +31,26 @@ export default function App() {
   const theme    = useAppStore((s) => s.theme)
   const setTheme = useAppStore((s) => s.setTheme)
 
+  // Persiste a visita para não mostrar a home novamente na mesma sessão
+  const [showHome, setShowHome] = useState<boolean>(
+    () => sessionStorage.getItem('cm_entered') !== '1'
+  )
+
+  const handleEnter = () => {
+    sessionStorage.setItem('cm_entered', '1')
+    setShowHome(false)
+  }
+
   // Sincroniza data-theme no <html>
   useEffect(() => {
     const root = document.documentElement
     if (theme === 'dark') root.setAttribute('data-theme', 'dark')
     else                  root.setAttribute('data-theme', 'light')
   }, [theme])
+
+  if (showHome) {
+    return <HomeView onEnter={handleEnter} />
+  }
 
   return (
     <ToastProvider>

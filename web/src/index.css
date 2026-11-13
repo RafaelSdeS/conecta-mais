@@ -84,6 +84,15 @@ p     { margin: 0; }
   to { transform: translateX(100%); }
 }
 
+@keyframes heroIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hv-hero-text { animation: heroIn .55s ease-out both; }
+}
+
 @keyframes bounce-dot {
   50% { opacity: 0.2; }
 }

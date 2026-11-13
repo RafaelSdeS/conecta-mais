@@ -410,9 +410,53 @@ carregamento inicial e tratar estados de loading/erro em todos os componentes.
 
 ---
 
+### ST-10 — Tela de Início (HomeView)
+
+**Status:** `[x] done`
+
+**Intent:**
+Implementar uma landing page de entrada exibida antes do app principal, apresentando
+o produto, o CTA agentico e um mapa interativo do Brasil com clusters de municípios
+por quadrante de prioridade.
+
+**Expected Outcomes:**
+- Tela de início exibida na primeira visita (flag `sessionStorage cm_entered`)
+- Ao clicar "Abrir o painel" a tela some e o app principal carrega normalmente
+- Nenhum impacto no app em produção até o push ser feito
+- Toggle de tema claro/escuro funcional na HomeView (mesmo `appStore` do app)
+- Logo idêntica à sidebar: `LogoIcon` inline com viewBox recortado + `logo-texto.svg`
+- CTA de impacto com posicionamento agentico (IBM Granite, cinco agentes)
+- Mapa SVG do Brasil interativo: 24 bubbles por região/quadrante com hover tooltip
+- Stat strip com 4 dados do problema (5.565 municípios, 46.357 escolas, etc.)
+- Cards de features (Painel, Municípios, Agente, Solução)
+- Pills de legenda dos quadrantes Q1–Q4
+- Footer com crédito da equipe e link para o repositório
+- Build e `tsc --noEmit` limpos, sem dependências novas
+
+**Arquivos criados/modificados:**
+- `src/pages/HomeView.tsx` — novo arquivo (~480 linhas)
+- `src/App.tsx` — +`showHome` state + `import HomeView` + guarda condicional antes do `AppInner`
+- `src/index.css` — +`@keyframes heroIn` + `.hv-hero-text` para animação de entrada
+
+**Decisões técnicas:**
+| Decisão | Escolha | Motivo |
+|---|---|---|
+| Persistência da visita | `sessionStorage` | Mostra a home uma vez por sessão; aba anônima = nova visita |
+| Ícone da logo | SVG inline com `viewBox` recortado | `logo.svg` tem canvas 1080×1080 com espaço vazio; recorte em 375,362–706,720 exibe o "C" no tamanho correto |
+| Texto do logo | `logo-texto.svg` / `logo-texto-branca.svg` existentes | Mantém exatamente a tipografia do Illustrator |
+| Toggle de tema | `useAppStore` já existente | Zero código novo; o `useEffect` em `App()` já sincroniza `data-theme` mesmo na HomeView |
+| Mapa | SVG nativo + React `useState`/`useRef` | Sem dependência externa; `clipPath` SVG previne vazamento de stroke; 24 bubbles cobrem 5 regiões |
+| Mapa — sem stroke no path | `fill` apenas, sem `stroke` | O stroke do contorno gerava traço visível no topo; fill puro elimina o artefato |
+| Tooltip do mapa | `position: absolute` seguindo `clientX/Y` relativo ao SVG | Mais preciso que `<title>` nativo; adapta ao tema via `var(--pn)` / `var(--ln)` |
+
+---
+
 ## Diagrama de dependências entre sub-tarefas
 
 ```
+ST-10 (Tela de Início) ──► App.tsx (guarda showHome)
+                                └─► ST-1..ST-9 (app principal — inalterado)
+
 ST-1 (Fundação)
   └─► ST-2 (Header)
   └─► ST-3 (View Painel)
