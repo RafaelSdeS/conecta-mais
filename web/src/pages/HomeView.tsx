@@ -12,36 +12,6 @@ interface HomeViewProps {
   onEnter: () => void
 }
 
-/* ── Ícone "C" inline — viewBox recortado no conteúdo real do Illustrator ── */
-// canvas original: 1080×1080 · conteúdo visual: x 377–703, y 362–719
-// viewBox: conteúdo real x 375–706, y 362–720  →  331 × 358 px
-// Renderizado com height fixo; width calculado pela proporção para não distorcer
-function LogoIcon({ height = 44, dark = false }: { height?: number; dark?: boolean }) {
-  const W = 331, H = 358          // dimensões reais do conteúdo
-  const width = (height * W) / H  // mantém proporção sem distorção
-  const ringColor = dark ? '#FFFFFF' : '#0F1B2D'
-  return (
-    <svg
-      viewBox="375 362 331 358"
-      role="img"
-      aria-label=""
-      aria-hidden="true"
-      style={{ width, height, flexShrink: 0, display: 'block' }}
-    >
-      {/* arcos verdes (fan) */}
-      <path opacity="0.97" fill="#00B884" d="M553.7,508.2v35.2h36.3C586.6,525.2,572.1,511,553.7,508.2z"/>
-      <path opacity="0.97" fill="#00B884" d="M702.3,444.6l-17.9,11.9c-28.8-42.3-76.3-70.8-130.7-73.4v-21.5C615.5,364.2,669.6,396.5,702.3,444.6z"/>
-      <path opacity="0.97" fill="#00B884" d="M661.4,471.8l-17.8,11.9c-19.9-29.2-52.5-49-89.9-51.6v-21.4C598.5,413.3,637.6,436.9,661.4,471.8z"/>
-      <path opacity="0.97" fill="#00B884" d="M620.8,499l-18.6,12.4c-11-15.8-28.4-26.8-48.5-29.2v-22.5C581.6,462.2,605.8,477.1,620.8,499z"/>
-      {/* arco principal (anel) */}
-      <path opacity="0.97" fill={ringColor} d="M537.2,383.1v49.1c-59.4,4-106.8,51.7-110.4,111.2h-49C381.5,456.8,450.8,387.2,537.2,383.1z"/>
-      <path opacity="0.97" fill={ringColor} d="M377.8,559.5h49.1c4.2,58.9,51.4,105.9,110.4,109.9v49.1C451.2,714.3,382.2,645.4,377.8,559.5z"/>
-      <path opacity="0.97" fill={ringColor} d="M684.4,645c-28.7,42.3-76.3,70.8-130.7,73.4v-49c36.7-2.5,68.9-21.7,88.9-50.1L684.4,645z"/>
-      <path opacity="0.97" fill={ringColor} d="M537.2,669.4v49.1c-86-4.1-155-73-159.5-159h49.1C431.1,618.3,478.2,665.3,537.2,669.4z"/>
-    </svg>
-  )
-}
-
 /* ── Ícones ───────────────────────────────────────────────────────────────── */
 
 function IconSun() {
@@ -347,14 +317,12 @@ export default function HomeView({ onEnter }: HomeViewProps) {
         >
           {/* Brand */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {/* ícone quadrado 44×44, centrado verticalmente pelo flex pai */}
-            <LogoIcon height={44} dark={isDark} />
-            {/* bloco de texto: "conecta+" em cima, tagline embaixo */}
+            {/* logo-texto já inclui o ícone; tagline embaixo */}
             <div>
               <img
                 src={isDark ? logoTextoBranca : logoTexto}
                 alt="Conecta+"
-                style={{ display: 'block', height: 19, width: 'auto', marginBottom: 4 }}
+                style={{ display: 'block', height: 40, width: 'auto', marginBottom: 4 }}
               />
               <span style={{ display: 'block', fontSize: 11.5, lineHeight: 1, color: 'var(--mu)' }}>
                 Expansão de conectividade
@@ -537,11 +505,10 @@ export default function HomeView({ onEnter }: HomeViewProps) {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--mu)', fontSize: 13 }}>
-            <LogoIcon height={18} dark={isDark} />
             <img
               src={isDark ? logoTextoBranca : logoTexto}
               alt="Conecta+"
-              style={{ display: 'block', height: 14, width: 'auto', opacity: 0.7 }}
+              style={{ display: 'block', height: 20, width: 'auto', opacity: 0.7 }}
             />
           </div>
           <div style={{ fontSize: 13, color: 'var(--mu)', textAlign: 'right' }}>
