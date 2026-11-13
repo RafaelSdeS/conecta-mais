@@ -13,7 +13,7 @@ Sistema de apoio à decisão para expansão de conectividade da Vivo, desenvolvi
 > ([PDF](DOCUMENTACAO_CONECTA.pdf)). Conta o problema, a persona, as Hills, as decisões de produto e o que
 > falta validar, seguindo o IBM Enterprise Design Thinking. Divisão de trabalho em [`TEAM.md`](TEAM.md).
 
-![Painel do Conecta+](docs/img/02-painel.png)
+![Tela de início do Conecta+](docs/img/00-inicio.png)
 
 ---
 
@@ -90,6 +90,7 @@ python -m pytest
 
 | View | Descrição |
 |---|---|
+| **Início** | Primeira tela: o problema em números da base real, o que cada tela faz e os quadrantes; **Abrir o painel** entra no app e o botão **Início** do menu lateral volta para ela |
 | **Painel** | KPIs animados, mapa Leaflet com todos os municípios (cor por quadrante, payback, score, alunos ou decisão), quadrantes, histograma de payback, explicação do portfólio e achados do cenário por IA ("O que eu não estou vendo?"), que seguem gerando se você trocar de aba, e dossiê do recorte em PDF |
 | **Municípios** | Tabela ordenável com busca, filtros (inclusive por decisão), favoritos, portfólio e decisão vigente |
 | **Agente** | Chat com o IBM Granite (watsonx.ai): ranking, portfólio, comparação, simulação de alavancas, menor orçamento para uma meta de alunos e dúvidas de uso; cenários calculados viram um botão "Aplicar no painel"; a conversa continua ao trocar de aba ou recarregar a página |

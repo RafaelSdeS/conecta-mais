@@ -52,7 +52,7 @@ cidade ficou de fora?" dos prefeitos e precisa defender cada decisão no comitê
 
 Com o app rodando ([seção 9](#9-como-rodar-e-equipe)):
 
-1. Abra `http://localhost:5173/?uf=BA&semiarido=1&orcamento=150`: o recorte e o orçamento de **R$ 150 mi** já vêm na URL.
+1. Abra `http://localhost:5173/?uf=BA&semiarido=1&orcamento=150` e clique em **Abrir o painel**: o recorte e o orçamento de **R$ 150 mi** já vêm na URL.
 2. Pressione **Ctrl+K**, digite "Juazeiro" e abra a ficha de Juazeiro (BA). Clique em **O que mudaria para incluir?**
 3. Na mesma ficha, **Registrar decisão** → Aprovar, com um motivo. Veja o aviso de exceção ao plano.
 4. Volte ao Painel e clique em **Dossiê (PDF)**.
@@ -236,7 +236,14 @@ Do protótipo para o MVP, três mudanças vieram de reflexões do Loop:
 
 ## 5. A solução, pela jornada da persona
 
-Os prints usam o mesmo cenário: **Bahia · Semiárido, orçamento de R$ 150 mi, objetivo Equilíbrio, sem
+O app abre na **tela de início**. Ela mostra o problema em quatro números da base real (5.565 municípios
+avaliados, 46.357 escolas públicas sem internet para aprendizagem, 8,5 mi de alunos nessas escolas e 453
+cidades com fibra da Vivo), o que cada tela faz e os quadrantes. **Abrir o painel** leva ao cenário; o
+botão **Início**, no menu lateral, volta para ela.
+
+![Tela de início do Conecta+](img/00-inicio.png)
+
+Os prints a seguir usam o mesmo cenário: **Bahia · Semiárido, orçamento de R$ 150 mi, objetivo Equilíbrio, sem
 alavancas.** O recorte tem 287 municípios; o plano escolhe 27, usa R$ 149,79 mi e atende 21.918 alunos
 em 188 escolas sem internet. As decisões mostradas foram registradas por um responsável fictício.
 

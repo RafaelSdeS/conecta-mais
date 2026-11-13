@@ -4,6 +4,8 @@ Este guia explica como usar o painel e o assistente. Para fórmulas e premissas,
 
 ## Telas
 
+O app abre na **tela de início**, com o problema em números da base real, o que cada tela faz e os quadrantes. **Abrir o painel** entra no app; o botão **Início**, no menu lateral, volta para ela.
+
 O menu lateral tem quatro telas:
 
 - **Painel**: KPIs do portfólio, filtros, mapa dos municípios, botões de quadrante e histograma de payback.
